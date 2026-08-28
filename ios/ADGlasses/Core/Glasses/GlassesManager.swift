@@ -29,13 +29,6 @@ final class GlassesManager: ObservableObject {
         observeHeyCyanState()
     }
 
-    var supportSummary: [(name: String, level: GlassesSupportLevel)] {
-        [
-            (heyCyan.displayName, heyCyan.supportLevel),
-            (meta.displayName, meta.supportLevel)
-        ]
-    }
-
     func scanHeyCyan() async {
         errorMessage = nil
         do {

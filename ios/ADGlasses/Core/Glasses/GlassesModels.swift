@@ -5,11 +5,6 @@ enum GlassesVendor: String, CaseIterable, Sendable {
     case meta = "Meta"
 }
 
-enum GlassesSupportLevel: String, Sendable {
-    case primary = "Primary"
-    case experimental = "Experimental"
-}
-
 enum GlassesCapability: String, Hashable, Sendable {
     case bluetoothConnection
     case microphoneAudio
@@ -52,7 +47,7 @@ enum GlassesProviderError: LocalizedError {
     case bluetoothUnavailable(String)
     case deviceNotFound
     case connectionFailed(String)
-    case experimentalIntegration
+    case notConfigured(String)
 
     var errorDescription: String? {
         switch self {
@@ -62,8 +57,8 @@ enum GlassesProviderError: LocalizedError {
             return "The selected glasses are no longer available. Scan again."
         case .connectionFailed(let reason):
             return "Could not connect to the glasses: \(reason)"
-        case .experimentalIntegration:
-            return "Meta support is an SDK-free experimental integration point for now."
+        case .notConfigured(let reason):
+            return reason
         }
     }
 }

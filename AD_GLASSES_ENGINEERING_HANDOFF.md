@@ -1,68 +1,72 @@
 # AD Glasses engineering handoff
 
-Updated: 2026-08-23
+Updated: 2026-08-28
 
 ## Product invariants
 
 - **AD Glasses is the assistant.** Cloud and local models are inference engines behind AD, not separate assistant applications.
-- Chats stores AD-owned Local AI and configured Cloud REST conversations. `New topic` starts a clean thread; `Forget this conversation` deletes the current thread.
-- Never silently switch providers, send a local request to a remote service, drop an image, or perform network traffic that the selected route does not require. Fallback behavior must follow explicit user configuration.
-- Standard Cloud REST requests are authenticated with the configured provider credentials. AD receives the response text, stores the conversation when appropriate, and speaks concise replies with Android TTS.
-- Cloud Realtime / Gemini Live is a separate AD-owned WebSocket/audio path for bounded conversational sessions. It is not a phone-app handoff.
-- Local AI is the optional private/offline reasoning lane when a compatible model is installed. Moonshine is an offline English speech-to-text lane; it is not response speech.
-- Android Assistant-role integration belongs to AD Glasses itself and must stay lightweight; inference/audio work remains session-scoped.
+- Never silently switch providers, send local requests to remote services, drop an image, or perform network traffic that the selected route does not require.
+- Provider and hardware capability failures should be explicit: setup required, offline, unsupported modality, permission required, provider failure, or cancelled.
+- New hardware integrations belong behind provider/adapter boundaries rather than inside feature UI.
 
-## Current implementation
+## Active hardware scope
 
-- Android package: `com.ad_glasses`.
-- Android project: `android/AD-Glasses`.
+- **HeyCyan:** primary glasses path and the reference architecture for connection/media behavior.
+- **Meta:** retained as a vendor/provider boundary. A platform may report it as not configured when no verified SDK/protocol implementation is present.
+
+Do not reintroduce MyVu, EyeVue, MemoMind/XGIMI, Even, Mentra, or another glasses family as sample dumps, SDK submodules, or cross-cutting feature code without a new product decision. If another family is added later, isolate its transport in a provider and expose only shared capabilities upward.
+
+## Android
+
+- Package: `com.ad_glasses`.
+- Project: `android/AD-Glasses/`.
+- UI: Kotlin + Jetpack Compose.
 - Deep-link scheme: `ad-glasses://`.
-- Cloud REST provider/model selection is owned by the current AI provider preferences/router.
-- Gemini Live provides the current Cloud Realtime path.
-- Local model inference remains optional fallback/on-device execution.
-- Android `TextToSpeech` is the standard speech-output path for text responses.
-- The AD Assistant role is available as a first-class Android system integration without delegating the assistant session to another app.
-
-## MainActivity and device-runtime guardrails
-
-- Preserve device-specific routing for HeyCyan/Oudmon, Meta, Eyevue, and MYVU; never send one vendor's protocol command to another device family.
+- Cloud REST, Cloud Realtime/Gemini Live, Local fallback, Android TTS, and Android assistant-role integration remain separate responsibilities.
+- Moonshine remains an Android speech dependency; the iOS app does not share that runtime.
+- Preserve the confirmed HeyCyan BLE plus Wi-Fi media-transfer path and review `android/AGENTS.md` before changing it.
 - Keep Activity-owned recognition, image, foreground-service, and coroutine work lifecycle-aware.
-- MYVU currently has no camera capture through its transport; image questions must report that capability boundary rather than falling through to another protocol.
-- Gemini Live and Cloud REST are independent cloud lanes. Local inference remains an optional fallback, not a replacement for either cloud lane.
 
-## Chats, voice, and media
+## iOS
 
-- Typed Chats queries are not auto-spoken by default.
-- Voice replies use Android TTS for standard Cloud REST/Local text turns; Realtime sessions may return their own streamed audio.
-- Current same-thread turns are serialized by the conversation coordinator so responses cannot be written into the wrong thread.
-- Lens/media Ask AI entry points should persist AD-owned results into Chats when the product flow calls for durable conversation history.
-- Physical-glasses testing is still required for camera transport, Bluetooth audio routing, wake timing, and cross-device resource arbitration.
+- Project: `ios/ADGlasses.xcodeproj`.
+- UI: native Swift + SwiftUI, deployment target iOS 17+.
+- Speech: Apple Speech behind `SpeechTranscribing`; no Moonshine model is bundled.
+- Glasses: `GlassesProvider` boundary with HeyCyan and Meta vendor identities.
+- HeyCyan transport starts with CoreBluetooth and must not invent undocumented GATT identifiers.
+- Meta has no bundled SDK in the current tree and should report that configuration state plainly.
+- UI must respect iPhone safe areas and the home indicator. Do not mirror Android system-navigation/button assumptions.
+- Keep signing/packaging ordinary; do not introduce App Store-only architecture requirements into core features.
 
-## Provider/error behavior
+## AI/provider behavior
 
-- Prefer typed outcomes such as setup required, offline, unsupported modality, provider failure, permission required, and cancelled.
-- Retry only safe transient failures with bounded backoff. Never retry authentication/configuration failures as if they were transient.
-- Provider switches must not silently leak context to another provider. If previous context is shared, that choice should be explicit.
+- Cloud REST provider/model selection is owned by provider preferences/router.
+- Gemini Live is the current Cloud Realtime path.
+- Local model inference is optional private/offline execution, not an implicit replacement for cloud lanes.
+- Android TTS is the standard speech-output path for text responses on Android; iOS speech output should use a native iOS abstraction when added.
+- Typed outcomes and bounded retries are preferred. Authentication/configuration failures are not transient retries.
+- Provider switches must not silently leak conversation context to another provider.
 
 ## Privacy and storage
 
-- App data remains in Android's per-app sandbox. Configured secrets use encrypted preferences.
-- Local model files and AD conversation data must remain excluded from inappropriate Android backup/device-transfer paths.
-- **Clear all AD Chats** deletes conversations stored by AD Glasses on the phone; it does not claim to delete provider-side account data.
-- Do not claim cryptographic end-to-end protection for glasses transport until the physical protocol has been verified.
+- Keep secrets in platform-appropriate secure storage.
+- Do not log prompts, transcripts, tokens, device credentials, or private media paths.
+- Local model/conversation data must remain excluded from inappropriate backup or transfer paths.
+- Do not claim cryptographic transport guarantees until the physical glasses protocol has been verified.
 
 ## Validation before release
 
-1. Run shared Android compilation and the full app unit-test task.
-2. Build `:app:assembleDebug`.
-3. Verify the branded output `android/AD-Glasses/app/build/outputs/apk/debug/AD-Glasses.apk`.
-4. Run 16 KB native-library compatibility checks and zip alignment on release artifacts.
-5. Audit logs/crash reports for prompts, image paths, tokens, and transcripts.
-6. Re-run repo-wide checks for retired package/brand strings and deleted assistant-route symbols.
+When a feature set is ready for validation rather than while the app shell is still moving:
+
+1. Run Android unit tests and assemble the debug app.
+2. Build the native iOS scheme for a simulator without code signing.
+3. Test Bluetooth, microphone, audio routing, and media behavior on physical phones/glasses.
+4. Test iPhone layouts on small and large screens, including keyboard and home-indicator safe areas.
+5. Audit logs and release artifacts for secrets/private data.
 
 ## Guardrails for future changes
 
-- Do not restore the retired consumer-assistant handoff architecture to satisfy old tests or documentation.
-- Do not restore the retired general-purpose relay/CLI routing architecture.
-- Preserve Cloud REST, Cloud Realtime/Gemini Live, Local fallback, Android TTS, and AD Assistant-role integration as distinct responsibilities.
-- Keep migration parsers for old serialized provider values only when they map upgrades safely into the current Cloud/Local model.
+- Do not restore retired cross-vendor demo/research trees merely as reference baggage.
+- Keep Android and iOS native to their platforms.
+- Share contracts and behavior where useful, but do not force a cross-platform UI framework into either app.
+- Prefer a stable capability interface so future glasses support is an adapter-sized change.

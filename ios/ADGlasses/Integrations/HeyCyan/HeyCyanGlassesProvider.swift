@@ -3,10 +3,9 @@ import Foundation
 
 @MainActor
 final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
-    let id = "heyc-yan"
+    let id = "heycyan"
     let displayName = "HeyCyan"
     let vendor: GlassesVendor = .heyCyan
-    let supportLevel: GlassesSupportLevel = .primary
     let capabilities: Set<GlassesCapability> = [.bluetoothConnection]
 
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
@@ -145,10 +144,18 @@ extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
         connectionState = .disconnected
         let continuation = connectContinuation
         connectContinuation = nil
-        continuation?.resume(throwing: GlassesProviderError.connectionFailed(error?.localizedDescription ?? "unknown error"))
+        continuation?.resume(
+            throwing: GlassesProviderError.connectionFailed(
+                error?.localizedDescription ?? "unknown error"
+            )
+        )
     }
 
-    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+    func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
         if connectedPeripheralID == peripheral.identifier {
             connectedPeripheralID = nil
         }

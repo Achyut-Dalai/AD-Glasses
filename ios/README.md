@@ -1,6 +1,6 @@
 # AD Glasses — Native iOS
 
-This directory is the clean native iOS implementation of AD Glasses.
+`ios/` is the native iPhone implementation of AD Glasses.
 
 ## Product rules
 
@@ -8,21 +8,25 @@ This directory is the clean native iOS implementation of AD Glasses.
 - No React Native or Flutter.
 - No Kotlin Multiplatform host.
 - No Moonshine on iOS.
-- No bundled vendor SDK/framework.
+- No bundled QCSDK or other vendor binary framework.
 - HeyCyan is the primary glasses integration.
-- Meta is retained only as an experimental, SDK-free integration seam.
-- New glasses vendors must be added behind `GlassesProvider` rather than leaking vendor logic into UI/features.
+- Meta is a normal vendor/provider boundary; the current build simply reports it as not configured because no Meta SDK is bundled.
+- New glasses vendors must be added behind `GlassesProvider` rather than leaking vendor logic into SwiftUI/features.
 
-The previous KMP host, `QCSDK.framework`, QCSDK demo application, Objective-C demo sources and vendor PDF are intentionally not carried forward.
+## iPhone UI direction
+
+The iOS app is not a visual port of Android. It uses native navigation, typography, sheets, materials, and safe areas.
+
+The main voice action is placed with SwiftUI's safe-area layout so it stays above the iPhone home indicator. There is no Android-style three-button/system-navigation assumption and no custom bottom tab bar unless the product eventually has enough top-level destinations to justify one.
 
 ## Speech-to-text
 
 `SpeechTranscribing` isolates the rest of the app from Apple's speech engine.
 
-- On iOS 26 with a compiler that includes the modern Speech framework, `SpeechAnalyzerTranscriber` uses `SpeechAnalyzer` + `SpeechTranscriber`. The language model is managed by iOS and runs on device rather than being bundled into the app.
-- On iOS 17–25 (or an older Xcode toolchain), `LegacySpeechTranscriber` uses `SFSpeechRecognizer`. It forces on-device recognition when the selected locale/device supports it; otherwise Apple may provide recognition through its system service.
+- On iOS 26 with the modern Speech framework, `SpeechAnalyzerTranscriber` uses `SpeechAnalyzer` + `SpeechTranscriber` for Apple-native transcription.
+- On iOS 17–25, `LegacySpeechTranscriber` uses `SFSpeechRecognizer` and requests on-device recognition where the selected locale/device supports it.
 
-Both implementations currently consume the iPhone microphone. A future HeyCyan audio transport should feed audio through the same speech abstraction rather than creating a second transcription stack.
+Both implementations currently consume the iPhone microphone. A verified HeyCyan audio transport can later feed the same speech abstraction instead of creating a second transcription stack.
 
 ## Glasses architecture
 
@@ -33,27 +37,33 @@ GlassesManager
       |
 GlassesProvider
    /       \
-HeyCyan    Meta (experimental)
-   |
-CoreBluetooth transport
+HeyCyan     Meta
+   |         |
+CoreBluetooth   verified adapter when configured
 ```
 
-`HeyCyanGlassesProvider` currently provides the native BLE discovery/connection foundation. Discovery is intentionally broad until verified HeyCyan service/manufacturer identifiers are documented in the repository. It does **not** guess GATT UUIDs or send unverified vendor commands.
+`HeyCyanGlassesProvider` provides the native BLE discovery/connection foundation. Discovery remains intentionally broad until verified HeyCyan service/manufacturer identifiers are documented. It does **not** guess GATT UUIDs or send unverified vendor commands.
 
-When verified protocol details are available, add them inside `Integrations/HeyCyan` while preserving the `GlassesProvider` contract.
+`MetaGlassesProvider` keeps the vendor seam stable without shipping a Meta SDK. It returns a clear not-configured state until a real integration is added.
 
 To add another glasses family later:
 
 1. Create `Integrations/<Vendor>/<Vendor>GlassesProvider.swift`.
 2. Conform it to `GlassesProvider`.
 3. Keep vendor SDK/protocol details inside that directory.
-4. Register it with `GlassesManager` only when the support is ready.
+4. Register it with `GlassesManager` when the integration is real.
+
+## Installation and signing
+
+The project is kept as an ordinary iOS application target with no third-party package dependency. The repository does not ship a signed IPA or signing identity. Keep bundle/signing settings user-controlled so a development build can later be signed and installed with the user's preferred tooling, including SideStore-oriented workflows, without changing the app architecture.
+
+Avoid adding App Store-only assumptions to core app features.
 
 ## Build
 
-Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17. The project has no third-party package dependencies.
+Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17.
 
-Command-line check:
+When the app reaches a validation checkpoint, the command-line build is:
 
 ```bash
 xcodebuild \
@@ -64,3 +74,5 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO \
   build
 ```
+
+The current GitHub workflow for this target is `.github/workflows/ios-native.yml`. The old KMP/QCSDK workflow has been retired.

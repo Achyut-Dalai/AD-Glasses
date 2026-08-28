@@ -26,21 +26,16 @@ target/
 *.ogg
 *.pdf
 *.bin
+*.zip
 
 # Runtime app data
 */com.glasssutdio.wear/*
 
-# Firmware dump - skip results, legacy, pure dumps
-firmware_dump/RESULTS/
-firmware_dump/LEGACY/
-firmware_dump/Pure_Firmware_Dumps/
-
-# Third-party and examples (user said to skip)
+# Third-party dependency source is not first-party app code
 third_party/
-examples/
 
-# HeyCyanOfficialApp - app/src/main/java/ and app/src/main/com/ contain
-# merged AAR dependency sources, not project code. Exclude everything.
+# HeyCyanOfficialApp is retained as a protocol reference. Its decompiled
+# dependency sources and resources are not first-party implementation code.
 android/HeyCyanOfficialApp/app/src/main/java/*
 android/HeyCyanOfficialApp/app/src/main/kotlin/*
 android/HeyCyanOfficialApp/app/src/main/com/*

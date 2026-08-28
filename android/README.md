@@ -1,115 +1,40 @@
-# HeyCyan Glasses SDK - Android
+# AD Glasses — Android workspace
 
-Android SDK for controlling HeyCyan smart glasses via Bluetooth Low Energy (BLE).
+The active Android application lives in [`AD-Glasses/`](AD-Glasses/) and is built with Kotlin + Jetpack Compose.
 
-## Files
+HeyCyan is the primary glasses path. The Android app is currently the mature implementation for assistant features, media transfer, meetings, provider routing, and device integration. Keep those flows native to Android while the iOS app evolves independently in SwiftUI.
 
-- `glasses_sdk_20250723_v01.aar` - Android SDK library (AAR format)
-- `AD-Glasses/` - Sample Android application demonstrating SDK usage
-- `Android_SDK_Development_Guide_CN.pdf` - SDK documentation (Chinese)
+## Active Android pieces
 
-## Quick Start
+- `AD-Glasses/` — application project.
+- `glasses_sdk_20250723_v01.aar` — HeyCyan vendor artifact used by the supported integration.
+- `HeyCyanOfficialApp/` — retained reference material for verified protocol behavior.
+- `AGENTS.md` — concise HeyCyan BLE/Wi-Fi media-transfer contract and troubleshooting notes.
+- `docs/` — product/UI reference material for the Android app.
 
-1. Add the AAR file to your Android project's `libs` directory
-2. Add the dependency in your app's `build.gradle`:
-   ```gradle
-   implementation files('libs/glasses_sdk_20250723_v01.aar')
-   ```
-3. See the `AD Glasses` project for implementation examples
+Moonshine remains an Android-only speech dependency through the root `third_party/moonshine` submodule. The native iOS app does not use it.
 
-## Requirements
-
-- Android 5.0+ (API level 21)
-- Bluetooth Low Energy support
-- Android Studio
-
-## Sample Application
-
-The `AD Glasses` directory contains a complete Android application demonstrating:
-- Device scanning and connection
-- Photo/video/audio capture controls
-- Battery status monitoring
-- AI image generation
-- Device information retrieval
-
-## Support
-
-For technical support or questions about the Android SDK, please see our GitHub issues or contact the HeyCyan development team.
-
-## OTA Firmware Acquisition
-
-### How the app gets firmware updates
-
-The HeyCyan app queries the `last-ota` API to check for firmware updates:
-
-```
-POST https://www.qlifesnap.com/glasses/app-update/last-ota
-Content-Type: application/json
-token: <auth-token>
-```
-
-Request body includes `appId`, `uid`, `hardwareVersion`, `romVersion`, `os`, `mac`, `country`, `dev`.
-
-### Capturing OTA URLs with Frida
-
-The Frida scripts in `HeyCyanOfficialApp/frida/` can intercept the app's OTA flow:
-
-1. **`heycyan_ota_intercept.js`** — full intercept: captures token, API parameters, download URLs, blocks DFU
-2. **`heycyan_ota_api_trace.js`** — lightweight: logs API parameters only
-3. **`heycyan_official_ota_trace.js`** — BLE/DFU protocol tracer
-
-See `HeyCyanOfficialApp/FRIDA_OTA_INTERCEPT_GUIDE.md` for the full guide.
-
-### Known Working Token (Guest Account)
-
-```
-token: 15ef6eb5403406c1da0dc4a4defa2ea1
-```
-
-This is a guest/anonymous account. It may expire. Re-run the Frida script to capture a fresh one.
-
-### Querying for firmware
+## Build
 
 ```bash
-# BT firmware (.bin) — returns encrypted container for JieLi processor
-python3 scripts/probe_last_ota.py \
-  --token '15ef6eb5403406c1da0dc4a4defa2ea1' \
-  --hardware-version AM01G1_V9.2 \
-  --rom-version AM01G1_9.20.00_2510111600
-
-# Wi-Fi firmware (.swu) — returns cpio archive for V821 processor
-python3 scripts/probe_last_ota.py \
-  --token '15ef6eb5403406c1da0dc4a4defa2ea1' \
-  --hardware-version WIFIAM01G1_V9.2 \
-  --rom-version WIFIAM01G1_9.2_1.00.00_2501010000
+cd android/AD-Glasses
+./gradlew assembleDebug
 ```
 
-### API Response Codes
+Run unit tests with:
 
-| retCode | Meaning |
-|---------|---------|
-| 0 | Update available (response includes `data.downloadUrl`) |
-| 401 | Token expired or not logged in |
-| 60001 | No upgraded version (already on latest) |
+```bash
+./gradlew testDebugUnitTest
+```
 
-### OTA Delivery Lanes
+The project targets Java 17-compatible bytecode. Use the JDK expected by the Gradle wrapper/toolchain configured in the repository.
 
-| Lane | URL pattern | Auth | Format | Target SoC |
-|------|------------|------|--------|------------|
-| `.bin` CDN | `api2.qcwxkjvip.com/download/ota/...` | **None** | Encrypted container | JieLi (BT) |
-| `.swu` (factory) | `qcwxfactory.oss-cn-beijing.aliyuncs.com/bin/glasses/...` | **None** (mostly 403) | cpio archive | V821 (Wi-Fi) |
-| `.swu` (watchface) | `qcwxwatchface.oss-cn-hangzhou.aliyuncs.com/ota/...` | **None** (URL from API) | cpio archive | V821 (Wi-Fi) |
+## HeyCyan development
 
-The Wi-Fi hardware version naming pattern is `WIFI<BT_HW_VERSION>` (e.g. `AM01G1_V9.2` -> `WIFIAM01G1_V9.2`).
-Query the `last-ota` API with `WIFI*` hardwareVersion to get `.swu` download URLs.
+Before changing pairing, BLE commands, Wi-Fi handoff, media listing/download, or deletion behavior, read [`AGENTS.md`](AGENTS.md) and [`../WIFI_TRANSFER_ARCHITECTURE.md`](../WIFI_TRANSFER_ARCHITECTURE.md).
 
-### Known Firmware Families
+Do not guess proprietary commands, service UUIDs, hotspot credentials, OTA endpoints, or firmware behavior. Treat undocumented capabilities as unavailable until verified against the supported hardware/reference implementation.
 
-**BT families (`.bin`)**: A01, A02, A02E02, A03, A06, A08, AM01, AM01C, AM01G1, AM01G2, AM01W, AM02, E02, G01
+## Credentials and OTA material
 
-**Wi-Fi families (`.swu`)**: WIFIA01, WIFIA02, WIFIA03, WIFIA03BV, WIFIA03PRO, WIFIA02E02, WIFIAM01, WIFIAM01C, WIFIAM01G1, WIFIAM01G2, WIFIAM01W
-
-### Reference Files
-
-- `HeyCyanOfficialApp/last_ota_capture_reference.json` — captured API request/response examples with all known firmware URLs
-- `last_ota_wifi_cn.json`, `last_ota_wifi_us.json` — saved API responses
+Do not place OTA tokens, API keys, guest credentials, or authenticated curl examples in repository documentation. If a vendor endpoint must be investigated, keep credentials outside the repository and document only the protocol behavior that is safe and necessary for the product.
