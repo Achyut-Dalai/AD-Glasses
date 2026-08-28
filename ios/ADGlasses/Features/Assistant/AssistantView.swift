@@ -145,7 +145,7 @@ private struct AssistantWelcome: View {
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("Ask AD")
+                Text("Ask")
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
                 Text("Talk it through, ask a question, or pick up where your glasses left off.")
