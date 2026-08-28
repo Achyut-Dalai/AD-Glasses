@@ -652,52 +652,128 @@ private struct LensTile: View {
     let availability: FeatureAvailability
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 7) {
-                        Text("Lens")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        if availability == .unsupported {
-                            Image(systemName: "lock.fill")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.tertiary)
-                                .accessibilityHidden(true)
-                        }
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 16) {
+                        copy
+                        LensViewfinder(isUnavailable: availability == .unsupported)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
-
-                    Text("Ask about what you’re looking at")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                } else {
+                    HStack(spacing: 18) {
+                        copy
+                        Spacer(minLength: 10)
+                        LensViewfinder(isUnavailable: availability == .unsupported)
+                    }
                 }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 126, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemBackground))
 
-                Spacer(minLength: 8)
+                LinearGradient(
+                    colors: [
+                        Color.indigo.opacity(0.085),
+                        Color.cyan.opacity(0.035),
+                        .clear
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Color.indigo.opacity(0.13), lineWidth: 0.75)
+        }
+        .accessibilityHint(
+            availability == .unsupported
+                ? "Requires glasses with a camera."
+                : "Open Lens to ask AD about what you are looking at."
+        )
+    }
+
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Lens")
+                    .font(.title2.bold())
+                    .foregroundStyle(.primary)
+
+                if availability == .unsupported {
+                    Label("Needs camera", systemImage: "lock.fill")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+
+            Text("See it. Ask AD about it.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 5) {
+                Text("Open Lens")
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "arrow.up.right")
+                    .font(.caption2.bold())
+            }
+            .foregroundStyle(.indigo)
+        }
+    }
+}
+
+private struct LensViewfinder: View {
+    let isUnavailable: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion || isUnavailable)) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let pulse = reduceMotion || isUnavailable ? 0.5 : (sin(time * 1.45) + 1) / 2
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.primary.opacity(0.045))
+
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .stroke(Color.indigo.opacity(0.12 + (pulse * 0.08)), lineWidth: 1)
+                    .padding(8)
+
+                Circle()
+                    .fill(Color.cyan.opacity(isUnavailable ? 0.05 : 0.10 + (pulse * 0.06)))
+                    .frame(width: 66, height: 66)
+                    .scaleEffect(CGFloat(0.95 + (pulse * 0.08)))
 
                 Image("LensShutter")
                     .resizable()
                     .renderingMode(.template)
                     .scaledToFit()
-                    .foregroundStyle(.primary)
-                    .frame(width: 34, height: 34)
-                    .padding(10)
-                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 15))
-                    .accessibilityHidden(true)
+                    .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
+                    .frame(width: 38, height: 38)
+                    .scaleEffect(CGFloat(reduceMotion ? 1 : 0.96 + (pulse * 0.06)))
+
+                Image(systemName: isUnavailable ? "lock.fill" : "viewfinder")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(isUnavailable ? .secondary : .indigo)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(12)
             }
-            .padding(.horizontal, 15)
-            .padding(.vertical, 13)
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .contentShape(Rectangle())
+            .frame(width: 112, height: 92)
         }
-        .buttonStyle(.plain)
-        .background(Color(uiColor: .secondarySystemBackground).opacity(0.94), in: RoundedRectangle(cornerRadius: 21))
-        .overlay {
-            RoundedRectangle(cornerRadius: 21)
-                .strokeBorder(Color.primary.opacity(0.055), lineWidth: 0.5)
-        }
-        .accessibilityHint(availability == .unsupported ? "Requires supported glasses. Ask about what you are looking at." : "Ask about what you are looking at.")
+        .accessibilityHidden(true)
     }
 }
 
