@@ -54,9 +54,10 @@ Known SDK/application-level operations include:
 - voice wakeup/status;
 - device configuration;
 - Wi-Fi activation/readiness;
+- real-time preview activation;
 - DFU/OTA-related commands.
 
-The public iOS QCSDK command surface contains `QCSDKCmdCreator` methods for these operations.
+The public iOS QCSDK command surface contains `QCSDKCmdCreator` methods for many of these operations.
 
 The exposed operation modes seen in the upstream Swift wrapper are:
 
@@ -72,35 +73,54 @@ The exposed operation modes seen in the upstream Swift wrapper are:
 0x08 audio
 ```
 
-No supported public HeyCyan livestream operation mode has been established.
+The public QCSDK wrapper does not expose a named livestream mode, but the inspected official Android production app **does** activate real-time preview through lower-level `LargeDataHandler.glassesControl(...)` payloads. Therefore “not exposed by the public wrapper” must not be interpreted as “not supported by the production device/application protocol.”
 
 ### 2.2 Official production GATT evidence
 
-The official Android production package contains the Oudmon protocol implementation and exposes these primary GATT constants:
+The official Android production package contains the Oudmon protocol implementation and initializes these ordinary command-channel constants:
 
 ```text
-Primary service
+UUID_SERVICE
 6e40fff0-b5a3-f393-e0a9-e50e24dcca9e
 
-Notify/read characteristic
+UUID_READ / notify
 6e400003-b5a3-f393-e0a9-e50e24dcca9e
 
-Write characteristic
+UUID_WRITE
 6e400002-b5a3-f393-e0a9-e50e24dcca9e
 
 CCCD
 00002902-0000-1000-8000-00805f9b34fb
 ```
 
-A second serial-port-style UUID family is also present:
+A second serial/large-data family is actively used by production code:
 
 ```text
-Service  de5bf728-d711-4e47-af26-65e3012a5dc7
-Notify   de5bf729-d711-4e47-af26-65e3012a5dc7
-Write    de5bf72a-d711-4e47-af26-65e3012a5dc7
+SERIAL_PORT_SERVICE
+ de5bf728-d711-4e47-af26-65e3012a5dc7
+
+SERIAL_PORT_CHARACTER_NOTIFY
+ de5bf729-d711-4e47-af26-65e3012a5dc7
+
+SERIAL_PORT_CHARACTER_WRITE
+ de5bf72a-d711-4e47-af26-65e3012a5dc7
 ```
 
-The primary notification path is strongly established. The role of the second UUID family must still be attributed before it is used by the native iOS implementation.
+The distinction is now proven:
+
+```text
+BleOperateManager.enableUUID()
+→ UUID_SERVICE + UUID_READ
+→ ordinary notification path
+
+LargeDataHandler.getWriteRequest(payload)
+→ SERIAL_PORT_SERVICE + SERIAL_PORT_CHARACTER_WRITE
+→ serial / large-data write path
+```
+
+Therefore the native iOS implementation must not assume one GATT write/notify pair serves every feature. Service discovery should recognize both verified transport families and route command families through the appropriate transport.
+
+The exact per-command routing map is still being completed.
 
 ### 2.3 BLE link state is not device-ready state
 
@@ -117,9 +137,9 @@ connecting BLE
     ↓
 GATT connected
     ↓
-discover services / characteristics
+discover verified services / characteristics
     ↓
-enable notifications
+enable required notifications
     ↓
 protocol initialization
     ├─ time sync
@@ -144,7 +164,21 @@ Confirmed command-family values seen in the production implementation include:
 0xFC / -4   IP/Wi-Fi-side information operation
 ```
 
-The production encoder performs framing and CRC16 work. Exact framing layout and CRC coverage are still under audit; do not copy speculative packet bytes into Swift yet.
+The production encoder performs framing and CRC16 work. Exact full-frame layout and CRC coverage are still under audit; do not copy speculative complete frames into Swift yet.
+
+#### Real-time preview control payloads
+
+The official production `RealTimePreviewActivity` passes these byte payloads into `LargeDataHandler.glassesControl(...)`:
+
+```text
+02 01 14 01   start real-time preview using P2P path
+02 01 14 02   start real-time preview using AP path
+02 01 15 01   cleanup/exit payload sent when preview is destroyed
+```
+
+These are payloads inside the glasses-control command family, not yet documented here as complete GATT frames.
+
+This is production-app evidence from HeyCyan `1.0.142_20260807` and supersedes the older assumption that no application-level Bluetooth activation path existed for live preview.
 
 ### 2.5 Wi-Fi is the high-bandwidth data plane
 
@@ -153,17 +187,15 @@ The documented transfer flow is Bluetooth-first:
 ```text
 BLE ready
     ↓
-request transfer mode
+request network-dependent mode
     ↓
-receive network information
+receive / derive network information
     ↓
-wait for BLE confirmation that Wi-Fi is ready
+wait for device network readiness
     ↓
-obtain/confirm device IP
+join glasses network
     ↓
-join glasses Wi-Fi
-    ↓
-HTTP media/file transfer
+HTTP media transfer OR RTSP live preview
 ```
 
 This matters: Wi-Fi is not a replacement for BLE. BLE prepares and synchronizes the Wi-Fi session.
@@ -176,11 +208,53 @@ Repository iOS demo code probes local paths including:
 /files/media.config
 ```
 
-and then performs media discovery/download over `NSURLSession`/HTTP.
+The official production app now gives stronger call-site evidence for media transfer. It defines media/config filenames including:
 
-The official production APK also contains local media/network strings such as `media.config`, `/files/`, `/playlist.json`, fixed/local IP strings, and password candidates. Those values are not promoted to production constants until their call sites are fully attributed.
+```text
+media.config
+vf_list.txt
+log.list
+```
 
-Do not describe HTTP as “the BLE protocol.” It is a separate higher-bandwidth phase after a BLE-controlled handoff.
+Production paths include forms such as:
+
+```text
+http://<glasses-ip>/files/<name>
+http://<glasses-ip>/files/log/<name>
+http://<glasses-ip>:80/storage/sd0/C/DCIM/1/<name>
+```
+
+`AlbumDepository` builds photo/media downloads from the stored glasses device IP using `/files/` and, when logs are enabled, `/files/log/`.
+
+A separate test-only string `http://192.168.0.1:8080/test` exists in `GlassesNetworkTestActivity`; do not use that as the production media endpoint.
+
+Do not describe HTTP as “the BLE protocol.” It is a separate higher-bandwidth phase after BLE-controlled mode/network preparation.
+
+### 2.7 RTSP is the production live-preview data path
+
+The official production app contains `RealTimePreviewActivity` and initializes VLC playback using:
+
+```text
+rtsp://<glassDeviceWifiIP>:8554/ch0
+```
+
+The live-preview sequence observed in production is therefore approximately:
+
+```text
+BLE ready
+    ↓
+glassesControl(live P2P or AP payload)
+    ↓
+P2P discovery OR AP join
+    ↓
+store/resolve glasses Wi-Fi IP
+    ↓
+RTSP player
+    ↓
+rtsp://<ip>:8554/ch0
+```
+
+This is separate from HTTP media synchronization.
 
 ---
 
@@ -188,7 +262,7 @@ Do not describe HTTP as “the BLE protocol.” It is a separate higher-bandwidt
 
 ### 3.1 AP/hotspot mode
 
-The iOS QCSDK demo proves a native-iOS-compatible flow exists:
+The iOS QCSDK demo proves a native-iOS-compatible transfer flow exists:
 
 ```text
 QCSDKCmdCreator.openWifiWithMode(transfer)
@@ -204,11 +278,28 @@ iPhone joins glasses-hosted AP
 HTTP request to glasses device IP
 ```
 
-This remains the preferred iOS path unless later evidence proves a feature/model requires another mode.
+The official Android production app also has an AP real-time-preview path. For real-time preview it sends the `02 01 14 02` glasses-control payload and then connects to the stored glasses Wi-Fi name/password using the AP helper.
+
+This is important for iOS: although the Android app normally prefers P2P on Android, the glasses themselves expose an AP live-preview variant, making an iOS-native AP + RTSP implementation a realistic path to test.
 
 ### 3.2 Wi-Fi Direct / P2P
 
-P2P is no longer supported only by CyanBridge evidence: the official HeyCyan production APK itself contains both AP helper code and `WifiP2pManager` integration.
+P2P is no longer supported only by CyanBridge evidence: the official HeyCyan production APK itself contains `WifiP2pManager` integration and uses it for real-time preview.
+
+For the inspected production live-preview flow:
+
+```text
+normal Android path
+→ register P2P receiver
+→ start P2P discovery
+→ glassesControl(02 01 14 01)
+→ obtain P2P connection/IP
+→ RTSP playback
+```
+
+The same activity contains an AP alternative. Its permission-selection code chooses AP when `isHarmonyOSNEXT` is true and otherwise chooses P2P.
+
+This selection rule is specific to the inspected official Android activity and should not be generalized to every HeyCyan operation.
 
 CyanBridge additionally contains explicit HeyCyan P2P route policy and recognizes routes/interfaces such as:
 
@@ -220,12 +311,19 @@ wfd*
 
 Therefore both AP/hotspot and Android Wi-Fi Direct/P2P are real production concepts.
 
-However:
+### 3.3 Production Wi-Fi credential behavior
 
-- do not assume every media operation uses P2P;
-- do not assume Android `WifiP2pManager` behavior has a direct iOS equivalent;
-- do not block the native iOS implementation on P2P while the AP/hotspot flow remains available;
-- keep model/firmware-specific network selection behind capability/configuration logic once the exact selection rule is proven.
+The official Android `MyBluetoothReceiver.connectStatue(...)` builds/stores a glasses Wi-Fi name from the connected device identity and Bluetooth address and stores:
+
+```text
+123456789
+```
+
+as the glasses Wi-Fi password.
+
+This is strong production evidence for Android HeyCyan `1.0.142_20260807` and resolves the fixed-password question for that path.
+
+However, the upstream iOS QCSDK demos contain inconsistent credential handling, including one flow that uses credentials returned by the vendor SDK. Therefore native iOS should verify the physical-glasses behavior before assuming the Android fixed-password rule applies identically to every firmware/iOS mode.
 
 ---
 
@@ -251,9 +349,21 @@ Native iOS can join an accessory hotspot using NetworkExtension/`NEHotspotConfig
 
 The author's iOS QCSDK demo already implements this path.
 
+The production Android live-preview AP variant strengthens the case that the glasses can expose a network topology that iOS can plausibly join for RTSP, rather than requiring Android Wi-Fi Direct exclusively.
+
 ### Local HTTP
 
 Once the iPhone is on the glasses network, HTTP/media operations can be implemented with `URLSession`, subject to normal iOS local-network and transport-security configuration.
+
+### RTSP live preview
+
+The glasses production app serves real-time preview at:
+
+```text
+rtsp://<device-ip>:8554/ch0
+```
+
+On iOS we should not assume the Android VLC implementation can simply be copied. The network/control sequence can be ported, while the iOS playback implementation should use an appropriate native-compatible media stack after confirming stream codec/container characteristics on the physical device.
 
 ---
 
@@ -263,14 +373,15 @@ The current native `HeyCyanGlassesProvider` is a foundation, not a complete hard
 
 At the time of this audit it provides Bluetooth discovery/connection foundations but does not yet constitute a complete verified implementation of:
 
-- the official service/characteristic setup;
+- both official GATT transport families;
 - post-connect protocol initialization/readiness;
 - Oudmon/HeyCyan command encoding;
 - command acknowledgement and response matching;
 - device-state notifications;
-- Wi-Fi transfer-mode preparation;
+- Wi-Fi transfer/live-mode preparation;
 - AP joining;
 - media HTTP transfer;
+- RTSP live preview;
 - glasses audio transport.
 
 Do not infer hardware support from UI buttons alone.
@@ -291,12 +402,12 @@ GlassesManager
       ▼
 HeyCyanGlassesProvider
       │
-      ├──────────────┬────────────────┬────────────────┬────────────────┐
-      ▼              ▼                ▼                ▼                ▼
-HeyCyanBLE      HeyCyanProtocol   HeyCyanSession   HeyCyanWiFi     HeyCyanMedia
-Transport          Codec             State         Controller          Client
-      │              │                │                │                │
-CoreBluetooth   command/state     readiness      NetworkExtension    URLSession
+      ├──────────────┬────────────────┬────────────────┬────────────────┬───────────────┐
+      ▼              ▼                ▼                ▼                ▼               ▼
+HeyCyanBLE      HeyCyanProtocol   HeyCyanSession   HeyCyanWiFi     HeyCyanMedia   HeyCyanLive
+Transport          Codec             State         Controller          Client          Client
+      │              │                │                │                │               │
+CoreBluetooth   command/state     readiness      NetworkExtension    URLSession      RTSP player
 ```
 
 ### Responsibilities
@@ -306,20 +417,21 @@ CoreBluetooth   command/state     readiness      NetworkExtension    URLSession
 Owns byte transport only:
 
 - scan/connect/reconnect;
-- discover verified services and characteristics;
-- subscribe to notifications;
-- write bytes;
+- discover both verified service families;
+- subscribe to required notifications;
+- expose ordinary-command and large-data write routes;
 - deliver raw responses;
 - BLE timeout/retry mechanics.
 
-It should not know product semantics such as “take photo.”
+It should not know product semantics such as “take photo” or “start live preview.”
 
 #### `HeyCyanProtocolCodec`
 
 Owns protocol semantics:
 
 - verified UUID mapping;
-- command IDs;
+- command IDs and subcommands;
+- routing to base vs serial/large-data transport;
 - framing;
 - sequence/length fields;
 - CRC/checksum rules;
@@ -335,10 +447,10 @@ Coordinates post-connect readiness and exclusivity:
 
 ```text
 GATT connected
-→ notification enabled
+→ notifications enabled
 → initialization commands
 → ready
-→ busy/capture/transfer/audio/etc.
+→ busy/capture/transfer/audio/live/etc.
 → cleanup
 → ready
 ```
@@ -349,17 +461,17 @@ This layer prevents features from issuing conflicting commands while the glasses
 
 Owns Wi-Fi lifecycle:
 
-- receive prepared hotspot/network information from the protocol/session layer;
-- join via `NEHotspotConfiguration` where AP mode is supported;
+- receive/derive network information from the protocol/session layer;
+- join via `NEHotspotConfiguration` for iOS-compatible AP modes;
 - confirm reachability to the device IP;
 - disconnect/cleanup;
-- apply model/firmware-specific rules only when proven.
+- keep P2P-specific logic out of iOS unless an actually supported Apple-compatible mechanism is proven necessary.
 
 #### `HeyCyanMediaClient`
 
-Owns local IP media operations:
+Owns local HTTP media operations:
 
-- manifest/media configuration;
+- `media.config` / media configuration;
 - listing;
 - thumbnails;
 - image/video/audio downloads;
@@ -367,11 +479,26 @@ Owns local IP media operations:
 - transfer progress/cancellation;
 - HTTP retry/error handling.
 
+#### `HeyCyanLiveClient`
+
+Owns real-time-preview data transport after the session/network layers have prepared the glasses:
+
+```text
+session requests AP live mode
+→ WiFiController joins glasses AP
+→ resolve device IP
+→ open rtsp://<ip>:8554/ch0
+→ surface decoded video frames/playback state
+→ cleanup command + network teardown
+```
+
+It should not itself invent/send BLE control bytes.
+
 #### `HeyCyanGlassesProvider`
 
 Coordinates user-level features without embedding transport details.
 
-Example flow:
+Example media flow:
 
 ```text
 provider.downloadLatestPhoto()
@@ -385,8 +512,22 @@ WiFiController joins glasses AP
 MediaClient downloads media
         ↓
 session performs cleanup / returns to ready
+```
+
+Example live flow:
+
+```text
+provider.startLivePreview()
         ↓
-provider returns application model
+session ensures glasses ready
+        ↓
+protocol sends verified AP live payload
+        ↓
+WiFiController joins glasses AP
+        ↓
+LiveClient opens RTSP stream
+        ↓
+provider exposes frames/state to Lens
 ```
 
 ---
@@ -404,7 +545,8 @@ Legend:
 | --- | --- | --- |
 | BLE discovery | ✅ | Native iOS foundation exists. |
 | BLE connection | ✅ | Standard CoreBluetooth/vendor SDK flow. |
-| Official GATT control path | ✅ | Production APK exposes primary service/write/notify UUIDs. |
+| Base GATT command path | ✅ | Production APK exposes `6e40...` service/write/notify UUIDs. |
+| Serial/large-data GATT path | ✅ | Production `LargeDataHandler` uses the `de5bf...` service/write family. |
 | Protocol readiness/init phase | ✅ | Production app performs initialization after BLE connection. |
 | Battery + charging | ✅/🟡 | Production response parser/API exists; native Swift port remains. |
 | Device/version info | ✅/🟡 | Production response parser/API exists; native Swift port remains. |
@@ -415,16 +557,18 @@ Legend:
 | Media counts | ✅/🟡 | Production glasses-control parser exposes image/video/audio counts. |
 | Wi-Fi transfer activation | ✅/🟡 | Demonstrated in iOS QCSDK path; raw production command/state mapping still being completed. |
 | Join glasses AP on iOS | ✅ | Demo uses `NEHotspotConfiguration`. |
-| HTTP media transfer | ✅/🟡 | Demonstrated; production endpoint attribution/edge cases remain. |
-| HeyCyan Wi-Fi Direct/P2P | ✅ on Android | Present in official APK and CyanBridge. iOS requirement remains model/feature-dependent. |
-| Continuous HeyCyan camera livestream | 🔬 | Wi-Fi-side dormant/test findings exist, but no verified supported production activation command yet. |
+| HTTP media transfer | ✅/🟡 | Production paths and repository iOS demo both establish this architecture. |
+| HeyCyan Wi-Fi Direct/P2P | ✅ on Android | Present in official APK and CyanBridge. |
+| Real-time HeyCyan camera preview | ✅/🟡 | Official production app activates BLE live mode and plays RTSP `:8554/ch0`; native iOS AP path still needs physical verification. |
+| AP-mode live preview | ✅/🟡 | Official production app contains `02 01 14 02` AP activation path; iOS feasibility is promising but must be tested. |
 | Glasses voice/audio stream toward phone | 🟡 | Official app contains glasses Azure speech/Opus processing and large-data callbacks; exact transport/codec framing still being audited. |
+| Firmware LED suppression / hidden firmware modification | 🔬 | Separate experimental firmware track; not required for normal app integration. |
 
 ---
 
 ## 8. Audio / Assistant implication
 
-The official production APK increases confidence that HeyCyan has a glasses-oriented voice path. It contains a `GlassesAzureSpeechRecognizer`, Opus decoding/stream logic, protocol package callbacks, and voice heartbeat behavior.
+The official production APK increases confidence that HeyCyan has a glasses-oriented voice path. It contains a `GlassesAzureSpeechRecognizer`, Opus/audio-related runtime, protocol callbacks, voice wake/play operations, and heartbeat behavior.
 
 Do **not** yet assume the transport is ordinary BLE GATT audio. The next audit must establish:
 
@@ -443,9 +587,11 @@ Once verified, expose decoded PCM/audio through a glasses-neutral audio capabili
 
 ## 9. Lens architecture implication
 
-Until a verified supported HeyCyan live-camera activation command exists, Lens must not assume a continuous camera stream.
+The official production app changes the Lens decision materially.
 
-A safer supported architecture is:
+We now have two valid architecture tiers:
+
+### Tier A — capture-based Lens
 
 ```text
 Lens request
@@ -461,21 +607,60 @@ vision/AI analysis
 result
 ```
 
-A future livestream path can be added behind a capability interface if firmware/protocol research proves it safe and activatable.
+This remains the simplest first implementation.
+
+### Tier B — live Lens
+
+Official production evidence supports:
+
+```text
+BLE live AP payload
+    ↓
+glasses AP
+    ↓
+iPhone joins AP
+    ↓
+RTSP :8554/ch0
+    ↓
+decode frames
+    ↓
+Lens preview / sampled-frame analysis
+```
+
+For native iOS, Tier B should be treated as **supported hardware behavior awaiting iOS physical verification**, not as firmware-only speculation.
+
+Do not make the entire Lens product dependent on continuous streaming until AP association, RTSP codec compatibility, cleanup, thermal/battery behavior, and reconnection are tested on the physical glasses.
 
 ---
 
 ## 10. Important unresolved questions / contradictions
 
+### Historical livestream contradiction
+
+Earlier reverse-engineering commentary reported a dormant/test livestream implementation on the Wi-Fi SoC but no exposed Bluetooth command through the then-known HeyCyan SDK surface. The public QCSDK wrapper inspected also lacks a named livestream mode.
+
+The newer official HeyCyan Android production app `1.0.142_20260807` is stronger evidence and contains an active `RealTimePreviewActivity`, verified BLE live-control payloads, AP/P2P networking, and RTSP playback.
+
+Resolution:
+
+- preserve the earlier finding as valid historical/reverse-engineering context;
+- current production architecture treats live preview as supported by the official app protocol;
+- the low-level command is exposed through `LargeDataHandler.glassesControl`, not necessarily through the public QCSDK convenience wrapper.
+
 ### Wi-Fi password behavior
 
-One iOS demo path forces a fixed password after the SDK returns credentials, another uses the returned password, and fixed credential strings also appear in the official APK.
+Official Android production `1.0.142` stores fixed password `123456789` during Bluetooth connection setup. Upstream iOS QCSDK demos are inconsistent about whether credentials are returned or overridden.
 
-Call sites and physical behavior must settle the actual production rule before hardcoding anything.
+Resolution for now:
+
+- Android production path: fixed password is strongly established;
+- iOS implementation: verify against physical glasses/QCSDK behavior before hardcoding globally.
 
 ### AP versus P2P selection
 
-Both mechanisms now exist in official production evidence. The exact selection rule by model/firmware/operation remains unresolved.
+For official Android real-time preview, inspected code chooses AP on HarmonyOS NEXT and P2P otherwise. Other operations may use different rules.
+
+The native iOS architecture should target the proven AP variants first rather than trying to recreate Android `WifiP2pManager`.
 
 ### Error 255
 
@@ -485,28 +670,26 @@ The official `GlassModelControlResponse` parser contains explicit handling for e
 
 Official production evidence strongly suggests a live voice/audio flow, but the actual transport and framing are not yet fully attributed.
 
-### Live camera
-
-Do not confuse findings from other glasses families (for example Eyevue RTSP/live commands) with HeyCyan behavior. Dormant Wi-Fi firmware code is not the same as an exposed safe production command.
-
 ---
 
 ## 11. Implementation milestones
 
 Proceed in this order:
 
-1. Implement official GATT service/characteristic discovery and notification enablement.
+1. Implement both official GATT service families and notification setup.
 2. Reconstruct/verify application framing + CRC against official production code.
 3. Implement protocol initialization/readiness state.
 4. Implement and verify battery + device info.
 5. Map and verify photo command and response.
-6. Map Wi-Fi transfer preparation and AP/P2P selection evidence.
+6. Map normal media-transfer preparation and HTTP paths.
 7. Implement iOS AP join and readiness checks.
 8. Implement HTTP media listing/download.
-9. Implement photo/video/audio product flows on top of verified transports.
-10. Fully audit glasses voice/audio streaming and feed decoded audio into the platform-neutral Assistant path.
-11. Add reconnect/background/error-state behavior.
-12. Treat livestream/firmware modifications as a separate experimental track.
+9. Implement the verified live-preview AP control flow.
+10. Connect to `rtsp://<ip>:8554/ch0` and verify codec/playback on iOS hardware.
+11. Implement photo/video/audio product flows on top of verified transports.
+12. Fully audit glasses voice/audio streaming and feed decoded audio into the platform-neutral Assistant path.
+13. Add reconnect/background/error-state behavior.
+14. Keep firmware patches/LED suppression as a separate experimental track.
 
 ---
 
