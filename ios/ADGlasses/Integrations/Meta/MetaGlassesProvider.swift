@@ -4,7 +4,6 @@ import Foundation
 final class MetaGlassesProvider: GlassesProvider {
     let id = "meta"
     let displayName = "Meta"
-    let vendor: GlassesVendor = .meta
     let capabilities: Set<GlassesCapability> = []
 
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?

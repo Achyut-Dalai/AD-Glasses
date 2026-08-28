@@ -3,11 +3,16 @@ import SwiftUI
 @main
 struct ADGlassesApp: App {
     @StateObject private var appModel = AppModel()
-    @StateObject private var glassesManager = GlassesManager()
+    @StateObject private var glassesManager = GlassesManager(
+        providers: [
+            HeyCyanGlassesProvider(),
+            MetaGlassesProvider()
+        ]
+    )
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            AppRootView()
                 .environmentObject(appModel)
                 .environmentObject(glassesManager)
         }

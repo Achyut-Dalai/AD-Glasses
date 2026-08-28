@@ -35,7 +35,7 @@ SwiftUI features
       |
 GlassesManager
       |
-GlassesProvider
+registered GlassesProvider instances
    /       \
 HeyCyan     Meta
    |         |
@@ -51,7 +51,9 @@ To add another glasses family later:
 1. Create `Integrations/<Vendor>/<Vendor>GlassesProvider.swift`.
 2. Conform it to `GlassesProvider`.
 3. Keep vendor SDK/protocol details inside that directory.
-4. Register it with `GlassesManager` when the integration is real.
+4. Register it at the application composition root. `GlassesManager` and feature screens do not change.
+
+See `MIGRATION_PLAN.md` for the Android product audit, architectural findings, and staged capability plan.
 
 ## Installation and signing
 

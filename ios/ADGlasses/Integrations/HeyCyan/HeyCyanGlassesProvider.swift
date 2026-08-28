@@ -5,7 +5,6 @@ import Foundation
 final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
     let id = "heycyan"
     let displayName = "HeyCyan"
-    let vendor: GlassesVendor = .heyCyan
     let capabilities: Set<GlassesCapability> = [.bluetoothConnection]
 
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
@@ -18,6 +17,7 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
     private var discoveredPeripherals: [UUID: CBPeripheral] = [:]
     private var discoveredDevices: [UUID: GlassesDevice] = [:]
     private var connectContinuation: CheckedContinuation<Void, Error>?
+    private var connectionTimeoutTask: Task<Void, Never>?
     private var pendingConnectionID: UUID?
     private var connectedPeripheralID: UUID?
 
@@ -57,7 +57,7 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
     }
 
     func connect(to device: GlassesDevice) async throws {
-        guard device.vendor == .heyCyan,
+        guard device.providerID == id,
               let peripheral = discoveredPeripherals[device.id] else {
             throw GlassesProviderError.deviceNotFound
         }
@@ -75,13 +75,25 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
         connectionState = .connecting(device.name)
         pendingConnectionID = peripheral.identifier
 
-        try await withCheckedThrowingContinuation { continuation in
-            connectContinuation = continuation
-            central.connect(peripheral, options: nil)
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                connectContinuation = continuation
+                central.connect(peripheral, options: nil)
+                startConnectionTimeout(for: peripheral)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelPendingConnection()
+            }
         }
     }
 
     func disconnect() async {
+        if pendingConnectionID != nil {
+            cancelPendingConnection()
+            return
+        }
+
         guard let connectedPeripheralID,
               let peripheral = discoveredPeripherals[connectedPeripheralID] else {
             connectionState = .disconnected
@@ -90,10 +102,52 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
         }
         central.cancelPeripheralConnection(peripheral)
     }
+
+    private func startConnectionTimeout(for peripheral: CBPeripheral) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = Task { [weak self, weak peripheral] in
+            do {
+                try await Task.sleep(for: .seconds(15))
+            } catch {
+                return
+            }
+
+            guard let self,
+                  let peripheral,
+                  pendingConnectionID == peripheral.identifier else { return }
+
+            central.cancelPeripheralConnection(peripheral)
+            connectionState = .disconnected
+            finishPendingConnection(
+                with: .failure(
+                    GlassesProviderError.connectionFailed("the connection attempt timed out")
+                )
+            )
+        }
+    }
+
+    private func cancelPendingConnection() {
+        if let pendingConnectionID,
+           let peripheral = discoveredPeripherals[pendingConnectionID] {
+            central.cancelPeripheralConnection(peripheral)
+        }
+        connectionState = .disconnected
+        finishPendingConnection(with: .failure(CancellationError()))
+    }
+
+    private func finishPendingConnection(with result: Result<Void, Error>) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        pendingConnectionID = nil
+
+        guard let continuation = connectContinuation else { return }
+        connectContinuation = nil
+        continuation.resume(with: result)
+    }
 }
 
 @MainActor
-extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
+extension HeyCyanGlassesProvider: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
             if connectedPeripheralID == nil && connectionState != .scanning {
@@ -101,6 +155,13 @@ extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
             }
         } else {
             connectionState = .unavailable("Bluetooth: \(central.state.readableName)")
+            if connectContinuation != nil {
+                finishPendingConnection(
+                    with: .failure(
+                        GlassesProviderError.bluetoothUnavailable(central.state.readableName)
+                    )
+                )
+            }
         }
     }
 
@@ -118,18 +179,15 @@ extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
         discoveredDevices[id] = GlassesDevice(
             id: id,
             name: name,
-            vendor: .heyCyan,
+            providerID: self.id,
             signalStrength: RSSI.intValue
         )
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         connectedPeripheralID = peripheral.identifier
-        pendingConnectionID = nil
         connectionState = .connected(peripheral.name ?? "HeyCyan glasses")
-        let continuation = connectContinuation
-        connectContinuation = nil
-        continuation?.resume()
+        finishPendingConnection(with: .success(()))
 
         // Verified HeyCyan GATT discovery/commands belong here once the protocol
         // identifiers are documented. Do not guess vendor service UUIDs.
@@ -140,13 +198,12 @@ extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        pendingConnectionID = nil
         connectionState = .disconnected
-        let continuation = connectContinuation
-        connectContinuation = nil
-        continuation?.resume(
-            throwing: GlassesProviderError.connectionFailed(
+        finishPendingConnection(
+            with: .failure(
+                GlassesProviderError.connectionFailed(
                 error?.localizedDescription ?? "unknown error"
+                )
             )
         )
     }

@@ -1,23 +1,26 @@
 import Foundation
 
-enum GlassesVendor: String, CaseIterable, Sendable {
-    case heyCyan = "HeyCyan"
-    case meta = "Meta"
-}
-
 enum GlassesCapability: String, Hashable, Sendable {
     case bluetoothConnection
     case microphoneAudio
     case camera
     case mediaTransfer
+    case deviceInformation
     case notifications
 }
 
 struct GlassesDevice: Identifiable, Hashable, Sendable {
     let id: UUID
     let name: String
-    let vendor: GlassesVendor
+    let providerID: String
     let signalStrength: Int?
+}
+
+struct GlassesProviderSummary: Identifiable, Sendable {
+    let id: String
+    let displayName: String
+    let capabilities: Set<GlassesCapability>
+    var connectionState: GlassesConnectionState
 }
 
 enum GlassesConnectionState: Equatable, Sendable {
@@ -39,6 +42,20 @@ enum GlassesConnectionState: Equatable, Sendable {
             return "Connected to \(name)"
         case .unavailable(let reason):
             return reason
+        }
+    }
+
+    var isConnected: Bool {
+        if case .connected = self { return true }
+        return false
+    }
+
+    var isBusy: Bool {
+        switch self {
+        case .scanning, .connecting:
+            return true
+        default:
+            return false
         }
     }
 }
