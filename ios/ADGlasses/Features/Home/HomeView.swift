@@ -1,4 +1,3 @@
-import Foundation
 import SwiftUI
 
 struct HomeView: View {
@@ -11,8 +10,9 @@ struct HomeView: View {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     statusOverview
-                    assistantCard
-                    glassesCard
+                    transcriptCard
+                    heyCyanCard
+                    metaCard
                 }
                 .frame(maxWidth: 680)
                 .padding(.horizontal, 16)
@@ -43,30 +43,22 @@ struct HomeView: View {
     private var statusOverview: some View {
         SurfaceCard {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 12) {
-                    Image(systemName: "eyeglasses")
-                        .font(.title2.weight(.semibold))
-                        .frame(width: 42, height: 42)
-                        .background(.thinMaterial, in: Circle())
+                Text("Ready on iPhone")
+                    .font(.title2.bold())
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("AD Glasses")
-                            .font(.title2.bold())
-                        Text(glasses.connectionState.compactLabel)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text("Native speech and glasses connections stay separate, so either side can evolve without changing the app shell.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 HStack(spacing: 10) {
                     StatusPill(
-                        title: "Glasses",
+                        title: "HeyCyan",
                         value: glasses.connectionState.compactLabel,
                         systemImage: glasses.connectionState.systemImage
                     )
 
                     StatusPill(
-                        title: "Voice",
+                        title: "Speech",
                         value: app.isTranscribing ? "Listening" : "Ready",
                         systemImage: app.isTranscribing ? "waveform" : "mic"
                     )
@@ -75,46 +67,53 @@ struct HomeView: View {
         }
     }
 
-    private var assistantCard: some View {
+    private var transcriptCard: some View {
         SurfaceCard {
-            VStack(spacing: 16) {
-                AssistantAudioVisual(isActive: app.isTranscribing)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, app.transcript.isEmpty ? 18 : 4)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Voice", systemImage: "waveform")
+                        .font(.headline)
+                    Spacer()
+                    Text(app.speechEngineName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-                if !app.transcript.isEmpty {
-                    Divider()
-
+                if app.transcript.isEmpty {
+                    Text("Tap the microphone below to start Apple-native transcription.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
+                } else {
                     Text(app.transcript)
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .topLeading)
-
-                    Button("Clear transcript", role: .destructive) {
-                        app.clearTranscript()
-                    }
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
                 }
 
                 if let speechError = app.speechError {
                     Label(speechError, systemImage: "exclamationmark.triangle")
                         .font(.footnote)
                         .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if !app.transcript.isEmpty {
+                    Button("Clear transcript", role: .destructive) {
+                        app.clearTranscript()
+                    }
+                    .font(.subheadline)
                 }
             }
         }
     }
 
-    private var glassesCard: some View {
+    private var heyCyanCard: some View {
         SurfaceCard {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .center) {
+                HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Your glasses")
+                        Text("HeyCyan")
                             .font(.headline)
                         Label(
-                            glasses.connectionState.compactLabel,
+                            glasses.connectionState.label,
                             systemImage: glasses.connectionState.systemImage
                         )
                         .font(.subheadline)
@@ -123,7 +122,7 @@ struct HomeView: View {
 
                     Spacer()
 
-                    if case .connected(_) = glasses.connectionState {
+                    if case .connected = glasses.connectionState {
                         Button("Disconnect") {
                             Task { await glasses.disconnect() }
                         }
@@ -135,7 +134,7 @@ struct HomeView: View {
                             if glasses.connectionState == .scanning {
                                 ProgressView()
                             } else {
-                                Text("Find glasses")
+                                Text("Scan")
                             }
                         }
                         .buttonStyle(.borderedProminent)
@@ -143,41 +142,34 @@ struct HomeView: View {
                     }
                 }
 
+                Text("CoreBluetooth is the transport boundary. Vendor commands stay out of the UI and are added only when their protocol is verified.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
                 if glasses.devices.isEmpty {
-                    HStack(spacing: 10) {
-                        Image(systemName: "dot.radiowaves.left.and.right")
-                            .foregroundStyle(.secondary)
-                        Text("Nearby glasses will appear here when you scan.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 4)
+                    Text("No scanned devices yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 4)
                 } else {
                     Divider()
-
-                    ForEach(glasses.devices.indices, id: \.self) { index in
-                        let device = glasses.devices[index]
-
+                    ForEach(glasses.devices) { device in
                         Button {
                             Task { await glasses.connect(to: device) }
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "eyeglasses")
                                     .font(.title3)
-
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(glasses.devices.count > 1 ? "AD Glasses \(index + 1)" : "AD Glasses")
+                                    Text(device.name)
                                         .foregroundStyle(.primary)
-
                                     if let signal = device.signalStrength {
                                         Text("Signal \(signal) dBm")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
                                 }
-
                                 Spacer()
-
                                 Image(systemName: "chevron.right")
                                     .font(.caption.bold())
                                     .foregroundStyle(.tertiary)
@@ -197,31 +189,49 @@ struct HomeView: View {
         }
     }
 
+    private var metaCard: some View {
+        SurfaceCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("Meta", systemImage: "eyeglasses")
+                        .font(.headline)
+                    Spacer()
+                    Text(glasses.meta.connectionState.compactLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("The Meta provider is already separated from the app UI. No Meta SDK is bundled in this build; a verified integration can be added later without changing this screen's architecture.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var voiceControlBar: some View {
         VStack(spacing: 0) {
             Divider()
-
-            HStack(spacing: 14) {
-                Button {
-                    Task { await app.toggleTranscription() }
-                } label: {
-                    Image(systemName: app.isTranscribing ? "stop.fill" : "mic.fill")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 52, height: 52)
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.circle)
-                .accessibilityLabel(app.isTranscribing ? "Stop listening" : "Start listening")
-
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(app.isTranscribing ? "Listening" : "Tap to talk")
+                    Text(app.isTranscribing ? "Listening" : "Ask AD")
                         .font(.headline)
-                    Text(app.isTranscribing ? "Speak naturally" : "Ask AD anything")
+                    Text(app.isTranscribing ? "Tap to stop transcription" : "Apple-native speech")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
+
+                Button {
+                    Task { await app.toggleTranscription() }
+                } label: {
+                    Image(systemName: app.isTranscribing ? "stop.fill" : "mic.fill")
+                        .font(.title3.weight(.semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(app.isTranscribing ? "Stop listening" : "Start listening")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -234,28 +244,22 @@ struct HomeView: View {
     private var buildInfoSheet: some View {
         NavigationStack {
             List {
-                Section("App") {
+                Section("iOS") {
                     LabeledContent("UI", value: "SwiftUI")
                     LabeledContent("Minimum", value: "iOS 17")
                     LabeledContent("Speech", value: app.speechEngineName)
                 }
 
-                Section("Diagnostics") {
-                    LabeledContent("Glasses provider", value: "HeyCyan")
-                    LabeledContent("Additional provider", value: "Meta")
-
-                    if glasses.devices.isEmpty {
-                        Text("No discovered peripherals")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(glasses.devices) { device in
-                            LabeledContent("Peripheral", value: device.name)
-                        }
-                    }
+                Section("Glasses") {
+                    LabeledContent("Primary", value: "HeyCyan")
+                    LabeledContent("Available provider", value: "Meta")
+                    Text("Meta SDK is not bundled in this build.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
-                    Text("Provider and transport details are kept here for diagnostics instead of being exposed as product branding in the main interface.")
+                    Text("This iOS app uses native Apple frameworks and keeps vendor integrations behind adapters.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -268,54 +272,6 @@ struct HomeView: View {
             }
         }
         .presentationDetents([.medium, .large])
-    }
-}
-
-private struct AssistantAudioVisual: View {
-    let isActive: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            let pulse = reduceMotion ? 0.35 : (sin(time * (isActive ? 2.2 : 0.9)) + 1.0) / 2.0
-
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(isActive ? 0.10 + (pulse * 0.06) : 0.06 + (pulse * 0.025)))
-                    .frame(width: 128, height: 128)
-                    .scaleEffect(reduceMotion ? CGFloat(1) : CGFloat(0.96 + (pulse * 0.06)))
-
-                Circle()
-                    .stroke(Color.accentColor.opacity(isActive ? 0.28 : 0.16), lineWidth: 1)
-                    .frame(width: 102, height: 102)
-
-                HStack(alignment: .center, spacing: 5) {
-                    ForEach(0..<7, id: \.self) { index in
-                        Capsule(style: .continuous)
-                            .fill(Color.accentColor)
-                            .frame(width: 5, height: barHeight(index: index, time: time))
-                    }
-                }
-                .frame(height: 48)
-            }
-            .frame(width: 148, height: 148)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isActive ? "Listening" : "Voice ready")
-    }
-
-    private func barHeight(index: Int, time: TimeInterval) -> CGFloat {
-        let restingHeights: [CGFloat] = [14, 22, 30, 38, 30, 22, 14]
-        guard !reduceMotion else { return restingHeights[index] }
-
-        let speed = isActive ? 5.0 : 1.6
-        let amplitude: CGFloat = isActive ? 30 : 9
-        let baseline: CGFloat = isActive ? 10 : restingHeights[index] - 4
-        let wave = (sin((time * speed) + (Double(index) * 0.72)) + 1.0) / 2.0
-
-        return baseline + (CGFloat(wave) * amplitude)
     }
 }
 
@@ -365,11 +321,11 @@ private extension GlassesConnectionState {
             return "Ready"
         case .scanning:
             return "Scanning"
-        case .connecting(_):
+        case .connecting:
             return "Connecting"
-        case .connected(_):
+        case .connected:
             return "Connected"
-        case .unavailable(_):
+        case .unavailable:
             return "Unavailable"
         }
     }
@@ -380,11 +336,11 @@ private extension GlassesConnectionState {
             return "eyeglasses"
         case .scanning:
             return "dot.radiowaves.left.and.right"
-        case .connecting(_):
+        case .connecting:
             return "arrow.triangle.2.circlepath"
-        case .connected(_):
+        case .connected:
             return "checkmark.circle.fill"
-        case .unavailable(_):
+        case .unavailable:
             return "exclamationmark.triangle"
         }
     }
