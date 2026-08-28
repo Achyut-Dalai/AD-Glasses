@@ -8,6 +8,8 @@ final class GlassesManager: ObservableObject {
     @Published private(set) var selectedProviderID: String
     @Published var errorMessage: String?
 
+    @Published private var batteryLevels: [String: Int] = [:]
+
     private let providerInstances: [String: any GlassesProvider]
     private var scanRequestID = UUID()
 
@@ -17,6 +19,10 @@ final class GlassesManager: ObservableObject {
 
     var connectionState: GlassesConnectionState {
         selectedProvider.connectionState
+    }
+
+    var batteryLevel: Int? {
+        batteryLevels[selectedProviderID]
     }
 
     init(providers: [any GlassesProvider]) {
@@ -38,6 +44,13 @@ final class GlassesManager: ObservableObject {
             let providerID = provider.id
             provider.onConnectionStateChange = { [weak self] state in
                 self?.updateProvider(providerID, connectionState: state)
+            }
+
+            if let batteryProvider = provider as? any GlassesBatteryProviding {
+                updateProvider(providerID, batteryLevel: batteryProvider.batteryLevel)
+                batteryProvider.onBatteryLevelChange = { [weak self] level in
+                    self?.updateProvider(providerID, batteryLevel: level)
+                }
             }
         }
     }
@@ -97,6 +110,32 @@ final class GlassesManager: ObservableObject {
         await providerInstances[selectedProviderID]?.disconnect()
     }
 
+    func reconnectLastDevice() async -> Bool {
+        errorMessage = nil
+        if connectionState.isConnected { return true }
+
+        let orderedProviderIDs = [selectedProviderID] + providers
+            .map(\.id)
+            .filter { $0 != selectedProviderID }
+
+        for providerID in orderedProviderIDs {
+            guard let reconnectingProvider = providerInstances[providerID] as? any GlassesReconnecting else {
+                continue
+            }
+            do {
+                selectedProviderID = providerID
+                if try await reconnectingProvider.reconnectLastDevice() {
+                    return true
+                }
+            } catch is CancellationError {
+                return false
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+        return false
+    }
+
     func supports(_ capability: GlassesCapability) -> Bool {
         selectedProvider.capabilities.contains(capability)
     }
@@ -105,9 +144,23 @@ final class GlassesManager: ObservableObject {
         guard let index = providers.firstIndex(where: { $0.id == providerID }) else { return }
         providers[index].connectionState = connectionState
 
+        if !connectionState.isConnected {
+            batteryLevels.removeValue(forKey: providerID)
+        }
+
         if providerID == selectedProviderID,
            case .unavailable = connectionState {
             devices.removeAll()
+        }
+    }
+
+    private func updateProvider(_ providerID: String, batteryLevel: Int?) {
+        guard providerInstances[providerID] != nil else { return }
+
+        if let batteryLevel {
+            batteryLevels[providerID] = min(max(batteryLevel, 0), 100)
+        } else {
+            batteryLevels.removeValue(forKey: providerID)
         }
     }
 }

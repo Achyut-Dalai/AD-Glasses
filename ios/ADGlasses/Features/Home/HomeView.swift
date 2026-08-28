@@ -10,6 +10,11 @@ struct HomeView: View {
 
     init(initialShowsDeviceCenter: Bool = false) {
         _showsDeviceCenter = State(initialValue: initialShowsDeviceCenter)
+#if DEBUG
+        _showsSettings = State(
+            initialValue: ProcessInfo.processInfo.arguments.contains("-open-settings")
+        )
+#endif
     }
 
     var body: some View {
@@ -38,7 +43,7 @@ struct HomeView: View {
                 .environmentObject(glasses)
         }
         .sheet(isPresented: $showsSettings) {
-            SettingsSheet()
+            SettingsView()
                 .environmentObject(app)
                 .environmentObject(glasses)
         }
@@ -72,18 +77,16 @@ private struct HomeScreen: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
-                    DeviceHero(openDeviceCenter: openDeviceCenter)
-
                     VStack(alignment: .leading, spacing: 12) {
-                        SectionHeading(
-                            title: "Everyday actions",
-                            subtitle: "Capture, understand, and return to what matters."
+                        LensTile(
+                            availability: availability(for: .lens),
+                            action: { unavailableFeature = .lens }
                         )
 
                         LazyVGrid(columns: columns, spacing: 12) {
                             FeatureTile(
                                 title: "Ask",
-                                detail: "Continue a thought",
+                                detail: "Continue from your glasses",
                                 systemImage: "sparkles",
                                 tint: .indigo,
                                 availability: .available,
@@ -102,10 +105,6 @@ private struct HomeScreen: View {
                             }
                         }
 
-                        LensTile(
-                            availability: availability(for: .lens),
-                            action: { unavailableFeature = .lens }
-                        )
                     }
 
                 }
@@ -116,6 +115,15 @@ private struct HomeScreen: View {
                 .frame(maxWidth: .infinity)
             }
             .background(HomeAmbientBackground())
+            .safeAreaInset(edge: .bottom, spacing: 8) {
+                HStack {
+                    Spacer(minLength: 0)
+                    ConnectionPill(openDeviceCenter: openDeviceCenter)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -170,103 +178,76 @@ private struct HomeScreen: View {
     }
 }
 
-private struct DeviceHero: View {
+private struct ConnectionPill: View {
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     let openDeviceCenter: () -> Void
 
     var body: some View {
         Button(action: openDeviceCenter) {
-            VStack(spacing: 0) {
-                ZStack {
-                    Color.clear
-
-                    Circle()
-                        .fill(Color.primary.opacity(0.035))
-                        .frame(width: 210, height: 210)
-                        .blur(radius: 28)
-                        .offset(x: 120, y: -72)
-
-                    Ellipse()
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 280, height: 100)
-                        .blur(radius: 24)
-                        .offset(x: -90, y: 76)
-
-                    Image("GlassesHero")
-                        .resizable()
-                        .scaledToFit()
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .accessibilityHidden(true)
-                }
-                .frame(height: 150)
-                .clipped()
-
-                HStack(spacing: 12) {
-                    if glasses.connectionState.isBusy {
-                        ProgressView()
-                            .controlSize(.small)
-                            .frame(width: 24, height: 24)
-                    } else {
-                        Circle()
-                            .fill(iconTint)
-                            .frame(width: 9, height: 9)
-                            .frame(width: 24, height: 24)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(glasses.connectionState.isConnected ? "AD Glasses" : "Your glasses")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Text(heroMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    Spacer(minLength: 6)
-
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
-            }
-            .contentShape(Rectangle())
+            statusContent
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .modifier(HomeHeroSurface(reduceTransparency: reduceTransparency))
-        .overlay {
-            RoundedRectangle(cornerRadius: 26)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.75)
-        }
-        .accessibilityHint("Opens glasses connections")
+        .modifier(ConnectionPillSurface(reduceTransparency: reduceTransparency))
+        .accessibilityHint("Opens glasses connection controls")
     }
 
-    private var iconTint: Color {
-        switch glasses.connectionState {
-        case .connected: return .green
-        case .scanning, .connecting: return .blue
-        case .unavailable: return .orange
-        case .disconnected: return .secondary
-        }
-    }
+    @ViewBuilder
+    private var statusContent: some View {
+        Group {
+            switch glasses.connectionState {
+            case .connected:
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
 
-    private var heroMessage: String {
-        switch glasses.connectionState {
-        case .connected:
-            return "Ready to capture, listen, and assist"
-        case .scanning:
-            return "Looking for nearby glasses…"
-        case .connecting:
-            return "Keep your glasses close while the connection finishes."
-        case .unavailable:
-            return "Open connections to review setup"
-        case .disconnected:
-            return "Tap to connect your glasses"
+                    Text("Connected")
+
+                    if let batteryLevel = glasses.batteryLevel {
+                        Text("·")
+                            .foregroundStyle(.tertiary)
+
+                        Label {
+                            Text("\(batteryLevel)%")
+                        } icon: {
+                            Image(systemName: "battery.100percent")
+                        }
+                        .accessibilityLabel("Battery \(batteryLevel) percent")
+                    }
+                }
+
+            case .scanning:
+                HStack(spacing: 7) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Finding glasses")
+                }
+
+            case .connecting:
+                HStack(spacing: 7) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Connecting")
+                }
+
+            case .disconnected, .unavailable:
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
+
+                    Text("Connect")
+                }
+            }
         }
     }
 }
@@ -539,75 +520,6 @@ private struct DeviceCenterSheet: View {
     }
 }
 
-private struct SettingsSheet: View {
-    @EnvironmentObject private var app: AppModel
-    @EnvironmentObject private var glasses: GlassesManager
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Connections") {
-                    ForEach(glasses.providers) { provider in
-                        LabeledContent {
-                            Text(provider.connectionState.compactLabel)
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Text(consumerProviderName(id: provider.id, technicalName: provider.displayName))
-                        }
-                    }
-                }
-
-                Section("Assistant") {
-                    LabeledContent("AI service", value: "Not configured")
-                    LabeledContent("Speech engine", value: app.speechEngineName)
-                    Text("Voice input currently uses the iPhone microphone. A verified glasses-audio provider can later supply the same speech boundary.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("About") {
-                    LabeledContent("App", value: "AD Glasses")
-                    LabeledContent("Interface", value: "Native SwiftUI")
-                    LabeledContent("Minimum iOS", value: "17")
-                }
-
-                Section("Diagnostics") {
-                    ForEach(glasses.providers) { provider in
-                        LabeledContent(provider.displayName, value: provider.id)
-                    }
-                    Text("Technical integration names are shown here only for troubleshooting.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
-
-private struct SectionHeading: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.title3.bold())
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 private struct FeatureTile: View {
     let title: String
     let detail: String
@@ -615,6 +527,8 @@ private struct FeatureTile: View {
     let tint: Color
     let availability: FeatureAvailability
     let action: () -> Void
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         Button(action: action) {
@@ -649,7 +563,13 @@ private struct FeatureTile: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(Color(uiColor: .secondarySystemBackground).opacity(0.92), in: RoundedRectangle(cornerRadius: 19))
+        .modifier(
+            HomeGlassSurface(
+                cornerRadius: 20,
+                reduceTransparency: reduceTransparency,
+                interactive: true
+            )
+        )
         .accessibilityHint(availability == .unsupported ? "Requires supported glasses. \(detail)" : detail)
     }
 }
@@ -659,6 +579,7 @@ private struct LensTile: View {
     let action: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         Button(action: action) {
@@ -682,35 +603,13 @@ private struct LensTile: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(Color(uiColor: .secondarySystemBackground))
-
-                LinearGradient(
-                    colors: [
-                        Color.indigo.opacity(0.13),
-                        Color.blue.opacity(0.055),
-                        .clear
-                    ],
-                    startPoint: .topTrailing,
-                    endPoint: .bottomLeading
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-
-                RadialGradient(
-                    colors: [Color.cyan.opacity(0.10), .clear],
-                    center: .trailing,
-                    startRadius: 0,
-                    endRadius: 170
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .strokeBorder(Color.indigo.opacity(0.16), lineWidth: 0.75)
-        }
+        .modifier(
+            HomeGlassSurface(
+                cornerRadius: 26,
+                reduceTransparency: reduceTransparency,
+                interactive: true
+            )
+        )
         .accessibilityHint(
             availability == .unsupported
                 ? "Requires glasses with a camera."
@@ -777,19 +676,31 @@ private struct LensVisionField: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.indigo.opacity(isUnavailable ? 0.16 : 0.24),
+                            Color.purple.opacity(isUnavailable ? 0.07 : 0.12),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 64
+                    )
+                )
+                .frame(width: 124, height: 124)
 
             Image(systemName: "viewfinder")
                 .font(.system(size: 76, weight: .ultraLight))
-                .foregroundStyle(Color.indigo.opacity(isUnavailable ? 0.13 : 0.28))
+                .foregroundStyle(Color.indigo.opacity(isUnavailable ? 0.23 : 0.34))
 
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.cyan.opacity(isUnavailable ? 0.05 : 0.18),
-                            Color.indigo.opacity(isUnavailable ? 0.04 : 0.11),
+                            Color.indigo.opacity(isUnavailable ? 0.04 : 0.14),
+                            Color.primary.opacity(isUnavailable ? 0.02 : 0.06),
                             .clear
                         ],
                         center: .center,
@@ -811,7 +722,7 @@ private struct LensVisionField: View {
                 Capsule(style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [.clear, Color.cyan.opacity(0.72), .clear],
+                            colors: [.clear, Color.indigo.opacity(0.72), .clear],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -843,17 +754,25 @@ private struct LensVisionField: View {
 }
 
 private struct HomeAmbientBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
-            Color(uiColor: .systemGroupedBackground)
+            Color(uiColor: .systemBackground)
             RadialGradient(
-                colors: [Color.primary.opacity(0.035), .clear],
+                colors: [
+                    Color.primary.opacity(colorScheme == .dark ? 0.055 : 0.025),
+                    .clear
+                ],
                 center: .topTrailing,
                 startRadius: 0,
                 endRadius: 300
             )
             RadialGradient(
-                colors: [Color.indigo.opacity(0.035), .clear],
+                colors: [
+                    Color.indigo.opacity(colorScheme == .dark ? 0.14 : 0.055),
+                    .clear
+                ],
                 center: .bottomLeading,
                 startRadius: 0,
                 endRadius: 360
@@ -863,23 +782,85 @@ private struct HomeAmbientBackground: View {
     }
 }
 
-private struct HomeHeroSurface: ViewModifier {
+private struct ConnectionPillSurface: ViewModifier {
     let reduceTransparency: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if reduceTransparency {
             content
-                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 26))
-                .clipShape(RoundedRectangle(cornerRadius: 26))
+                .background(Color(uiColor: .secondarySystemBackground), in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.07), radius: 8, y: 4)
         } else if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 26))
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .shadow(color: .black.opacity(0.07), radius: 8, y: 4)
         } else {
             content
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
-                .clipShape(RoundedRectangle(cornerRadius: 26))
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.07), radius: 8, y: 4)
         }
+    }
+}
+
+private struct HomeGlassSurface: ViewModifier {
+    let cornerRadius: CGFloat
+    let reduceTransparency: Bool
+    let interactive: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        Group {
+            if reduceTransparency {
+                content
+                    .background(
+                        Color(uiColor: .secondarySystemBackground),
+                        in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            } else if #available(iOS 26.0, *) {
+                if interactive {
+                    content
+                        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
+                } else {
+                    content
+                        .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+                }
+            } else {
+                content
+                    .background(
+                        .ultraThinMaterial,
+                        in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.10)
+                        : Color.white.opacity(0.72),
+                    lineWidth: 0.75
+                )
+                .allowsHitTesting(false)
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.16 : 0.04),
+            radius: 14,
+            x: 0,
+            y: 7
+        )
     }
 }
 

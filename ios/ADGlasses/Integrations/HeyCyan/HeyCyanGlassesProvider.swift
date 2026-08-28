@@ -2,7 +2,7 @@
 import Foundation
 
 @MainActor
-final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
+final class HeyCyanGlassesProvider: NSObject, GlassesProvider, GlassesReconnecting {
     let id = "heycyan"
     let displayName = "HeyCyan"
     let capabilities: Set<GlassesCapability> = [.bluetoothConnection]
@@ -20,6 +20,8 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
     private var connectionTimeoutTask: Task<Void, Never>?
     private var pendingConnectionID: UUID?
     private var connectedPeripheralID: UUID?
+    private let defaults = UserDefaults.standard
+    private let lastPeripheralIdentifierKey = "heycyan.lastPeripheralIdentifier.v1"
 
     override init() {
         super.init()
@@ -54,6 +56,29 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
         return discoveredDevices.values.sorted {
             ($0.signalStrength ?? Int.min) > ($1.signalStrength ?? Int.min)
         }
+    }
+
+    func reconnectLastDevice() async throws -> Bool {
+        guard central.state == .poweredOn else {
+            throw GlassesProviderError.bluetoothUnavailable(central.state.readableName)
+        }
+        guard let rawIdentifier = defaults.string(forKey: lastPeripheralIdentifierKey),
+              let identifier = UUID(uuidString: rawIdentifier),
+              let peripheral = central.retrievePeripherals(withIdentifiers: [identifier]).first else {
+            return false
+        }
+
+        let name = peripheral.name ?? "HeyCyan glasses"
+        let device = GlassesDevice(
+            id: identifier,
+            name: name,
+            providerID: id,
+            signalStrength: nil
+        )
+        discoveredPeripherals[identifier] = peripheral
+        discoveredDevices[identifier] = device
+        try await connect(to: device)
+        return connectionState.isConnected
     }
 
     func connect(to device: GlassesDevice) async throws {
@@ -186,6 +211,7 @@ extension HeyCyanGlassesProvider: @preconcurrency CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         connectedPeripheralID = peripheral.identifier
+        defaults.set(peripheral.identifier.uuidString, forKey: lastPeripheralIdentifierKey)
         connectionState = .connected(peripheral.name ?? "HeyCyan glasses")
         finishPendingConnection(with: .success(()))
 

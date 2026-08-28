@@ -23,6 +23,9 @@
 		B0000000000000000000000E /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* ChatModels.swift */; };
 		B0000000000000000000000F /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* AssistantView.swift */; };
 		B00000000000000000000010 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* WelcomeView.swift */; };
+		B00000000000000000000011 /* CloudAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* CloudAI.swift */; };
+		B00000000000000000000012 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000013 /* ConversationStore.swift */; };
+		B00000000000000000000013 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000014 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +46,9 @@
 		A0000000000000000000000F /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000010 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
 		A00000000000000000000011 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		A00000000000000000000012 /* CloudAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAI.swift; sourceTree = "<group>"; };
+		A00000000000000000000013 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
+		A00000000000000000000014 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +102,7 @@
 		C00000000000000000000005 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000011 /* AI */,
 				C00000000000000000000006 /* Speech */,
 				C00000000000000000000007 /* Glasses */,
 				C0000000000000000000000E /* Chat */,
@@ -128,8 +135,17 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000F /* ChatModels.swift */,
+				A00000000000000000000013 /* ConversationStore.swift */,
 			);
 			path = Chat;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000011 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000012 /* CloudAI.swift */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		C00000000000000000000008 /* Integrations */ = {
@@ -163,6 +179,7 @@
 				C00000000000000000000010 /* Welcome */,
 				C0000000000000000000000C /* Home */,
 				C0000000000000000000000F /* Assistant */,
+				C00000000000000000000012 /* Settings */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -189,6 +206,14 @@
 				A00000000000000000000011 /* WelcomeView.swift */,
 			);
 			path = Welcome;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000012 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000014 /* SettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		C0000000000000000000000D /* Resources */ = {
@@ -283,6 +308,9 @@
 				B0000000000000000000000E /* ChatModels.swift in Sources */,
 				B0000000000000000000000F /* AssistantView.swift in Sources */,
 				B00000000000000000000010 /* WelcomeView.swift in Sources */,
+				B00000000000000000000011 /* CloudAI.swift in Sources */,
+				B00000000000000000000012 /* ConversationStore.swift in Sources */,
+				B00000000000000000000013 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

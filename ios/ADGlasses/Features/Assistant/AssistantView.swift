@@ -26,6 +26,20 @@ struct AssistantView: View {
                                     .id(message.id)
                             }
 
+                            if app.isGenerating {
+                                HStack(spacing: 9) {
+                                    AssistantAvatar(size: 28)
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Thinking")
+                                        .font(.footnote.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("AD Assistant is preparing a response")
+                            }
+
                             if let notice = app.conversationNotice {
                                 ConversationNotice(text: notice) {
                                     app.conversationNotice = nil
@@ -101,7 +115,7 @@ struct AssistantView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("The current in-memory conversation will be cleared.")
+                Text("The current conversation is saved locally and will remain in History.")
             }
             .onChange(of: app.transcript) { _, transcript in
                 if app.isTranscribing, !transcript.isEmpty {
@@ -425,7 +439,15 @@ private struct AssistantComposer: View {
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
 
-                if app.chatDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if app.isGenerating {
+                    Button(action: app.cancelResponse) {
+                        Image(systemName: "stop.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 38, height: 38)
+                            .foregroundStyle(.red)
+                    }
+                    .accessibilityLabel("Stop response")
+                } else if app.chatDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Button {
                         Task {
                             if !app.isTranscribing {
@@ -481,29 +503,43 @@ private struct ConversationHistorySheet: View {
     var body: some View {
         NavigationStack {
             Group {
-                if app.conversation.isEmpty {
+                if app.conversations.isEmpty {
                     ContentUnavailableView(
                         "No conversations yet",
                         systemImage: "bubble.left.and.bubble.right",
-                        description: Text("Your conversations will be listed here once local persistence is added.")
+                        description: Text("Conversations are stored locally after you send your first message.")
                     )
                 } else {
                     List {
-                        Section("Today") {
+                        ForEach(app.conversations) { thread in
                             Button {
+                                app.openConversation(thread.id)
                                 dismiss()
                             } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                                        .foregroundStyle(.indigo)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text("Current conversation")
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(thread.title)
                                             .foregroundStyle(.primary)
-                                        Text(historyPreview)
+                                            .lineLimit(1)
+                                        Text(thread.preview)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
                                     }
+                                    Spacer()
+                                    if thread.id == app.currentConversationID {
+                                        Image(systemName: "checkmark")
+                                            .font(.caption.bold())
+                                            .foregroundStyle(.indigo)
+                                    }
+                                }
+                            }
+                        }
+                        .onDelete { offsets in
+                            let ids = offsets.map { app.conversations[$0].id }
+                            Task {
+                                for id in ids {
+                                    await app.deleteConversation(id)
                                 }
                             }
                         }
@@ -519,10 +555,6 @@ private struct ConversationHistorySheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-    }
-
-    private var historyPreview: String {
-        app.conversation.last(where: { $0.role == .user })?.text ?? "Untitled conversation"
     }
 }
 

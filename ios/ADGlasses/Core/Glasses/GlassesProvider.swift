@@ -12,3 +12,14 @@ protocol GlassesProvider: AnyObject {
     func connect(to device: GlassesDevice) async throws
     func disconnect() async
 }
+
+@MainActor
+protocol GlassesBatteryProviding: AnyObject {
+    var batteryLevel: Int? { get }
+    var onBatteryLevelChange: ((Int?) -> Void)? { get set }
+}
+
+@MainActor
+protocol GlassesReconnecting: AnyObject {
+    func reconnectLastDevice() async throws -> Bool
+}

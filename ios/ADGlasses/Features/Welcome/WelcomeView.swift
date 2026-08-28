@@ -3,8 +3,18 @@ import SwiftUI
 struct AppRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var showsWelcome = true
+    @State private var showsWelcome: Bool
     @State private var opensDeviceCenter = false
+
+    init() {
+#if DEBUG
+        _showsWelcome = State(
+            initialValue: !ProcessInfo.processInfo.arguments.contains("-skip-welcome")
+        )
+#else
+        _showsWelcome = State(initialValue: true)
+#endif
+    }
 
     var body: some View {
         ZStack {
@@ -148,21 +158,20 @@ private struct WelcomeView: View {
     private var statusArea: some View {
         switch phase {
         case .connecting:
-            HStack(spacing: 13) {
+            VStack(spacing: 10) {
                 ProgressView()
-                    .controlSize(.regular)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Connecting to your glasses")
-                        .font(.headline)
-                    Text("Keep them nearby and powered on")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                    .progressViewStyle(.circular)
+                    .controlSize(.large)
+                    .tint(.primary)
+
+                Text("Connecting")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(17)
-            .welcomeSurface(reduceTransparency: reduceTransparency, cornerRadius: 20)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
             .accessibilityElement(children: .combine)
+            .accessibilityLabel("Connecting to glasses")
 
         case .needsChoice:
             VStack(spacing: 12) {
@@ -199,15 +208,10 @@ private struct WelcomeView: View {
             return
         }
 
-        await glasses.scan()
+        let reconnected = await glasses.reconnectLastDevice()
         guard !Task.isCancelled else { return }
 
-        if let nearest = glasses.devices.first {
-            await glasses.connect(to: nearest)
-        }
-
-        guard !Task.isCancelled else { return }
-        if glasses.connectionState.isConnected {
+        if reconnected {
             if !reduceMotion {
                 try? await Task.sleep(for: .milliseconds(280))
             }
