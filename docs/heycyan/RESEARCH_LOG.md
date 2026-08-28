@@ -81,7 +81,7 @@ Implication: native iOS media transfer should first target this AP/hotspot path 
 
 CyanBridge contains HeyCyan-specific P2P policy and route detection. It recognizes P2P/WFD interfaces and `192.168.49.*` addressing.
 
-Implication: the ecosystem supports more than one Wi-Fi topology. We still need the official app to establish production AP/P2P selection rules.
+Implication: the ecosystem supports more than one Wi-Fi topology. We still need production evidence to establish AP/P2P selection rules.
 
 ### Finding: livestream appears to be outside the public HeyCyan SDK surface
 
@@ -122,75 +122,122 @@ This supports treating “hardware contains code for feature X” and “shippin
 
 One iOS demo path overrides the password returned by the SDK with a fixed value, while another transfer implementation uses the returned credential.
 
-Do not hardcode either rule in the AD Glasses native implementation until the official app and physical glasses settle this.
+Do not hardcode either rule in the AD Glasses native implementation until production behavior and physical glasses settle this.
 
 ---
 
-## Artifacts requested next
+## 2026-08-28 — Artifact priority refinement
+
+### Finding: official HeyCyan APK is no longer a blocker for the basic iOS architecture
+
+**Status:** STRONG
+
+The upstream iOS QCSDK headers and demos already prove the key supported architecture:
+
+```text
+CoreBluetooth / vendor BLE command layer
+→ photo/video/audio/device commands
+→ BLE-controlled Wi-Fi transfer mode
+→ iOS joins accessory hotspot
+→ HTTP media access
+```
+
+Therefore the official HeyCyan Android APK is **not required** to prove that BLE control + iOS hotspot + HTTP media transfer is a viable design.
+
+The APK remains valuable as a production-truth and reverse-engineering artifact for details that the public SDK surface and demos do not settle.
+
+### Finding: CyanBridge v2.1.1 APK is publicly available
+
+**Status:** PROVEN
+
+The upstream repository's current release is CyanBridge v2.1.1 and includes a signed `app-release.apk` asset. Because the CyanBridge source is already public and inspectable, its APK is secondary: useful for confirming what shipped and inspecting bundled/obfuscated dependencies, but not required for understanding CyanBridge's application logic.
+
+---
+
+## Artifact priorities
 
 ### 1. Official HeyCyan Android APK
 
-**Priority:** highest
+**Priority:** high, but no longer a blocker for basic implementation planning
 
-Why it is valuable:
+Unique value:
 
-- Android APKs are usually straightforward to statically decompile with JADX/apktool.
-- It can reveal the production app's command orchestration even when the proprietary SDK hides packet internals.
-- It can resolve AP vs P2P selection, credential handling, retries, local HTTP endpoints, timing, and model/firmware branching.
-- It provides a production-behavior baseline to compare against CyanBridge and the iOS QCSDK demo.
+- establish what the production HeyCyan app actually does rather than what demos intend;
+- resolve model/firmware-dependent AP versus P2P selection;
+- resolve SSID/password/IP behavior;
+- identify exact timing, retries, readiness checks, cleanup, and error handling;
+- identify production HTTP endpoints and media-list formats;
+- reveal undocumented SDK calls or dormant feature references;
+- clarify whether speech/audio modes provide any phone-side stream or only glasses-side recording/voice behavior;
+- compare official command orchestration against QCSDK.framework and CyanBridge.
 
-Desired audit areas:
+It may also help expose raw BLE protocol details if those are implemented in app-visible/vendor classes, but this is **not guaranteed**: command encoding may remain inside a proprietary SDK binary. Reverse-engineering `QCSDK.framework` / the Android vendor AAR and capturing BLE traffic are complementary paths.
+
+### 2. QCSDK.framework / Android vendor SDK binary analysis
+
+**Priority:** high for a pure native protocol implementation
+
+If AD Glasses should avoid shipping the proprietary vendor binary on iOS, these binaries are likely the most direct static-analysis targets for:
 
 ```text
-BLE initialization
-GATT / SDK calls
-photo/video/audio modes
-battery/device info
-AI photo
-Wi-Fi transfer setup
-AP vs P2P selection
-SSID/password/IP handling
-HTTP endpoints
-media manifests
-timeouts/retries
-cleanup/error handling
-hidden/debug/live strings
+GATT service/characteristic UUIDs
+packet framing
+command IDs
+response parsing
+checksums/sequence numbers
+notification routing
+internal state machine
 ```
 
-### 2. Official HeyCyan iOS IPA
-
-**Priority:** useful if available decrypted
-
-An ordinary App Store IPA may contain encrypted executable code and therefore can be less immediately useful for static analysis than the Android APK.
-
-A **decrypted IPA** would be highly valuable for comparing official iOS orchestration against the bundled `QCSDK.framework` and demos.
-
-Do not delay the audit waiting for an iOS IPA; the Android APK should come first.
+The official APK can reveal orchestration, while the SDK binaries may contain the actual encoder/decoder.
 
 ### 3. CyanBridge APK
 
 **Priority:** secondary
 
-The source repository is already available, so the APK mainly helps confirm what code actually shipped in a particular release or inspect bundled/obfuscated dependencies.
+Current upstream release: CyanBridge v2.1.1 (`app-release.apk`).
+
+Source is already available, so use the APK only when we need to:
+
+- verify release-vs-source behavior;
+- inspect packaged vendor dependencies;
+- inspect resources/configuration not obvious in source;
+- reproduce a shipped behavior that differs from current source.
+
+The user does not need to upload this APK separately while the public release remains available.
+
+### 4. Official HeyCyan iOS IPA
+
+**Priority:** optional / potentially high if decrypted
+
+An ordinary App Store IPA may contain encrypted executable code and therefore can be less immediately useful for static analysis than the Android APK.
+
+A **decrypted IPA** would be highly valuable for comparing official iOS orchestration against the bundled `QCSDK.framework` and demos.
+
+Do not delay the audit waiting for an iOS IPA.
 
 ---
 
-## Questions the official APK must answer
+## Remaining questions for the official HeyCyan APK / production app
 
-1. Which exact production sequence follows BLE connection?
-2. Does the official app call battery/device-info commands immediately after connection?
-3. Which operation mode triggers normal media sync?
-4. Does production use AP, P2P, or choose based on model/firmware?
-5. How is the Wi-Fi peer/SSID identified?
-6. Is the Wi-Fi password fixed, returned, derived, or model-specific?
-7. What IP/port/path does media sync actually use?
-8. What is the exact media manifest/listing format?
-9. How are thumbnail and AI-photo transfers handled?
-10. Are audio/speech modes local recording only or can microphone audio stream to the phone?
-11. Are there dormant/unused live-preview calls in the official HeyCyan app?
-12. Which cleanup command/state is required after Wi-Fi transfer?
-13. Which failures produce error 255 and under what timeout/state conditions?
-14. Which behavior changes across firmware/device variants?
+The official APK is primarily needed to answer or validate these questions:
+
+1. Does production choose AP, P2P, or a model/firmware-specific combination for media transfer?
+2. What exact condition selects each network mode?
+3. Is the Wi-Fi password returned by BLE, fixed, derived, corrected by the app, or firmware-dependent?
+4. What device IP, port, and HTTP paths are used in production for each model/firmware family?
+5. What is the exact media listing/manifest format and how are deletions/downloads sequenced?
+6. What readiness checks occur between `openWifiWithMode` and the network join?
+7. What cleanup/reset command is issued after sync or timeout?
+8. What produces error `255`, and does production interpret it specially?
+9. Which device-info/battery/media commands are issued immediately after BLE connection?
+10. Are photo, AI-photo, video, and audio actions simple `setDeviceMode` calls in production or surrounded by additional state checks?
+11. Does `speechRecognition` or any other mode actually stream microphone/audio data to the phone, or only alter glasses-side behavior?
+12. Are there any unused/dormant livestream or RTSP entry points in the official HeyCyan application layer?
+13. Which behaviors vary across hardware project/customer IDs or firmware versions?
+14. Are there extra authentication/handshake steps absent from the public demo code?
+
+These questions improve correctness and compatibility. They do **not** invalidate the already-proven BLE-control → Wi-Fi-hotspot → HTTP-transfer architecture.
 
 ---
 
