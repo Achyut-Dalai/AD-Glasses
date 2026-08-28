@@ -6,7 +6,8 @@ The goal is to keep product code separate from reverse-engineering assumptions. 
 
 ## Documents
 
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — current BLE / Wi-Fi / HTTP architecture, native iOS layering, supported capability assessment, and implementation rules.
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — current BLE / Wi-Fi / HTTP / RTSP architecture, native iOS layering, supported capability assessment, and implementation rules.
+- [`PROTOCOL.md`](./PROTOCOL.md) — verified GATT UUIDs, outer frame format, CRC rules, confirmed command families/payloads, and reconstructed example frames.
 - [`RESEARCH_LOG.md`](./RESEARCH_LOG.md) — chronological findings, corrections, unresolved questions, and artifacts still to inspect.
 - [`OFFICIAL_APP_FINDINGS.md`](./OFFICIAL_APP_FINDINGS.md) — static-analysis findings from the user-supplied official HeyCyan production Android package. This file is additive and does not overwrite the earlier research record.
 
@@ -30,7 +31,7 @@ The HeyCyan architecture is not simply “BLE or Wi-Fi.” It is a multi-stage s
                         │
         ┌───────────────┼────────────────┐
         │               │                │
-   device/status    capture/control   enable transfer
+   device/status    capture/control   enable IP mode
         │               │                │
         │               │                ▼
         │               │           Wi-Fi subsystem
@@ -43,32 +44,42 @@ The HeyCyan architecture is not simply “BLE or Wi-Fi.” It is a multi-stage s
                                 │
                          high-bandwidth IP
                                 │
-                         HTTP/media transfer
+                       ┌────────┴────────┐
+                       │                 │
+                 HTTP media/files   RTSP live preview
 ```
 
-For native iOS, the currently documented viable path is:
+For native iOS, the currently documented viable paths are:
 
 ```text
-CoreBluetooth / QCSDK command
+MEDIA
+CoreBluetooth / verified command
           ↓
-request transfer mode
-          ↓
-receive SSID/password and device-IP readiness over BLE
+prepare transfer/AP mode
           ↓
 NEHotspotConfiguration
           ↓
 iPhone joins glasses-hosted AP
           ↓
 URLSession / local HTTP media transfer
+
+LIVE PREVIEW
+CoreBluetooth / verified AP-live payload
+          ↓
+NEHotspotConfiguration
+          ↓
+iPhone joins glasses-hosted AP
+          ↓
+RTSP :8554/ch0
 ```
 
-Android also contains a HeyCyan Wi-Fi Direct/P2P path. Do not assume that every operation requires P2P, and do not assume an Android `WifiP2pManager` flow can be translated 1:1 to iOS.
+Android also contains a HeyCyan Wi-Fi Direct/P2P path. Do not assume that every operation requires P2P, and do not assume an Android `WifiP2pManager` flow can be translated 1:1 to iOS. The official production app proves AP variants exist for both media transfer and live preview.
 
 ## Non-negotiable implementation rule
 
 **Do not invent HeyCyan BLE commands.**
 
-A Swift API such as `takePhoto()`, `getBattery()`, or `enableTransferMode()` may exist at the product/provider layer before its transport is complete, but its underlying packet, UUID, handshake, response parser, timeout, and state transition must come from verified evidence.
+A Swift API such as `takePhoto()`, `getBattery()`, `enableTransferMode()`, or `startLivePreview()` may exist at the product/provider layer before its transport is complete, but its underlying packet, UUID, handshake, response parser, timeout, and state transition must come from verified evidence.
 
 The UI can be designed ahead of transport work. The protocol implementation cannot be guessed.
 
@@ -87,8 +98,8 @@ Repository evidence already inspected includes:
 
 External artifacts now in scope:
 
-1. Official HeyCyan Android XAPK `1.0.142_20260807` — received and under static analysis; see `OFFICIAL_APP_FINDINGS.md`.
-2. Official iOS app binary if a **decrypted** IPA becomes available — useful, but not required to proceed.
+1. Official HeyCyan Android XAPK `1.0.142_20260807` — received and under static analysis; see `OFFICIAL_APP_FINDINGS.md` and `PROTOCOL.md`.
+2. Official iOS app binary if available — particularly useful for iOS-specific orchestration; a decrypted IPA gives much deeper executable visibility.
 3. CyanBridge APK — secondary because its source is already available and its public release can be obtained independently.
 4. Physical-device BLE / Wi-Fi captures when static analysis leaves ambiguity.
 
@@ -98,6 +109,7 @@ When an APK, SDK, packet capture, or hardware test changes our understanding:
 
 1. Add the evidence and date to `RESEARCH_LOG.md`.
 2. Put production Android artifact findings in `OFFICIAL_APP_FINDINGS.md` without deleting earlier evidence.
-3. Update `ARCHITECTURE.md` only after the finding is strong enough to affect implementation.
-4. Mark conflicting findings explicitly instead of silently replacing them.
-5. Keep model/firmware-specific behavior separate when necessary.
+3. Put stable byte-level facts in `PROTOCOL.md` only after they are verified.
+4. Update `ARCHITECTURE.md` only after the finding is strong enough to affect implementation.
+5. Mark conflicting findings explicitly instead of silently replacing them.
+6. Keep model/firmware-specific behavior separate when necessary.
