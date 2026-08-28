@@ -59,10 +59,10 @@ final class LegacySpeechTranscriber: SpeechTranscribing {
             Task { @MainActor in
                 guard let self else { return }
                 if let result {
-                    self.snapshot.transcript = result.bestTranscription.formattedString
+                    snapshot.transcript = result.bestTranscription.formattedString
                 }
                 if let error {
-                    self.onError?(error)
+                    onError?(error)
                 }
             }
         }
