@@ -93,7 +93,7 @@ final class HeyCyanGlassesProvider: NSObject, GlassesProvider {
 }
 
 @MainActor
-extension HeyCyanGlassesProvider: CBCentralManagerDelegate {
+extension HeyCyanGlassesProvider: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
             if connectedPeripheralID == nil && connectionState != .scanning {
