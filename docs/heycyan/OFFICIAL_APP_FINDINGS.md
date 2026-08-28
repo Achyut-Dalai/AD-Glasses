@@ -46,7 +46,7 @@ The base APK contains four DEX files. The arm64 split contains Microsoft Speech,
 
 ---
 
-## 2026-08-28 — Initial official-app static findings
+## 2026-08-29 — Official production static findings
 
 ### Finding: the production APK contains inspectable Oudmon BLE protocol code
 
@@ -74,30 +74,30 @@ This is a major improvement over relying only on public wrapper APIs: the offici
 `com.oudmon.ble.base.communication.Constants` initializes the ordinary command-channel UUIDs as:
 
 ```text
-Base service / UUID_SERVICE:
+UUID_SERVICE
 6e40fff0-b5a3-f393-e0a9-e50e24dcca9e
 
-Base notify/read / UUID_READ:
+UUID_READ / notify
 6e400003-b5a3-f393-e0a9-e50e24dcca9e
 
-Base write / UUID_WRITE:
+UUID_WRITE
 6e400002-b5a3-f393-e0a9-e50e24dcca9e
 
-CCCD:
+CCCD
 00002902-0000-1000-8000-00805f9b34fb
 ```
 
 The same constants class defines a second serial-port-style UUID family:
 
 ```text
-SERIAL_PORT_SERVICE:
-de5bf728-d711-4e47-af26-65e3012a5dc7
+SERIAL_PORT_SERVICE
+ de5bf728-d711-4e47-af26-65e3012a5dc7
 
-SERIAL_PORT_CHARACTER_NOTIFY:
-de5bf729-d711-4e47-af26-65e3012a5dc7
+SERIAL_PORT_CHARACTER_NOTIFY
+ de5bf729-d711-4e47-af26-65e3012a5dc7
 
-SERIAL_PORT_CHARACTER_WRITE:
-de5bf72a-d711-4e47-af26-65e3012a5dc7
+SERIAL_PORT_CHARACTER_WRITE
+ de5bf72a-d711-4e47-af26-65e3012a5dc7
 ```
 
 The app also includes the standard Device Information service and firmware/hardware/software revision characteristics.
@@ -105,8 +105,6 @@ The app also includes the standard Device Information service and firmware/hardw
 ### Finding: official app uses two distinct GATT transport families
 
 **Status: PROVEN from production DEX**
-
-This resolves the earlier uncertainty about whether the `de5bf...` family was merely an unrelated bundled transport.
 
 The production code shows both channels in active protocol paths:
 
@@ -144,38 +142,17 @@ This means the native iOS implementation should not be designed around one write
 
 The exact division of every command between the two transports is still being mapped.
 
-### Finding: official app enables notifications on the base service/read UUID pair
-
-**Status: PROVEN**
-
-`BleOperateManager.enableUUID()` constructs an `EnableNotifyRequest` using `Constants.UUID_SERVICE` and `Constants.UUID_READ` and enables it. This establishes a normal notification path used by the Oudmon protocol layer.
-
 ### Finding: connection initialization is command-driven, not just a GATT link
 
 **Status: PROVEN**
 
-The official application performs initialization after BLE connection. Relevant observed call paths include:
-
-```text
-MyBluetoothReceiver.initCmd()
-→ BleOperateManager.classicBluetoothStartScan()
-→ DeviceCmdInit.initDeviceSetting()
-```
-
-and `DeviceCmdInit.init()` performs:
-
-```text
-FileHandle.clearCallback()
-→ LargeDataHandler.syncTime(...)
-→ LargeDataHandler.syncDeviceInfo(...)
-→ syncDeviceSetting()
-```
+The official application performs initialization after BLE connection. Relevant observed call paths include time/device/settings synchronization before normal use.
 
 This confirms that AD Glasses should not treat `CBCentralManager.didConnect` as a fully ready device state. A protocol initialization/readiness phase belongs above the raw BLE connection.
 
 ### Finding: several protocol command families are directly visible
 
-**Status: PROVEN, packet details still under reconstruction**
+**Status: PROVEN, complete packet details still under reconstruction**
 
 The production `LargeDataHandler` builds framed requests using `addHeader(command, payload)`.
 
@@ -188,7 +165,7 @@ Observed command-family values include:
 0xFC / -4   write IP information to the glasses Wi-Fi SoC
 ```
 
-`addHeader(...)` builds the application frame and calls a CRC16 implementation before enqueueing bytes to the BLE write queue. Exact byte positions, length endianness, and CRC coverage are still being reconstructed and should not yet be copied into Swift.
+`addHeader(...)` performs application framing and CRC16-related work before the bytes reach the BLE write queue. Exact full-frame byte layout and CRC coverage are still being reconstructed and should not yet be copied into Swift.
 
 ### Finding: battery and device-info are first-class protocol responses
 
@@ -205,7 +182,7 @@ Wi-Fi firmware version
 Wi-Fi hardware version
 ```
 
-The app's `YourGlassActivity.batteryValue()` registers a battery callback and calls `LargeDataHandler.syncBattery()`.
+The app has a battery callback/synchronization path through `LargeDataHandler.syncBattery()`.
 
 This means the AD Glasses device hero can eventually show real battery/charging data rather than a guessed placeholder once this protocol is implemented natively.
 
@@ -250,7 +227,21 @@ com.glasssutdio.wear.wifi.p2p.WifiP2pManagerSingleton
 
 and uses Android `WifiP2pManager` APIs. This confirms that AP and P2P are both real production concepts, not only CyanBridge inventions.
 
-The model/operation-specific rule selecting AP versus P2P is not yet established.
+### Finding: official Android connection setup stores a fixed glasses Wi-Fi password
+
+**Status: PROVEN for HeyCyan Android 1.0.142**
+
+`MyBluetoothReceiver.connectStatue(...)` derives/stores the glasses Wi-Fi name from the connected device name and normalized Bluetooth address and stores:
+
+```text
+123456789
+```
+
+as the glasses Wi-Fi password.
+
+This resolves the password question for the inspected official Android path.
+
+The upstream iOS QCSDK demos remain inconsistent about returned-versus-overridden credentials, so native iOS must still verify physical-glasses behavior before applying this Android rule globally.
 
 ### Finding: official app has an explicit local glasses network layer
 
@@ -270,30 +261,97 @@ getWifiLocalAddress()
 
 This reinforces the multi-stage architecture: BLE commands prepare/coordinate the device and Wi-Fi state, while normal IP requests are used once a glasses network is available.
 
-### Finding: production APK contains local media/network constants that need attribution
+### Finding: production media endpoint call sites are attributed
 
-**Status: PRESENT IN ARTIFACT / usage still being traced**
+**Status: PROVEN for inspected media paths**
 
-Strings present in the production DEX include:
+`PictureFragment` initializes media/config filenames including:
 
 ```text
-123456789
 media.config
-/files/
-/files/log/
-/playlist.json
+vf_list.txt
+log.list
+```
+
+Production code constructs paths including:
+
+```text
+http://<glasses-ip>/files/<name>
+http://<glasses-ip>/files/log/<name>
+http://<glasses-ip>:80/storage/sd0/C/DCIM/1/<name>
+```
+
+`AlbumDepository.readPhotoFile(...)` retrieves the stored glasses IP and constructs `/files/` URLs, with `/files/log/` used for the log path.
+
+A separate string:
+
+```text
 http://192.168.0.1:8080/test
 ```
 
-These are important leads, but presence in the string table is not sufficient to claim each value is used by the normal media-sync path. Call sites are being traced before promoting any of these to architecture truth.
+belongs to `GlassesNetworkTestActivity` and should not be mistaken for the normal media endpoint.
 
-### Finding: official app has a glasses-oriented Opus speech pipeline
+### Finding: official production app actively supports real-time HeyCyan preview
+
+**Status: PROVEN**
+
+The official XAPK contains:
+
+```text
+com.glasssutdio.wear.home.activity.RealTimePreviewActivity
+```
+
+This activity owns BLE live-control requests, AP/P2P setup, heartbeat/session behavior and VLC playback.
+
+Its player constructs the production stream URL:
+
+```text
+rtsp://<glassDeviceWifiIP>:8554/ch0
+```
+
+This is stronger evidence than the older public-QCSDK/reverse-engineering conclusion that livestream was only dormant/test firmware functionality.
+
+### Finding: live-preview Bluetooth activation payloads are visible
+
+**Status: PROVEN as `glassesControl` payloads; complete outer frame still under reconstruction**
+
+The official app passes these byte arrays into `LargeDataHandler.glassesControl(...)`:
+
+```text
+02 01 14 01   P2P real-time-preview start path
+02 01 14 02   AP real-time-preview start path
+02 01 15 01   cleanup/exit payload sent when preview is destroyed
+```
+
+These are payloads within the `0x41` glasses-control family, not complete BLE frames. The outer framing, length and CRC remain separate protocol work.
+
+### Finding: official Android live-preview selection uses P2P normally and AP on HarmonyOS NEXT
+
+**Status: PROVEN for the inspected `RealTimePreviewActivity` flow**
+
+The activity's permission/launch branch checks `isHarmonyOSNEXT`:
+
+```text
+HarmonyOS NEXT
+→ AP path
+→ glassesControl(02 01 14 02)
+→ connect with TempWifiHelper using stored Wi-Fi name/password
+
+other inspected Android path
+→ register P2P receiver
+→ start P2P discovery
+→ glassesControl(02 01 14 01)
+```
+
+This does not prove every HeyCyan operation selects AP/P2P the same way, but it proves the glasses expose an AP live-preview variant in the official app.
+
+That is highly relevant to native iOS because AP mode is a plausible Apple-compatible path to the RTSP stream.
+
+### Finding: official app has a glasses-oriented voice/audio pipeline
 
 **Status: STRONG; transport semantics still under audit**
 
-The production app includes `GlassesAzureSpeechRecognizer`. Its `start()` path is associated with an Opus/audio stream pipeline, and the arm64 split includes the Microsoft Speech runtime plus Opus/Speex native libraries.
-
-The Oudmon protocol layer also exposes relevant methods including:
+The production app includes `GlassesAzureSpeechRecognizer`, Microsoft Speech libraries and Opus/Speex native components. The embedded Oudmon protocol layer also exposes operations including:
 
 ```text
 LargeDataHandler.realAudioToText(...)
@@ -302,7 +360,20 @@ LargeDataHandler.aiVoicePlay(...)
 LargeDataHandler.syncHeartBeat(...)
 ```
 
-This substantially raises confidence that HeyCyan supports an application-level glasses voice/audio path beyond simply recording an audio file on the glasses. We still need to trace the incoming packet type, codec framing, sample rate, and whether the microphone audio arrives over BLE, classic Bluetooth/SPP, or another channel before defining the native iOS audio transport.
+This substantially raises confidence that HeyCyan supports an application-level glasses voice/audio path beyond simply recording an audio file on the glasses.
+
+We still need to trace:
+
+```text
+incoming transport
+packet/subcommand type
+codec framing
+sample rate/channels
+stream lifecycle
+heartbeat/state requirements
+```
+
+before defining the native iOS audio transport.
 
 ### Finding: official Oudmon command surface is broader than the current AD Glasses provider
 
@@ -327,15 +398,30 @@ writeIpToSoc
 
 The official model-control response also exposes configurable photo/video/audio properties and a P2P IP field.
 
-This tells us the current native iOS provider's `.bluetoothConnection` capability is intentionally only a foundation; the hardware ecosystem exposes substantially more functionality once the protocol transport is implemented.
+This tells us the current native iOS provider's Bluetooth-only foundation is intentionally incomplete; the hardware ecosystem exposes substantially more functionality once the verified protocol transport is implemented.
 
 Do not assume every embedded SDK method applies to every HeyCyan hardware revision without model/firmware verification.
 
-### Finding: no official-app livestream conclusion yet
+---
 
-**Status: OPEN**
+## Cross-source contradiction: livestream
 
-The initial static pass has not yet established an exposed production HeyCyan livestream command. The earlier QCSDK/reverse-engineering finding therefore remains unchanged: do not make Lens depend on continuous live video until the official application or firmware evidence proves a supported activation path.
+Earlier evidence said:
+
+- the public QCSDK Swift wrapper has no named livestream operation mode;
+- reverse-engineering commentary described livestream as present on the Wi-Fi processor but inaccessible through the then-known exposed Bluetooth SDK surface.
+
+The official HeyCyan Android `1.0.142_20260807` production app now proves an active lower-level path through `LargeDataHandler.glassesControl(...)`, AP/P2P networking and RTSP playback.
+
+Current resolution:
+
+```text
+public convenience SDK surface: no named livestream mode found
+production lower-level Oudmon protocol: live preview is supported
+production stream: RTSP :8554/ch0
+```
+
+The historical finding remains preserved in `RESEARCH_LOG.md` because it may describe an older SDK/app/firmware state and explains why CyanBridge's earlier reverse-engineering work reached a different conclusion.
 
 ---
 
@@ -358,14 +444,13 @@ Use these rules as the audit continues:
 
 ```text
 1. Reconstruct addHeader() framing byte-for-byte and CRC16 coverage.
-2. Map GlassModelControl payload subcommands to photo/video/audio/transfer/reset operations.
+2. Map remaining GlassModelControl payload subcommands to photo/video/audio/transfer/reset operations.
 3. Complete the routing map between the 6e40 base channel and de5bf large-data channel.
-4. Trace AP-versus-P2P selection and the exact transfer command.
-5. Attribute 123456789, media.config, /files/, playlist.json, and local IP/ports to call sites.
-6. Determine the exact condition/error path for error 255.
-7. Trace incoming glasses audio packets through GlassesAzureSpeechRecognizer and the Opus decoder.
-8. Identify whether AI-photo image data uses BLE large-data packets or Wi-Fi/media transfer.
-9. Search production code for dormant livestream/RTSP activation paths.
-10. Compare every production finding with QCSDK.framework and CyanBridge.
-11. Verify the resulting protocol incrementally on a physical pair before shipping it in Swift.
+4. Trace error 255 to exact initiating state/timeout and recovery command.
+5. Determine media.config/vf_list/log.list formats and download semantics.
+6. Trace incoming glasses audio packets through GlassesAzureSpeechRecognizer and the Opus decoder.
+7. Identify whether AI-photo image data uses BLE large-data packets or Wi-Fi/media transfer.
+8. Determine RTSP codec/profile/frame size/fps and AP-mode readiness timing.
+9. Compare every production finding with QCSDK.framework and CyanBridge.
+10. Verify the resulting protocol incrementally on a physical pair before shipping it in Swift.
 ```
