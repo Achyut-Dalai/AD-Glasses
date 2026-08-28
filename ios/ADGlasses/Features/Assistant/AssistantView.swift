@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct AssistantView: View {
@@ -202,7 +203,13 @@ private struct AssistantSignalVisual: View {
                             lineWidth: 1
                         )
                         .frame(width: ringSize(ring), height: ringSize(ring))
-                        .scaleEffect(reduceMotion ? 1 : 0.97 + (pulse * 0.045) + (Double(ring) * 0.008))
+                        .scaleEffect(
+                            CGFloat(
+                                reduceMotion
+                                    ? 1
+                                    : 0.97 + (pulse * 0.045) + (Double(ring) * 0.008)
+                            )
+                        )
                 }
 
                 Circle()
@@ -219,7 +226,7 @@ private struct AssistantSignalVisual: View {
                         )
                     )
                     .frame(width: 118, height: 118)
-                    .scaleEffect(reduceMotion ? 1 : 0.97 + (pulse * 0.055))
+                    .scaleEffect(CGFloat(reduceMotion ? 1 : 0.97 + (pulse * 0.055)))
 
                 HStack(alignment: .center, spacing: 5) {
                     ForEach(0..<7, id: \.self) { index in
@@ -247,7 +254,8 @@ private struct AssistantSignalVisual: View {
     }
 
     private func ringSize(_ ring: Int) -> CGFloat {
-        [118, 164, 210][ring]
+        let sizes: [CGFloat] = [118, 164, 210]
+        return sizes[ring]
     }
 
     private func ringOpacity(ring: Int, pulse: Double) -> Double {
