@@ -154,90 +154,203 @@ The upstream repository's current release is CyanBridge v2.1.1 and includes a si
 
 ---
 
-## Artifact priorities
+## 2026-08-29 — Official HeyCyan production XAPK received
 
-### 1. Official HeyCyan Android APK
-
-**Priority:** high, but no longer a blocker for basic implementation planning
-
-Unique value:
-
-- establish what the production HeyCyan app actually does rather than what demos intend;
-- resolve model/firmware-dependent AP versus P2P selection;
-- resolve SSID/password/IP behavior;
-- identify exact timing, retries, readiness checks, cleanup, and error handling;
-- identify production HTTP endpoints and media-list formats;
-- reveal undocumented SDK calls or dormant feature references;
-- clarify whether speech/audio modes provide any phone-side stream or only glasses-side recording/voice behavior;
-- compare official command orchestration against QCSDK.framework and CyanBridge.
-
-It may also help expose raw BLE protocol details if those are implemented in app-visible/vendor classes, but this is **not guaranteed**: command encoding may remain inside a proprietary SDK binary. Reverse-engineering `QCSDK.framework` / the Android vendor AAR and capturing BLE traffic are complementary paths.
-
-### 2. QCSDK.framework / Android vendor SDK binary analysis
-
-**Priority:** high for a pure native protocol implementation
-
-If AD Glasses should avoid shipping the proprietary vendor binary on iOS, these binaries are likely the most direct static-analysis targets for:
+Artifact:
 
 ```text
-GATT service/characteristic UUIDs
-packet framing
-command IDs
-response parsing
-checksums/sequence numbers
-notification routing
-internal state machine
+HeyCyan_1.0.142_20260807_apkcombo.com.xapk
 ```
 
-The official APK can reveal orchestration, while the SDK binaries may contain the actual encoder/decoder.
+Package metadata:
 
-### 3. CyanBridge APK
+```text
+App: HeyCyan
+Package: com.glasssutdio.wear
+Version: 1.0.142_20260807
+Version code: 142
+Minimum Android SDK: 26
+Target Android SDK: 36
+```
 
-**Priority:** secondary
+The XAPK contains a base APK plus arm64, English-resource, and xxhdpi splits. The base application contains four DEX files. The arm64 split packages Microsoft Speech, Opus/Speex, Agora, VLC, OpenCV, TensorFlow Lite and other native components. Presence of a library is recorded only as artifact inventory, not proof of a specific glasses feature.
 
-Current upstream release: CyanBridge v2.1.1 (`app-release.apk`).
+Detailed production-app evidence is maintained separately in `OFFICIAL_APP_FINDINGS.md` so earlier findings remain intact.
 
-Source is already available, so use the APK only when we need to:
+### Finding: official production app contains inspectable Oudmon protocol implementation
 
-- verify release-vs-source behavior;
-- inspect packaged vendor dependencies;
-- inspect resources/configuration not obvious in source;
-- reproduce a shipped behavior that differs from current source.
+**Status:** PROVEN
 
-The user does not need to upload this APK separately while the public release remains available.
+The production DEX contains `com.oudmon.ble` protocol classes rather than only thin application wrappers. This includes BLE managers, large-data framing/handlers, request beans and response decoders.
 
-### 4. Official HeyCyan iOS IPA
+Implication: a significant portion of the raw HeyCyan protocol can be reconstructed directly from production bytecode rather than guessed or inferred only from QCSDK wrappers.
 
-**Priority:** optional / potentially high if decrypted
+### Finding: official primary GATT UUIDs are now known
 
-An ordinary App Store IPA may contain encrypted executable code and therefore can be less immediately useful for static analysis than the Android APK.
+**Status:** PROVEN from production DEX
 
-A **decrypted IPA** would be highly valuable for comparing official iOS orchestration against the bundled `QCSDK.framework` and demos.
+```text
+Primary service:
+6e40fff0-b5a3-f393-e0a9-e50e24dcca9e
 
-Do not delay the audit waiting for an iOS IPA.
+Notify/read characteristic:
+6e400003-b5a3-f393-e0a9-e50e24dcca9e
+
+Write characteristic:
+6e400002-b5a3-f393-e0a9-e50e24dcca9e
+
+CCCD:
+00002902-0000-1000-8000-00805f9b34fb
+```
+
+A second serial-port-style UUID family is also present and requires further attribution before use.
+
+### Finding: protocol initialization occurs after BLE connection
+
+**Status:** PROVEN
+
+Production initialization paths perform time/device/settings synchronization after BLE connection. This means `GATT connected` and `device ready` are distinct states.
+
+Implication for AD Glasses: add an explicit protocol/session readiness phase before feature actions are allowed.
+
+### Finding: production command families and CRC/framing code are visible
+
+**Status:** PROVEN at family level; exact frame layout still under reconstruction
+
+Observed production command-family values include:
+
+```text
+0x41 / 65   glasses control
+0x42 / 66   battery sync
+0x43 / 67   device info sync
+0xFC / -4   IP / Wi-Fi-side information operation
+```
+
+The framing code uses a CRC16 implementation. Exact byte layout, length handling, CRC coverage, subcommands and response matching remain active audit work.
+
+### Finding: battery/device data can support the Home hardware dashboard
+
+**Status:** PROVEN capability; native implementation pending
+
+Production response parsers expose battery percentage, charging state and Bluetooth/Wi-Fi firmware/hardware version data.
+
+This validates the product direction of displaying real device telemetry instead of generic text such as “Your glasses.”
+
+### Finding: official production app supports both AP and P2P concepts
+
+**Status:** PROVEN
+
+The official APK contains both normal Wi-Fi/AP helper code and Android `WifiP2pManager` integration.
+
+This upgrades the earlier P2P conclusion from CyanBridge-only evidence to official production evidence. The exact selection rule by model, firmware and operation is still unresolved.
+
+### Finding: error 255 is represented in the official glasses-control parser
+
+**Status:** PROVEN existence; trigger/recovery unresolved
+
+The production `GlassModelControlResponse` code explicitly handles error value `255`.
+
+This confirms that the previously observed/report `255` belongs to the glasses-control/state protocol. Further tracing is needed to identify exactly which state/timeout produces it and the correct recovery/reset sequence.
+
+### Finding: official app contains a glasses-oriented voice/Opus path
+
+**Status:** STRONG; transport details incomplete
+
+Production code contains a `GlassesAzureSpeechRecognizer`, Opus decoding/stream behavior, large-data package callbacks and voice heartbeat logic.
+
+This is materially stronger evidence for a phone-side glasses voice path than the earlier public SDK mode names alone.
+
+Still unresolved:
+
+```text
+which physical transport carries audio packets
+exact packet/subcommand type
+codec framing
+sample rate/channels
+heartbeat requirements
+stream start/stop state transitions
+```
+
+Do not yet wire Assistant to a guessed audio characteristic.
+
+### Finding: livestream remains unproven as a supported HeyCyan production feature
+
+**Status:** UNCHANGED / experimental
+
+The initial official-app pass has not established a supported production command that activates the dormant/test livestream capability described by the reverse-engineering author.
+
+Lens should therefore continue to target capture → retrieve → analyze rather than continuous camera streaming.
 
 ---
 
-## Remaining questions for the official HeyCyan APK / production app
+## Artifact priorities
 
-The official APK is primarily needed to answer or validate these questions:
+### 1. Official HeyCyan Android XAPK
 
-1. Does production choose AP, P2P, or a model/firmware-specific combination for media transfer?
-2. What exact condition selects each network mode?
-3. Is the Wi-Fi password returned by BLE, fixed, derived, corrected by the app, or firmware-dependent?
-4. What device IP, port, and HTTP paths are used in production for each model/firmware family?
-5. What is the exact media listing/manifest format and how are deletions/downloads sequenced?
-6. What readiness checks occur between `openWifiWithMode` and the network join?
-7. What cleanup/reset command is issued after sync or timeout?
-8. What produces error `255`, and does production interpret it specially?
-9. Which device-info/battery/media commands are issued immediately after BLE connection?
-10. Are photo, AI-photo, video, and audio actions simple `setDeviceMode` calls in production or surrounded by additional state checks?
-11. Does `speechRecognition` or any other mode actually stream microphone/audio data to the phone, or only alter glasses-side behavior?
-12. Are there any unused/dormant livestream or RTSP entry points in the official HeyCyan application layer?
-13. Which behaviors vary across hardware project/customer IDs or firmware versions?
-14. Are there extra authentication/handshake steps absent from the public demo code?
+**Status:** received; active audit
 
-These questions improve correctness and compatibility. They do **not** invalidate the already-proven BLE-control → Wi-Fi-hotspot → HTTP-transfer architecture.
+Current focus:
+
+- reconstruct application framing and CRC exactly;
+- map glasses-control subcommands;
+- map AP/P2P selection;
+- attribute Wi-Fi credentials/IP/HTTP endpoints;
+- trace error 255 and cleanup;
+- trace glasses audio transport;
+- search for dormant livestream hooks.
+
+### 2. QCSDK.framework / Android vendor SDK binary analysis
+
+**Priority:** high for cross-checking and for any protocol operation obscured in production app code
+
+These binaries/interfaces remain useful for:
+
+```text
+command/state semantics
+response callbacks
+DFU/OTA behavior
+vendor-specific edge cases
+comparison with production DEX implementation
+```
+
+### 3. CyanBridge source + public APK
+
+**Priority:** important comparison source, APK secondary
+
+CyanBridge remains valuable for reverse-engineered fixes, P2P routing behavior, firmware experiments and physical-device lessons. Its public APK mainly verifies what actually shipped in a release because the source is already inspectable.
+
+### 4. Official HeyCyan iOS IPA
+
+**Priority:** useful, especially if decrypted
+
+A decrypted IPA could provide the strongest comparison for how the official iPhone app orchestrates QCSDK, hotspot joining, permissions/background behavior and any iOS-specific device lifecycle.
+
+An encrypted/App-Store IPA can still be inspected for bundle metadata, resources, frameworks, entitlements and some static clues, but its main executable may be limited by FairPlay encryption.
+
+### 5. Physical-device verification
+
+**Priority:** required before shipping raw protocol implementation
+
+Static analysis tells us intended behavior; the glasses confirm compatibility, timing and model/firmware-specific behavior.
+
+---
+
+## Remaining questions
+
+1. What is the exact production application frame format and CRC16 coverage?
+2. Which `0x41` glasses-control payload/subcommands map to photo, video, audio, transfer and cleanup?
+3. What exact condition selects AP versus P2P?
+4. Is the Wi-Fi password returned, fixed, derived or model/firmware-dependent?
+5. What device IP/port/path does production media sync use in each mode?
+6. What is the exact media listing/manifest format?
+7. What readiness checks occur before network join?
+8. Exactly what produces error `255`, and what reset/cleanup is required?
+9. What transport carries live glasses microphone packets?
+10. What Opus framing/sample format is used?
+11. How is AI-photo image data delivered in production?
+12. Does production contain any callable but hidden HeyCyan livestream entry point?
+13. Which behavior changes across project/customer/firmware variants?
+14. Are there authentication/handshake steps beyond the currently visible initialization sequence?
 
 ---
 
@@ -247,19 +360,20 @@ After static analysis, verify one feature at a time on a real pair of glasses:
 
 ```text
 1. connect
-2. battery
-3. version/device info
-4. photo capture
-5. AI photo if supported
-6. video start/stop
-7. transfer-mode activation
-8. hotspot readiness/IP
-9. iOS hotspot join
-10. media.config / manifest
-11. latest photo download
-12. video/audio media download
-13. cleanup/reconnect
-14. audio/microphone path
+2. notification enablement / protocol ready
+3. battery
+4. version/device info
+5. photo capture
+6. AI photo if supported
+7. video start/stop
+8. transfer-mode activation
+9. hotspot readiness/IP
+10. iOS hotspot join
+11. media.config / production manifest
+12. latest photo download
+13. video/audio media download
+14. cleanup/reconnect
+15. live glasses audio path
 ```
 
 For each test record:
