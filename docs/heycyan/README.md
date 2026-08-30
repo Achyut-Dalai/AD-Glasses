@@ -10,6 +10,10 @@ The goal is to keep product code separate from reverse-engineering assumptions. 
 - [`PROTOCOL.md`](./PROTOCOL.md) — verified GATT UUIDs, outer frame format, CRC rules, confirmed command families/payloads, and reconstructed example frames.
 - [`RESEARCH_LOG.md`](./RESEARCH_LOG.md) — chronological findings, corrections, unresolved questions, and artifacts still to inspect.
 - [`OFFICIAL_APP_FINDINGS.md`](./OFFICIAL_APP_FINDINGS.md) — static-analysis findings from the user-supplied official HeyCyan production Android package. This file is additive and does not overwrite the earlier research record.
+- [`HARDWARE_CAPTURE_AUDIT_2026-08-30.md`](./HARDWARE_CAPTURE_AUDIT_2026-08-30.md) — correlated physical-glasses HCI/logcat audit, including buttons/gestures, “Hey Cyan”, Opus audio, BLE and Wi-Fi boundaries.
+- [`MEDIA_PROCESSING_AUDIT_2026-08-30.md`](./MEDIA_PROCESSING_AUDIT_2026-08-30.md) — image/audio/video derivative policy and current native processing coverage.
+- [`IOS_BACKEND_READINESS_2026-08-30.md`](./IOS_BACKEND_READINESS_2026-08-30.md) — native BLE/Wi-Fi/Assistant readiness, held controls, and the ordered physical-iPhone validation run.
+- [`IOS_HARDWARE_VALIDATION.md`](./IOS_HARDWARE_VALIDATION.md) — conservative one-action-at-a-time validation runbook for the native iPhone implementation.
 
 ## Evidence levels
 
@@ -98,7 +102,7 @@ Repository evidence already inspected includes:
 
 External artifacts now in scope:
 
-1. Official HeyCyan Android XAPK `1.0.142_20260807` — received and under static analysis; see `OFFICIAL_APP_FINDINGS.md` and `PROTOCOL.md`.
+1. Official HeyCyan Android XAPK `1.0.142_20260807` — statically inspected and correlated with a physical-glasses HCI/logcat capture; see `OFFICIAL_APP_FINDINGS.md`, `HARDWARE_CAPTURE_AUDIT_2026-08-30.md`, and `PROTOCOL.md`.
 2. Official iOS app binary if available — particularly useful for iOS-specific orchestration; a decrypted IPA gives much deeper executable visibility.
 3. CyanBridge APK — secondary because its source is already available and its public release can be obtained independently.
 4. Physical-device BLE / Wi-Fi captures when static analysis leaves ambiguity.

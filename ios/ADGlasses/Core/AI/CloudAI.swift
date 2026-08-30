@@ -342,6 +342,7 @@ struct CloudAIClient: AIResponding {
         profile: AIProfile,
         credential: String
     ) async throws -> String {
+        let messages = ConversationContextPolicy.requestMessages(from: messages)
         switch profile.provider {
         case .openAI:
             return try await openAIResponse(messages: messages, profile: profile, credential: credential)

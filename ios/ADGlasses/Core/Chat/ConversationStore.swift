@@ -20,7 +20,13 @@ actor ConversationStore {
     func load() throws -> [ConversationThread] {
         guard fileManager.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL)
-        return try Self.decoder.decode([ConversationThread].self, from: data)
+        let decoded: [ConversationThread]
+        do {
+            decoded = try Self.decoder.decode([ConversationThread].self, from: data)
+        } catch {
+            decoded = try Self.legacyDecoder.decode([ConversationThread].self, from: data)
+        }
+        return decoded
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
@@ -38,12 +44,18 @@ actor ConversationStore {
 
     private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .deferredToDate
         encoder.outputFormatting = [.sortedKeys]
         return encoder
     }()
 
     private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .deferredToDate
+        return decoder
+    }()
+
+    private static let legacyDecoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

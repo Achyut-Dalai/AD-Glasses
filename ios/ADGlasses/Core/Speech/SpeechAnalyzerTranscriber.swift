@@ -5,7 +5,7 @@ import Speech
 #if compiler(>=6.2)
 @available(iOS 26.0, *)
 @MainActor
-final class SpeechAnalyzerTranscriber: SpeechTranscribing {
+final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     let engineName = "Apple SpeechAnalyzer (on-device)"
     var onUpdate: ((SpeechTranscriptionSnapshot) -> Void)?
     var onError: ((Error) -> Void)?
@@ -24,6 +24,12 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
     private var audioTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
     private var finalizedTranscript = ""
+    private var inputSource: InputSource?
+
+    private enum InputSource {
+        case phoneMicrophone
+        case externalPCM
+    }
 
     init(locale: Locale) {
         requestedLocale = locale
@@ -37,77 +43,54 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
     func start() async throws {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
-
-        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
-            throw SpeechTranscriptionError.localeUnsupported
-        }
-
-        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-        if let installationRequest = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
-            try await installationRequest.downloadAndInstall()
-        }
-
-        guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
-            throw SpeechTranscriptionError.failedToCreateAudioInput
-        }
-
-        let analyzer = SpeechAnalyzer(modules: [module])
-        let (analyzerInputs, analyzerInputContinuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
-
-        self.analyzer = analyzer
-        self.transcriber = module
-        self.analyzerInputContinuation = analyzerInputContinuation
-
-        try await analyzer.start(inputSequence: analyzerInputs)
-        startResultTask(for: module)
+        await stop()
+        _ = try await prepareAnalyzerPipeline()
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .allowBluetoothHFP])
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        do {
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .spokenAudio,
+                options: [.duckOthers, .allowBluetoothHFP]
+            )
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            await cancelPreparedPipeline()
+            throw error
+        }
 
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
-            await analyzer.cancelAndFinishNow()
+            await cancelPreparedPipeline()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        let (audioStream, audioContinuation) = AsyncStream.makeStream(of: AVAudioPCMBuffer.self)
-        self.audioContinuation = audioContinuation
+        guard let audioContinuation else {
+            await cancelPreparedPipeline()
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
             audioContinuation.yield(buffer)
         }
 
-        audioTask = Task { [weak self] in
-            guard let self else { return }
-
-            for await buffer in audioStream {
-                do {
-                    let converted = try bufferConverter.convertBuffer(buffer, to: analyzerFormat)
-                    analyzerInputContinuation.yield(AnalyzerInput(buffer: converted))
-                } catch {
-                    onError?(error)
-                }
-            }
-
-            analyzerInputContinuation.finish()
-        }
-
         audioEngine.prepare()
         do {
             try audioEngine.start()
+            inputSource = .phoneMicrophone
             snapshot.isRunning = true
         } catch {
             inputNode.removeTap(onBus: 0)
             audioContinuation.finish()
-            await analyzer.cancelAndFinishNow()
+            await cancelPreparedPipeline()
             throw error
         }
     }
 
     func stop() async {
-        if audioEngine.isRunning {
+        let wasUsingPhoneMicrophone = inputSource == .phoneMicrophone
+        if wasUsingPhoneMicrophone, audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
         }
@@ -131,8 +114,29 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
         transcriber = nil
         analyzer = nil
         bufferConverter.reset()
+        inputSource = nil
         snapshot.isRunning = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if wasUsingPhoneMicrophone {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+
+    func startExternalAudio() async throws {
+        if snapshot.isRunning { await stop() }
+        try await SpeechPermissions.requestRecognition()
+        _ = try await prepareAnalyzerPipeline()
+        inputSource = .externalPCM
+        snapshot.isRunning = true
+    }
+
+    func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
+        guard inputSource == .externalPCM else { return }
+        audioContinuation?.yield(buffer)
+    }
+
+    func finishExternalAudio() async {
+        guard inputSource == .externalPCM else { return }
+        await stop()
     }
 
     func resetTranscript() {
@@ -163,6 +167,63 @@ final class SpeechAnalyzerTranscriber: SpeechTranscribing {
                 onError?(error)
             }
         }
+    }
+
+    private func prepareAnalyzerPipeline() async throws -> AVAudioFormat {
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
+            throw SpeechTranscriptionError.localeUnsupported
+        }
+
+        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        if let installationRequest = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+            try await installationRequest.downloadAndInstall()
+        }
+        guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
+
+        let analyzer = SpeechAnalyzer(modules: [module])
+        let (analyzerInputs, analyzerInputContinuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
+        let (audioStream, audioContinuation) = AsyncStream.makeStream(of: AVAudioPCMBuffer.self)
+        self.analyzer = analyzer
+        transcriber = module
+        self.analyzerInputContinuation = analyzerInputContinuation
+        self.audioContinuation = audioContinuation
+
+        try await analyzer.start(inputSequence: analyzerInputs)
+        startResultTask(for: module)
+        audioTask = Task { [weak self] in
+            guard let self else { return }
+            for await buffer in audioStream {
+                do {
+                    let converted = try bufferConverter.convertBuffer(buffer, to: analyzerFormat)
+                    analyzerInputContinuation.yield(AnalyzerInput(buffer: converted))
+                } catch {
+                    onError?(error)
+                }
+            }
+            analyzerInputContinuation.finish()
+        }
+        return analyzerFormat
+    }
+
+    private func cancelPreparedPipeline() async {
+        audioContinuation?.finish()
+        await audioTask?.value
+        audioTask = nil
+        audioContinuation = nil
+        analyzerInputContinuation?.finish()
+        if let analyzer {
+            await analyzer.cancelAndFinishNow()
+        }
+        resultTask?.cancel()
+        await resultTask?.value
+        resultTask = nil
+        analyzerInputContinuation = nil
+        transcriber = nil
+        self.analyzer = nil
+        bufferConverter.reset()
+        inputSource = nil
     }
 }
 

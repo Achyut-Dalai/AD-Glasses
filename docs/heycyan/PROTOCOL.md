@@ -2,7 +2,7 @@
 
 Status: living protocol map derived from verified sources
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 This file contains byte-level protocol findings that are sufficiently supported to be useful for a native implementation. It is intentionally separate from `ARCHITECTURE.md` (system design), `RESEARCH_LOG.md` (history), and `OFFICIAL_APP_FINDINGS.md` (artifact notebook).
 
@@ -94,12 +94,17 @@ The frame marker, command byte and payload-length bytes are **not** included in 
 
 ## 3. Confirmed command families
 
-Values observed in official production `LargeDataHandler` code:
+Values observed in official production code and the physical-glasses capture:
 
 ```text
 0x41  glasses-control family
 0x42  battery synchronization
 0x43  device-info synchronization
+0x44  AI voice-wake setting
+0x51  music/call/system volume control
+0x59  glasses microphone Opus packet
+0x73  unsolicited device notification
+0xFD  picture-thumbnail transfer
 0xFC  IP / Wi-Fi-side information operation
 ```
 
@@ -116,8 +121,11 @@ They are written in hexadecimal.
 | Payload | Production call-site meaning | Evidence status |
 | --- | --- | --- |
 | `02 01 01` | Take picture | PROVEN |
-| `02 01 02` | Start/request video operation | PROVEN call-site; exact toggle/stop semantics still being mapped |
-| `02 01 08` | Start/request audio recording operation | PROVEN call-site; exact toggle/stop semantics still being mapped |
+| `02 01 02` | Start video recording | PROVEN |
+| `02 01 03` | Stop video recording | PROVEN |
+| `02 01 08` | Start audio recording | PROVEN |
+| `02 01 0C` | Stop audio recording | PROVEN |
+| `02 01 06 Q Q` | AI photo at quality `Q` (`00...05`) | PROVEN |
 | `02 01 04 01` | Prepare/import album using P2P | PROVEN |
 | `02 01 04 02` | Prepare/import album using AP | PROVEN |
 | `02 01 09` | Media/file download complete notification/cleanup | PROVEN |
@@ -185,6 +193,37 @@ BC 41 04 00 93 5C 02 01 04 01
 BC 41 04 00 D3 5D 02 01 04 02
 ```
 
+The physical P2P capture proves that a successful work-type `04` response has a distinct credential
+shape rather than the generic control acknowledgement:
+
+```text
+RESPONSE DATA_TYPE=01 WORK_TYPE=04 MODE
+SSID_LENGTH_LE PASSWORD_LENGTH_LE SSID_BYTES PASSWORD_BYTES
+```
+
+The captured response used a 22-byte SSID and 9-byte passphrase. Native iOS parses these lengths
+strictly, obtains the device address only from the subsequent `0x73/0x08` notification, validates
+all three values, and only then constructs the `NEHotspotConfiguration`. It does not ask a caller
+to pre-supply or hard-code credentials. AP-mode response behavior still needs a physical-iPhone
+capture before the sync UI is promoted.
+
+### Connection initialization
+
+The captured official-app ready sequence now has native equivalents for:
+
+```text
+0x40  local clock/language/time-zone synchronization
+0x43  device and firmware information
+0x42  battery and charging state
+0x51  music/call/system volume profile
+0x49  request Classic Bluetooth audio/control connection
+```
+
+The `0x40` payload is the SDK's exact nine-byte `SyncTime` record: six BCD wall-clock fields,
+language code, encoded GMT offset, and final clock-status byte. The official implementation adds
+one second before serialization. The captured India vector `26 08 29 23 44 03 01 0C 01` is covered
+by a native protocol test.
+
 ### Live preview — P2P
 
 ```text
@@ -203,11 +242,72 @@ BC 41 04 00 DE 9D 02 01 14 02
 BC 41 04 00 9F 0C 02 01 15 01
 ```
 
-These byte sequences are deterministic reconstructions of the official production encoder and observed application payloads. Physical-glasses testing is still required before shipping a native Swift sender, because correct packet bytes alone do not establish timing, readiness, response matching, exclusivity, or cleanup requirements.
+These byte sequences are deterministic reconstructions of the official production encoder. The
+same frame format and representative command families are now validated in the physical-glasses
+capture. Each product operation must still wait for its matching work-type acknowledgement and use
+bounded timeout/cancellation/cleanup handling.
 
 ---
 
-## 6. Production Wi-Fi / IP facts
+## 6. Confirmed assistant and device events
+
+Voice-wake setting family `0x44`:
+
+```text
+01 00       read setting
+01 01       captured response: enabled
+02 00/01    write disabled/enabled
+```
+
+Unsolicited device-notification family `0x73` uses the first payload byte as a subtype. Confirmed
+assistant lifecycle values are:
+
+```text
+03 01       glasses recognition/listening started
+0A 01       glasses recognition/listening ended
+```
+
+Both on-glasses “Hey Cyan” detection and the rear assistant button converge on the start event. No
+captured source discriminator exists.
+
+During that interval, family `0x59` carries complete fixed-size 40-byte Opus packets. The official
+decoder uses 16 kHz, mono and a 40-byte packet size, producing 16-bit/16 kHz/mono PCM.
+Native iOS now decodes this container with the system Opus codec and forwards native PCM buffers to
+Apple Speech through a provider-neutral input seam. Physical-iPhone end-to-end recognition remains
+the promotion gate.
+
+### Volume control family `0x51`
+
+Read request:
+
+```text
+01
+```
+
+Read and write responses expose three ranges at payload offsets `2...12` after the outer frame is
+removed. The fixed channel markers are `01` music, `02` call, and `03` system:
+
+```text
+OP 01 MUSIC_MIN MUSIC_MAX MUSIC_CURRENT
+   02 CALL_MIN  CALL_MAX  CALL_CURRENT
+   03 SYSTEM_MIN SYSTEM_MAX SYSTEM_CURRENT CURRENT_TYPE [reserved...]
+```
+
+Write payload:
+
+```text
+02 01 MUSIC_MIN MUSIC_MAX MUSIC_CURRENT
+   02 CALL_MIN  CALL_MAX  CALL_CURRENT
+   03 SYSTEM_MIN SYSTEM_MAX SYSTEM_CURRENT CURRENT_TYPE
+```
+
+The captured device reported music `0...16`, call `0...15`, and system `0...16`. Treat those as
+per-device response values. Perform read-modify-write and preserve the latest ranges, unchanged
+currents, and current-type byte.
+
+---
+
+## 7. Production Wi-Fi / IP facts
 
 For the inspected official Android application version:
 
@@ -243,19 +343,17 @@ Do not assume the fixed password or every Android network-selection rule applies
 
 ---
 
-## 7. Still unresolved before a complete Swift port
+## 8. Still unresolved before a complete Swift port
 
 ```text
-- response/notification outer-frame parsing and correlation rules
-- exact callback/status semantics for every glasses-control subcommand
-- whether video/audio control payloads are start-only, toggle, or mode-dependent
+- exact callback/status semantics for still-unmapped glasses-control subcommands
 - precise error-255 trigger and recovery sequence
 - complete command-family map beyond 0x41/0x42/0x43/0xFC
 - AI-photo delivery path
-- glasses microphone packet transport and Opus framing
+- physical-iPhone validation of native Opus decoding and Apple Speech ingestion
 - RTSP codec/profile/resolution/fps
 - model/firmware-specific behavior
-- timing/retry/exclusivity rules for physical glasses
+- iPhone-compatible AP readiness/credential response sequence
 ```
 
 The next implementation work should be driven by these verified protocol rules plus physical-device tests, not by UI assumptions.

@@ -6,6 +6,9 @@ struct SettingsView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dismiss) private var dismiss
+    @State private var diagnosticsEnabled = false
+    @State private var diagnosticsURL: URL?
+    @State private var diagnosticsError: String?
 
     var body: some View {
         NavigationStack {
@@ -27,6 +30,15 @@ struct SettingsView: View {
                     }
 
                     LabeledContent("Speech engine", value: app.speechEngineName)
+
+                    NavigationLink {
+                        SpeechVoiceSettingsView(controller: app.speechOutput)
+                    } label: {
+                        LabeledContent(
+                            "Spoken voice",
+                            value: selectedSpeechVoiceName
+                        )
+                    }
                 }
 
                 Section("Data and access") {
@@ -51,6 +63,37 @@ struct SettingsView: View {
                 }
 
                 Section("Diagnostics") {
+                    if glasses.supportsHardwareDiagnostics {
+                        Toggle("Capture protocol packets", isOn: $diagnosticsEnabled)
+                            .onChange(of: diagnosticsEnabled) { _, enabled in
+                                Task {
+                                    await glasses.setHardwareDiagnosticsEnabled(enabled)
+                                    await refreshDiagnosticsURL()
+                                }
+                            }
+
+                        if let diagnosticsURL {
+                            ShareLink(item: diagnosticsURL) {
+                                Label("Export hardware log", systemImage: "square.and.arrow.up")
+                            }
+                        }
+
+                        Button("Clear hardware log") {
+                            Task {
+                                do {
+                                    try await glasses.clearHardwareDiagnostics()
+                                    await refreshDiagnosticsURL()
+                                } catch {
+                                    diagnosticsError = error.localizedDescription
+                                }
+                            }
+                        }
+
+                        Text("Enable this only while validating physical glasses. The bounded log includes raw BLE bytes and may contain device or glasses-network details. It never includes Cloud AI keys; share an export only with people you trust.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
                     DisclosureGroup("Provider details") {
                         ForEach(glasses.providers) { provider in
                             LabeledContent(provider.displayName, value: provider.id)
@@ -68,6 +111,18 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .task(id: glasses.selectedProviderID) {
+                diagnosticsEnabled = await glasses.isHardwareDiagnosticsEnabled() ?? false
+                await refreshDiagnosticsURL()
+            }
+            .alert("Diagnostics", isPresented: Binding(
+                get: { diagnosticsError != nil },
+                set: { if !$0 { diagnosticsError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(diagnosticsError ?? "")
+            }
         }
         .presentationDetents([.large])
     }
@@ -77,9 +132,76 @@ struct SettingsView: View {
         return app.aiProfiles.isConfigured ? profile.name : "Key required"
     }
 
+    private var selectedSpeechVoiceName: String {
+        app.speechOutput.voices.first {
+            $0.identifier == app.speechOutput.selectedVoiceIdentifier
+        }?.name ?? "System default"
+    }
+
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    private func refreshDiagnosticsURL() async {
+        do {
+            diagnosticsURL = try await glasses.hardwareDiagnosticsURL()
+        } catch {
+            diagnosticsError = error.localizedDescription
+        }
+    }
+}
+
+private struct SpeechVoiceSettingsView: View {
+    @ObservedObject var controller: SpeechOutputController
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            Section("Voice") {
+                Picker("Apple voice", selection: $controller.selectedVoiceIdentifier) {
+                    ForEach(controller.voices) { voice in
+                        VStack(alignment: .leading) {
+                            Text(voice.name)
+                            Text("\(voice.language) · \(voice.quality.label)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(voice.identifier)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+
+                Button(controller.isSpeaking ? "Stop preview" : "Preview voice") {
+                    if controller.isSpeaking {
+                        controller.stop()
+                    } else {
+                        do {
+                            try controller.speak("AD Glasses is ready when you need it.")
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
+                    }
+                }
+            }
+
+            Section {
+                Text("Premium and Enhanced labels come directly from Apple. Ava, Zoe, Samantha, and Alex appear only when that voice is available on this iPhone; additional voices are managed in iOS Settings.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Spoken voice")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { controller.refreshVoices() }
+        .alert("Spoken voice", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 }
 
@@ -450,7 +572,7 @@ private extension GlassesConnectionState {
         case .scanning: return "Scanning"
         case .connecting: return "Connecting"
         case .connected: return "Connected"
-        case .unavailable: return "Not configured"
+        case .unavailable: return "Unavailable"
         }
     }
 }

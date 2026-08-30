@@ -548,40 +548,43 @@ Legend:
 | Base GATT command path | ✅ | Production APK exposes `6e40...` service/write/notify UUIDs. |
 | Serial/large-data GATT path | ✅ | Production `LargeDataHandler` uses the `de5bf...` service/write family. |
 | Protocol readiness/init phase | ✅ | Production app performs initialization after BLE connection. |
-| Battery + charging | ✅/🟡 | Production response parser/API exists; native Swift port remains. |
-| Device/version info | ✅/🟡 | Production response parser/API exists; native Swift port remains. |
-| Photo capture | 🟡 | Supported operation; exact raw subcommand/state flow still being mapped. |
-| Video start/stop | 🟡 | Supported operation; exact raw subcommand/state flow still being mapped. |
-| Audio recording mode | 🟡 | Exposed by SDK/app; distinguish file recording from live voice transport. |
-| AI photo | 🟡 | QCSDK/iOS wrapper supports it; production transfer path still being mapped. |
+| Battery + charging | ✅/🟡 | Strict native response parser and ready-session refresh exist; physical-iPhone verification remains. |
+| Device/version info | ✅/🟡 | Strict native version parser and ready-session refresh exist; physical-iPhone verification remains. |
+| Clock/time-zone sync | ✅/🟡 | Exact SDK BCD/language/time-zone payload is ported and covered by the captured India vector. |
+| Classic audio connection request | ✅/🟡 | Captured family `0x49` request/echo is sent after BLE setup; iOS still owns system Classic pairing/routing. |
+| Photo capture | ✅/🟡 | Captured raw command and strict acknowledgement are native; physical-iPhone verification remains. |
+| Video start/stop | ✅/🟡 | Captured raw commands exist beneath the provider boundary; product state validation remains. |
+| Audio recording mode | ✅/🟡 | Captured raw commands exist beneath the provider boundary; distinguish local file recording from live voice transport. |
+| AI photo | ✅/🟡 | Captured command exists beneath the provider boundary; delivery/product-state validation remains. |
 | Media counts | ✅/🟡 | Production glasses-control parser exposes image/video/audio counts. |
-| Wi-Fi transfer activation | ✅/🟡 | Demonstrated in iOS QCSDK path; raw production command/state mapping still being completed. |
+| Wi-Fi transfer activation | ✅/🟡 | Native coordinator correlates work-type `04` credentials with `0x73/0x08` address and performs transactional cleanup; AP response still needs physical-iPhone validation. |
 | Join glasses AP on iOS | ✅ | Demo uses `NEHotspotConfiguration`. |
 | HTTP media transfer | ✅/🟡 | Production paths and repository iOS demo both establish this architecture. |
 | HeyCyan Wi-Fi Direct/P2P | ✅ on Android | Present in official APK and CyanBridge. |
 | Real-time HeyCyan camera preview | ✅/🟡 | Official production app activates BLE live mode and plays RTSP `:8554/ch0`; native iOS AP path still needs physical verification. |
 | AP-mode live preview | ✅/🟡 | Official production app contains `02 01 14 02` AP activation path; iOS feasibility is promising but must be tested. |
-| Glasses voice/audio stream toward phone | 🟡 | Official app contains glasses Azure speech/Opus processing and large-data callbacks; exact transport/codec framing still being audited. |
+| Glasses voice/audio stream toward phone | ✅/🟡 | Physical capture proves `0x73` start/stop plus fixed 40-byte family `0x59` Opus at 16 kHz mono. Native system-Opus decoding, bounded buffering and Apple Speech ingestion are implemented; physical-iPhone validation remains. |
 | Firmware LED suppression / hidden firmware modification | 🔬 | Separate experimental firmware track; not required for normal app integration. |
 
 ---
 
 ## 8. Audio / Assistant implication
 
-The official production APK increases confidence that HeyCyan has a glasses-oriented voice path. It contains a `GlassesAzureSpeechRecognizer`, Opus/audio-related runtime, protocol callbacks, voice wake/play operations, and heartbeat behavior.
-
-Do **not** yet assume the transport is ordinary BLE GATT audio. The next audit must establish:
+The physical-glasses capture now establishes the glasses-oriented voice path:
 
 ```text
-source transport
-→ packet type/framing
-→ codec (Opus/etc.)
-→ sample rate/channels
-→ stream lifecycle
-→ heartbeat/state requirements
+on-glasses wake word or rear assistant button
+→ family 0x73 subtype 0x03 start event
+→ family 0x59 fixed 40-byte Opus packets
+→ 16 kHz / mono decoder
+→ 16-bit / 16 kHz / mono PCM
+→ speech/Assistant abstraction
+→ family 0x73 subtype 0x0A stop event
 ```
 
-Once verified, expose decoded PCM/audio through a glasses-neutral audio capability so Assistant does not depend on HeyCyan-specific implementation details.
+The app must not listen continuously on the iPhone microphone for “Hey Cyan”; wake detection is a
+glasses firmware setting (family `0x44`). The provider must expose decoded PCM/audio through a
+glasses-neutral capability so Assistant does not depend on HeyCyan-specific packet types.
 
 ---
 
@@ -668,7 +671,10 @@ The official `GlassModelControlResponse` parser contains explicit handling for e
 
 ### Audio path
 
-Official production evidence strongly suggests a live voice/audio flow, but the actual transport and framing are not yet fully attributed.
+Transport, lifecycle, packet size and decoder format are attributed by the physical capture. The
+native Opus decoder, bounded buffering and Apple Speech input seam are now implemented. Remaining
+work is end-to-end validation on a physical iPhone and promotion of the provider capability only
+after that succeeds.
 
 ---
 

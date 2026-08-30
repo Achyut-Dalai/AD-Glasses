@@ -532,3 +532,60 @@ STILL OPEN
 - AI-photo delivery path
 - iOS physical verification of AP live preview + RTSP codec/playback
 ```
+
+---
+
+## 2026-08-30 — Physical AM01 capture resolves voice and physical media controls
+
+**Status:** PROVEN from Android HCI snoop + bugreport/logcat + matching official DEX paths
+
+The user connected real `JS-01 Pro_B0B1` glasses running Bluetooth firmware
+`AM01CY_2.20.10_260411` and exercised the official HeyCyan application and physical controls.
+The correlated results are recorded in
+[`HARDWARE_CAPTURE_AUDIT_2026-08-30.md`](./HARDWARE_CAPTURE_AUDIT_2026-08-30.md).
+
+Key resolved facts:
+
+- `0xBC` framing and little-endian payload CRC are present on the real large-data GATT stream;
+- family `0x44` reads/writes the on-glasses AI voice-wake setting;
+- `0x73 03 01` starts glasses recognition and `0x73 0A 01` ends it;
+- family `0x59` carries complete fixed 40-byte Opus packets decoded as 16-kHz mono;
+- “Hey Cyan” detection is glasses-side, not an always-listening phone-app wake recognizer;
+- rear-button assistant activation converges on the same start event and has no captured source tag;
+- physical play/pause/previous/next and volume gestures use the normal Bluetooth audio/control
+  profiles and are attributed by Android to its Bluetooth/system audio service;
+- the physical product guide establishes Key 1 photo/video, Key 2 Assistant/AI-photo/audio-record,
+  and touch-area music gesture mappings without requiring guessed notification attribution;
+- family `0x51` reads and writes the glasses' distinct music, call and system volume levels, and
+  the physical capture validates the exact SDK structure and per-device ranges;
+- BLE remains the app control/status/audio/Wi-Fi orchestration plane;
+- OTA metadata checking is visible, but an OTA transfer/bootloader/rollback sequence is not.
+
+## 2026-08-30 — Native iOS Opus and device-management boundaries
+
+**Status:** IMPLEMENTED, awaiting physical-iPhone validation
+
+- Apple's native Opus decoder accepts the captured fixed 40-byte family `0x59` packet at 16 kHz,
+  mono; the first decoded packet can be shorter than 320 samples because startup delay is trimmed.
+- HeyCyan emits decoded PCM through a provider-neutral Assistant-audio protocol.
+- Both Apple Speech implementations accept external PCM without opening the iPhone microphone.
+- Assistant buffers at most about two seconds while speech authorization/pipeline setup completes,
+  then finalizes one glasses-voice conversation turn at the captured `0x73 0A 01` event.
+- OTA, factory reset, forced restart and custom wake phrase are represented only as provider-declared,
+  non-executable placeholders. No destructive or firmware command was added.
+
+## 2026-08-30 — Ready handshake and AP coordinator correction
+
+**Status:** IMPLEMENTED from SDK bytecode + physical vectors; AP still awaits iPhone validation
+
+- The SDK's exact nine-byte family `0x40` clock record is now native, including the one-second
+  advance, BCD date/time, locale mapping and GMT-offset encoding. The captured India packet is a
+  protocol regression vector.
+- Native ready setup also sends the captured family `0x49` payload `02 01`, which asks the glasses
+  to bring up their Classic Bluetooth audio/control connection after BLE is ready.
+- A reconnect timeout can no longer consume two backoff attempts when CoreBluetooth later reports
+  the cancellation callback.
+- Media preparation no longer requires a caller to know Wi-Fi credentials in advance. SSID and
+  passphrase come only from the matched work-type `04` response, while device IP comes only from
+  the asynchronous `0x73/0x08` notification. Only the combined validated values can reach
+  `NEHotspotConfiguration`.

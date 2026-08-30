@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AssistantView: View {
     @EnvironmentObject private var app: AppModel
+    @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let openSettings: () -> Void
@@ -17,7 +18,10 @@ struct AssistantView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         if app.conversation.isEmpty {
-                            AssistantWelcome(isListening: app.isTranscribing)
+                            AssistantWelcome(
+                                isListening: app.isTranscribing ||
+                                    glasses.assistantInputState == .listening
+                            )
                         } else {
                             conversationHeader
 
@@ -431,7 +435,7 @@ private struct AssistantComposer: View {
                     .focused(focused)
                     .lineLimit(1...5)
                     .submitLabel(.send)
-                    .onSubmit(app.sendChatMessage)
+                    .onSubmit { app.sendChatMessage() }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
                     .background(

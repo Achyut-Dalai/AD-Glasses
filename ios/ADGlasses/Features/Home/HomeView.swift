@@ -3,10 +3,14 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
+    @EnvironmentObject private var library: LibraryModel
 
     @State private var selectedTab: AppTab = .home
     @State private var showsDeviceCenter: Bool
     @State private var showsSettings = false
+    @State private var showsLens = false
+    @State private var showsTranslation = false
+    @State private var showsSoundbite = false
 
     init(initialShowsDeviceCenter: Bool = false) {
         _showsDeviceCenter = State(initialValue: initialShowsDeviceCenter)
@@ -21,6 +25,9 @@ struct HomeView: View {
         TabView(selection: $selectedTab) {
             HomeScreen(
                 openAssistant: { selectedTab = .assistant },
+                openLens: { showsLens = true },
+                openTranslation: { showsTranslation = true },
+                openSoundbite: { showsSoundbite = true },
                 openDeviceCenter: { showsDeviceCenter = true },
                 openSettings: { showsSettings = true }
             )
@@ -47,6 +54,19 @@ struct HomeView: View {
                 .environmentObject(app)
                 .environmentObject(glasses)
         }
+        .sheet(isPresented: $showsLens) {
+            LensView()
+                .environmentObject(app)
+        }
+        .sheet(isPresented: $showsTranslation) {
+            TranslationView()
+                .environmentObject(app)
+        }
+        .sheet(isPresented: $showsSoundbite) {
+            SoundbiteView()
+                .environmentObject(app)
+                .environmentObject(library)
+        }
     }
 }
 
@@ -61,6 +81,9 @@ private struct HomeScreen: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let openAssistant: () -> Void
+    let openLens: () -> Void
+    let openTranslation: () -> Void
+    let openSoundbite: () -> Void
     let openDeviceCenter: () -> Void
     let openSettings: () -> Void
 
@@ -79,8 +102,8 @@ private struct HomeScreen: View {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 12) {
                         LensTile(
-                            availability: availability(for: .lens),
-                            action: { unavailableFeature = .lens }
+                            availability: .available,
+                            action: openLens
                         )
 
                         LazyVGrid(columns: columns, spacing: 12) {
@@ -100,7 +123,7 @@ private struct HomeScreen: View {
                                     systemImage: feature.systemImage,
                                     tint: feature.tint,
                                     availability: availability(for: feature),
-                                    action: { unavailableFeature = feature }
+                                    action: { perform(feature) }
                                 )
                             }
                         }
@@ -158,7 +181,11 @@ private struct HomeScreen: View {
     }
 
     private func availability(for feature: ProductFeature) -> FeatureAvailability {
+        if feature == .translate || feature == .soundbites { return .available }
         guard let capability = feature.capability else { return .available }
+        if feature == .photo, glasses.supports(.photoCapture) {
+            return .available
+        }
         if glasses.supports(capability) {
             return .notImplemented
         }
@@ -166,6 +193,9 @@ private struct HomeScreen: View {
     }
 
     private func unavailableMessage(for feature: ProductFeature) -> String {
+        if feature == .photo, let errorMessage = glasses.errorMessage {
+            return errorMessage
+        }
         guard let capability = feature.capability else {
             return "This feature is not available in the current build."
         }
@@ -175,6 +205,31 @@ private struct HomeScreen: View {
         }
 
         return "Your glasses do not currently expose this capability to the app."
+    }
+
+    private func perform(_ feature: ProductFeature) {
+        if feature == .translate {
+            openTranslation()
+            return
+        }
+        if feature == .soundbites {
+            openSoundbite()
+            return
+        }
+        guard feature == .photo else {
+            unavailableFeature = feature
+            return
+        }
+        guard glasses.connectionState.isConnected else {
+            openDeviceCenter()
+            return
+        }
+
+        Task {
+            if await glasses.requestPhotoCapture() == false {
+                unavailableFeature = .photo
+            }
+        }
     }
 }
 
@@ -211,16 +266,25 @@ private struct ConnectionPill: View {
 
                     Text("Connected")
 
-                    if let batteryLevel = glasses.batteryLevel {
+                    if let batteryStatus = glasses.batteryStatus {
                         Text("·")
                             .foregroundStyle(.tertiary)
 
                         Label {
-                            Text("\(batteryLevel)%")
+                            Text("\(batteryStatus.level)%")
                         } icon: {
-                            Image(systemName: "battery.100percent")
+                            HStack(spacing: 2) {
+                                Image(systemName: "battery.100percent")
+                                if batteryStatus.isCharging {
+                                    Image(systemName: "bolt.fill")
+                                }
+                            }
                         }
-                        .accessibilityLabel("Battery \(batteryLevel) percent")
+                        .accessibilityLabel(
+                            batteryStatus.isCharging
+                                ? "Battery \(batteryStatus.level) percent, charging"
+                                : "Battery \(batteryStatus.level) percent"
+                        )
                     }
                 }
 
@@ -254,6 +318,7 @@ private struct ConnectionPill: View {
 
 private struct LibraryScreen: View {
     @EnvironmentObject private var glasses: GlassesManager
+    @EnvironmentObject private var library: LibraryModel
 
     let openDeviceCenter: () -> Void
     let openSettings: () -> Void
@@ -270,12 +335,13 @@ private struct LibraryScreen: View {
                         LibraryCollectionView(
                             title: "Captures",
                             systemImage: "photo.on.rectangle.angled",
-                            description: "Photos and videos synced from your glasses will appear here."
+                            description: "Photos and videos synced from your glasses will appear here.",
+                            kinds: [.photo, .video]
                         )
                     } label: {
                         LibraryRow(
                             title: "Captures",
-                            subtitle: "Photos and videos",
+                            subtitle: countLabel(for: [.photo, .video], empty: "Photos and videos"),
                             systemImage: "photo.on.rectangle.angled",
                             tint: .blue
                         )
@@ -283,14 +349,15 @@ private struct LibraryScreen: View {
 
                     NavigationLink {
                         LibraryCollectionView(
-                            title: "Recordings & Transcripts",
+                            title: "Recordings",
                             systemImage: "waveform",
-                            description: "Saved audio sessions and their transcription text will appear here."
+                            description: "Audio sessions synced or recorded by AD Glasses will appear here.",
+                            kinds: [.audio]
                         )
                     } label: {
                         LibraryRow(
-                            title: "Recordings & transcripts",
-                            subtitle: "Audio sessions and text",
+                            title: "Recordings",
+                            subtitle: countLabel(for: [.audio], empty: "Audio sessions"),
                             systemImage: "waveform",
                             tint: .purple
                         )
@@ -298,14 +365,15 @@ private struct LibraryScreen: View {
 
                     NavigationLink {
                         LibraryCollectionView(
-                            title: "Notes & Summaries",
+                            title: "Notes & Transcripts",
                             systemImage: "note.text",
-                            description: "Notes and summaries created from transcripts will appear here."
+                            description: "Soundbites and transcripts will appear here.",
+                            kinds: [.transcript]
                         )
                     } label: {
                         LibraryRow(
-                            title: "Notes & summaries",
-                            subtitle: "Ideas and meeting notes",
+                            title: "Notes & transcripts",
+                            subtitle: countLabel(for: [.transcript], empty: "Soundbites and text"),
                             systemImage: "note.text",
                             tint: .orange
                         )
@@ -313,12 +381,20 @@ private struct LibraryScreen: View {
                 }
 
                 Section {
-                    Text("Library storage is intentionally separate from glasses transport. A future media-transfer provider can populate these collections without changing their screens.")
+                    Text("Synced photos, videos, and recordings are kept as original files. Lens and thumbnails use separate processed copies and never replace the original.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Library")
+            .alert("Library", isPresented: Binding(
+                get: { library.errorMessage != nil },
+                set: { if !$0 { library.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(library.errorMessage ?? "")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: openSettings) {
@@ -352,6 +428,11 @@ private struct LibraryScreen: View {
         }
         return "Open glasses connections to begin"
     }
+
+    private func countLabel(for kinds: Set<LibraryItemKind>, empty: String) -> String {
+        let count = library.items.filter { kinds.contains($0.kind) }.count
+        return count == 0 ? empty : "\(count) saved"
+    }
 }
 
 private struct LibraryRow: View {
@@ -377,24 +458,157 @@ private struct LibraryRow: View {
 }
 
 private struct LibraryCollectionView: View {
+    @EnvironmentObject private var library: LibraryModel
+
     let title: String
     let systemImage: String
     let description: String
+    let kinds: Set<LibraryItemKind>
+
+    private var items: [LibraryItem] {
+        library.items.filter { kinds.contains($0.kind) }
+    }
 
     var body: some View {
-        ContentUnavailableView(
-            "Nothing here yet",
-            systemImage: systemImage,
-            description: Text(description)
-        )
+        Group {
+            if items.isEmpty {
+                ContentUnavailableView(
+                    "Nothing here yet",
+                    systemImage: systemImage,
+                    description: Text(description)
+                )
+            } else {
+                List(items) { item in
+                    NavigationLink {
+                        LibraryItemDetailView(item: item)
+                    } label: {
+                        LibraryItemRow(item: item)
+                    }
+                    .contextMenu {
+                        Button(
+                            item.isFavorite ? "Remove favorite" : "Favorite",
+                            systemImage: item.isFavorite ? "star.slash" : "star"
+                        ) {
+                            Task { await library.toggleFavorite(item) }
+                        }
+                        ShareLink(item: library.fileURL(for: item))
+                    }
+                }
+            }
+        }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct LibraryItemRow: View {
+    let item: LibraryItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.kind.systemImage)
+                .foregroundStyle(item.kind.tint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.title)
+                    .lineLimit(1)
+                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if item.isFavorite {
+                Image(systemName: "star.fill")
+                    .font(.caption)
+                    .foregroundStyle(.yellow)
+                    .accessibilityLabel("Favorite")
+            }
+        }
+    }
+}
+
+private struct LibraryItemDetailView: View {
+    @EnvironmentObject private var library: LibraryModel
+    let item: LibraryItem
+
+    @State private var transcript: String?
+    @State private var loadError: String?
+
+    var body: some View {
+        Group {
+            if item.kind == .transcript {
+                if let transcript {
+                    ScrollView {
+                        Text(transcript)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .padding()
+                    }
+                } else if let loadError {
+                    ContentUnavailableView(
+                        "Could not open transcript",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(loadError)
+                    )
+                } else {
+                    ProgressView("Opening")
+                }
+            } else {
+                ContentUnavailableView(
+                    item.title,
+                    systemImage: item.kind.systemImage,
+                    description: Text("Use Share to open this local file in a compatible app.")
+                )
+            }
+        }
+        .navigationTitle(item.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: library.fileURL(for: item))
+            }
+        }
+        .task {
+            guard item.kind == .transcript else { return }
+            do {
+                let url = library.fileURL(for: item)
+                let data = try await Task.detached { try Data(contentsOf: url) }.value
+                guard data.count <= 1_048_576,
+                      let value = String(data: data, encoding: .utf8) else {
+                    throw LibraryStoreError.invalidSourceFile
+                }
+                transcript = value
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
+    }
+}
+
+private extension LibraryItemKind {
+    var systemImage: String {
+        switch self {
+        case .photo: return "photo"
+        case .video: return "video"
+        case .audio: return "waveform"
+        case .transcript: return "note.text"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .photo: return .blue
+        case .video: return .pink
+        case .audio: return .purple
+        case .transcript: return .orange
+        }
     }
 }
 
 private struct DeviceCenterSheet: View {
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmsForget = false
 
     var body: some View {
         NavigationStack {
@@ -406,7 +620,7 @@ private struct DeviceCenterSheet: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(consumerProviderName(id: provider.id, technicalName: provider.displayName))
+                                    Text(provider.displayName)
                                         .foregroundStyle(.primary)
                                     Text(provider.connectionState.compactLabel)
                                         .font(.caption)
@@ -435,7 +649,7 @@ private struct DeviceCenterSheet: View {
                                     Image(systemName: "dot.radiowaves.left.and.right")
                                         .foregroundStyle(.blue)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(consumerDeviceName(device))
+                                        Text(device.name)
                                             .foregroundStyle(.primary)
                                         if let strength = device.signalStrength {
                                             Text(signalDescription(strength))
@@ -451,6 +665,82 @@ private struct DeviceCenterSheet: View {
                             }
                             .disabled(glasses.connectionState.isBusy)
                         }
+                    }
+
+                    if glasses.hasRememberedDevice {
+                        Button("Forget saved glasses", systemImage: "trash", role: .destructive) {
+                            confirmsForget = true
+                        }
+                    }
+                }
+
+                if glasses.connectionState.isConnected,
+                   glasses.batteryStatus != nil || glasses.deviceInformation != nil {
+                    Section("Device status") {
+                        if let battery = glasses.batteryStatus {
+                            LabeledContent(
+                                "Battery",
+                                value: battery.isCharging
+                                    ? "\(battery.level)% · Charging"
+                                    : "\(battery.level)%"
+                            )
+                        }
+
+                        if let information = glasses.deviceInformation {
+                            if !information.firmwareVersion.isEmpty {
+                                LabeledContent("Firmware", value: information.firmwareVersion)
+                            }
+                            if !information.hardwareVersion.isEmpty {
+                                LabeledContent("Hardware", value: information.hardwareVersion)
+                            }
+                            if !information.networkFirmwareVersion.isEmpty {
+                                LabeledContent(
+                                    "Wireless firmware",
+                                    value: information.networkFirmwareVersion
+                                )
+                            }
+                            if !information.networkHardwareVersion.isEmpty {
+                                LabeledContent(
+                                    "Wireless hardware",
+                                    value: information.networkHardwareVersion
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if glasses.connectionState.isConnected,
+                   glasses.supports(.volumeControl) {
+                    Section("Audio") {
+                        NavigationLink {
+                            GlassesVolumeSettingsView()
+                        } label: {
+                            LabeledContent("Glasses volume", value: "Music, calls, system")
+                        }
+                    }
+                }
+
+                if !glasses.deviceManagementPlaceholders.isEmpty {
+                    Section {
+                        ForEach(glasses.deviceManagementPlaceholders) { placeholder in
+                            Button(action: {}) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: placeholder.operation.systemImage)
+                                        .frame(width: 22)
+                                    Text(placeholder.operation.title)
+                                    Spacer()
+                                    Text("Not available yet")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .disabled(true)
+                            .accessibilityHint(placeholder.reason)
+                        }
+                    } header: {
+                        Text("Device controls")
+                    } footer: {
+                        Text("Firmware update, factory reset, restart, and wake-phrase changes cannot send a command from this build.")
                     }
                 }
 
@@ -479,6 +769,18 @@ private struct DeviceCenterSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .confirmationDialog(
+                "Forget saved glasses?",
+                isPresented: $confirmsForget,
+                titleVisibility: .visible
+            ) {
+                Button("Forget glasses", role: .destructive) {
+                    Task { await glasses.forgetLastDevice() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("AD Glasses will disconnect and stop reconnecting automatically. You can scan and connect again at any time.")
             }
         }
         .presentationDetents([.medium, .large])
@@ -516,6 +818,124 @@ private struct DeviceCenterSheet: View {
         case let value where value >= -55: return "Strong signal"
         case -70 ..< -55: return "Good signal"
         default: return "Weak signal"
+        }
+    }
+}
+
+private extension GlassesDeviceManagementOperation {
+    var title: String {
+        switch self {
+        case .firmwareUpdate: return "Firmware update"
+        case .factoryReset: return "Factory reset"
+        case .forcedRestart: return "Forced restart"
+        case .customWakePhrase: return "Custom wake phrase"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .firmwareUpdate: return "arrow.triangle.2.circlepath"
+        case .factoryReset: return "arrow.counterclockwise"
+        case .forcedRestart: return "power"
+        case .customWakePhrase: return "waveform.badge.mic"
+        }
+    }
+}
+
+private struct GlassesVolumeSettingsView: View {
+    @EnvironmentObject private var glasses: GlassesManager
+    @State private var draftValues: [GlassesVolumeChannel: Double] = [:]
+    @State private var editingChannel: GlassesVolumeChannel?
+
+    var body: some View {
+        List {
+            if let profile = glasses.volumeProfile {
+                Section {
+                    ForEach(GlassesVolumeChannel.allCases, id: \.self) { channel in
+                        volumeRow(channel, profile: profile)
+                    }
+                } footer: {
+                    Text("These are the three levels reported by the glasses. Touch gestures continue to control the active music volume during playback.")
+                }
+            } else {
+                Section {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text("Reading volume levels from your glasses…")
+                    }
+                }
+            }
+
+            if let error = glasses.errorMessage {
+                Section {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .navigationTitle("Glasses Volume")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await glasses.refreshVolumeProfile()
+            synchronizeDrafts()
+        }
+        .onChange(of: glasses.volumeProfile) { _, _ in
+            guard editingChannel == nil else { return }
+            synchronizeDrafts()
+        }
+    }
+
+    private func volumeRow(
+        _ channel: GlassesVolumeChannel,
+        profile: GlassesVolumeProfile
+    ) -> some View {
+        let level = profile[channel]
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(channel.title, systemImage: channel.systemImage)
+                Spacer()
+                Text("\(Int(draftValues[channel] ?? Double(level.current)))")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(
+                value: Binding(
+                    get: { draftValues[channel] ?? Double(level.current) },
+                    set: { draftValues[channel] = $0 }
+                ),
+                in: Double(level.minimum) ... Double(level.maximum),
+                step: 1
+            ) { isEditing in
+                editingChannel = isEditing ? channel : nil
+                guard !isEditing else { return }
+                let value = Int(draftValues[channel] ?? Double(level.current))
+                Task {
+                    await glasses.setVolume(value, for: channel)
+                    synchronizeDrafts()
+                }
+            }
+            .accessibilityLabel("\(channel.title) volume")
+            .accessibilityValue("\(Int(draftValues[channel] ?? Double(level.current))) of \(level.maximum)")
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func synchronizeDrafts() {
+        guard let profile = glasses.volumeProfile else { return }
+        for channel in GlassesVolumeChannel.allCases {
+            draftValues[channel] = Double(profile[channel].current)
+        }
+    }
+}
+
+private extension GlassesVolumeChannel {
+    var systemImage: String {
+        switch self {
+        case .music: return "music.note"
+        case .calls: return "phone"
+        case .system: return "speaker.wave.2"
         }
     }
 }
@@ -936,7 +1356,8 @@ private enum ProductFeature: String, Identifiable {
 
     var capability: GlassesCapability? {
         switch self {
-        case .lens, .photo, .video: return .camera
+        case .lens, .video: return .camera
+        case .photo: return .photoCapture
         case .translate, .soundbites, .audio: return .microphoneAudio
         }
     }
@@ -946,10 +1367,12 @@ private extension GlassesCapability {
     var title: String {
         switch self {
         case .bluetoothConnection: return "Bluetooth connection"
+        case .photoCapture: return "Photo capture"
         case .microphoneAudio: return "Glasses audio"
         case .camera: return "Camera"
         case .mediaTransfer: return "Media transfer"
         case .deviceInformation: return "Device information"
+        case .volumeControl: return "Volume control"
         case .notifications: return "Notifications"
         }
     }
@@ -957,10 +1380,12 @@ private extension GlassesCapability {
     var systemImage: String {
         switch self {
         case .bluetoothConnection: return "antenna.radiowaves.left.and.right"
+        case .photoCapture: return "camera"
         case .microphoneAudio: return "waveform"
         case .camera: return "camera"
         case .mediaTransfer: return "arrow.triangle.2.circlepath"
         case .deviceInformation: return "info.circle"
+        case .volumeControl: return "speaker.wave.2"
         case .notifications: return "bell"
         }
     }
@@ -973,7 +1398,7 @@ private extension GlassesConnectionState {
         case .scanning: return "Scanning"
         case .connecting: return "Connecting"
         case .connected: return "Connected"
-        case .unavailable: return "Not configured"
+        case .unavailable: return "Unavailable"
         }
     }
 
@@ -986,18 +1411,4 @@ private extension GlassesConnectionState {
         case .unavailable: return "exclamationmark.triangle"
         }
     }
-}
-
-private func consumerProviderName(id: String, technicalName: String) -> String {
-    if id == "heycyan" {
-        return "AD Glasses"
-    }
-    return technicalName
-}
-
-private func consumerDeviceName(_ device: GlassesDevice) -> String {
-    if device.providerID == "heycyan" {
-        return "AD Glasses"
-    }
-    return device.name
 }

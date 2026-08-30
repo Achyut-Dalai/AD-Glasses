@@ -197,18 +197,21 @@ private struct WelcomeView: View {
     private func attemptAutomaticConnection() async {
         phase = .connecting
 
-        do {
-            try await Task.sleep(for: .milliseconds(900))
-        } catch {
-            return
+        // Keep the launch moment visible without delaying Bluetooth work. The old serial delay
+        // added nearly a second before CoreBluetooth was even asked to restore the remembered
+        // glasses.
+        let minimumDisplay = Task {
+            try? await Task.sleep(for: .milliseconds(900))
         }
 
         if glasses.connectionState.isConnected {
+            await minimumDisplay.value
             onConnected()
             return
         }
 
         let reconnected = await glasses.reconnectLastDevice()
+        await minimumDisplay.value
         guard !Task.isCancelled else { return }
 
         if reconnected {

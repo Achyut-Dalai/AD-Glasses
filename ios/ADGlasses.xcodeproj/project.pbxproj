@@ -26,7 +26,47 @@
 		B00000000000000000000011 /* CloudAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* CloudAI.swift */; };
 		B00000000000000000000012 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000013 /* ConversationStore.swift */; };
 		B00000000000000000000013 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000014 /* SettingsView.swift */; };
+		B00000000000000000000014 /* HeyCyanProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000015 /* HeyCyanProtocol.swift */; };
+		B00000000000000000000015 /* HeyCyanBLETransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* HeyCyanBLETransport.swift */; };
+		B00000000000000000000016 /* HeyCyanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000017 /* HeyCyanSession.swift */; };
+		B00000000000000000000017 /* HeyCyanWiFiCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* HeyCyanWiFiCoordinator.swift */; };
+		B00000000000000000000018 /* HeyCyanMediaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000019 /* HeyCyanMediaClient.swift */; };
+		B00000000000000000000019 /* HeyCyanDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001C /* HeyCyanDiagnostics.swift */; };
+		B0000000000000000000001A /* HeyCyanMediaTransferCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001D /* HeyCyanMediaTransferCoordinator.swift */; };
+		B0000000000000000000001B /* SpeechOutputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* SpeechOutputController.swift */; };
+		B0000000000000000000001C /* TranslationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001F /* TranslationModels.swift */; };
+		B0000000000000000000001D /* NativeTranslationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* NativeTranslationController.swift */; };
+		B0000000000000000000001E /* NativeTranslationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000021 /* NativeTranslationHost.swift */; };
+		B0000000000000000000001F /* LensImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000022 /* LensImageProcessor.swift */; };
+		B00000000000000000000020 /* LensView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000023 /* LensView.swift */; };
+		B00000000000000000000021 /* AssistantRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000024 /* AssistantRouting.swift */; };
+		B00000000000000000000022 /* TranslationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000025 /* TranslationView.swift */; };
+		B00000000000000000000023 /* LibraryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000026 /* LibraryModels.swift */; };
+		B00000000000000000000024 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000027 /* LibraryStore.swift */; };
+		B00000000000000000000025 /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000028 /* LibraryModel.swift */; };
+		B00000000000000000000026 /* SoundbiteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000029 /* SoundbiteView.swift */; };
+		B00000000000000000000027 /* HeyCyanResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* HeyCyanResponses.swift */; };
+		B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */; };
+		B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* HeyCyanOpusDecoder.swift */; };
+		B10000000000000000000001 /* HeyCyanProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* HeyCyanProtocolTests.swift */; };
+		B10000000000000000000002 /* GlassesManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* GlassesManagerTests.swift */; };
+		B10000000000000000000003 /* HeyCyanSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HeyCyanSessionTests.swift */; };
+		B10000000000000000000004 /* AssistantRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* AssistantRoutingTests.swift */; };
+		B10000000000000000000005 /* LensImageProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* LensImageProcessorTests.swift */; };
+		B10000000000000000000006 /* LibraryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* LibraryStoreTests.swift */; };
+		B10000000000000000000007 /* HeyCyanResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* HeyCyanResponseTests.swift */; };
+		B10000000000000000000008 /* ConversationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* ConversationStoreTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D10000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D00000000000000000000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D00000000000000000000001;
+			remoteInfo = ADGlasses;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A00000000000000000000001 /* ADGlassesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADGlassesApp.swift; sourceTree = "<group>"; };
@@ -49,10 +89,50 @@
 		A00000000000000000000012 /* CloudAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAI.swift; sourceTree = "<group>"; };
 		A00000000000000000000013 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
 		A00000000000000000000014 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A00000000000000000000015 /* HeyCyanProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanProtocol.swift; sourceTree = "<group>"; };
+		A00000000000000000000016 /* HeyCyanBLETransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanBLETransport.swift; sourceTree = "<group>"; };
+		A00000000000000000000017 /* HeyCyanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanSession.swift; sourceTree = "<group>"; };
+		A00000000000000000000018 /* HeyCyanWiFiCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanWiFiCoordinator.swift; sourceTree = "<group>"; };
+		A00000000000000000000019 /* HeyCyanMediaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanMediaClient.swift; sourceTree = "<group>"; };
+		A0000000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A0000000000000000000001B /* ADGlasses.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ADGlasses.entitlements; sourceTree = "<group>"; };
+		A0000000000000000000001C /* HeyCyanDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanDiagnostics.swift; sourceTree = "<group>"; };
+		A0000000000000000000001D /* HeyCyanMediaTransferCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanMediaTransferCoordinator.swift; sourceTree = "<group>"; };
+		A0000000000000000000001E /* SpeechOutputController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechOutputController.swift; sourceTree = "<group>"; };
+		A0000000000000000000001F /* TranslationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationModels.swift; sourceTree = "<group>"; };
+		A00000000000000000000020 /* NativeTranslationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTranslationController.swift; sourceTree = "<group>"; };
+		A00000000000000000000021 /* NativeTranslationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTranslationHost.swift; sourceTree = "<group>"; };
+		A00000000000000000000022 /* LensImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensImageProcessor.swift; sourceTree = "<group>"; };
+		A00000000000000000000023 /* LensView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensView.swift; sourceTree = "<group>"; };
+		A00000000000000000000024 /* AssistantRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantRouting.swift; sourceTree = "<group>"; };
+		A00000000000000000000025 /* TranslationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationView.swift; sourceTree = "<group>"; };
+		A00000000000000000000026 /* LibraryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModels.swift; sourceTree = "<group>"; };
+		A00000000000000000000027 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
+		A00000000000000000000028 /* LibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModel.swift; sourceTree = "<group>"; };
+		A00000000000000000000029 /* SoundbiteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundbiteView.swift; sourceTree = "<group>"; };
+		A0000000000000000000002A /* HeyCyanResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanResponses.swift; sourceTree = "<group>"; };
+		A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanThumbnailTransfer.swift; sourceTree = "<group>"; };
+		A0000000000000000000002C /* HeyCyanOpusDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanOpusDecoder.swift; sourceTree = "<group>"; };
+		A10000000000000000000001 /* HeyCyanProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanProtocolTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* GlassesManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesManagerTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* ADGlassesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADGlassesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000004 /* HeyCyanSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanSessionTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* AssistantRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantRoutingTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* LensImageProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensImageProcessorTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* LibraryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStoreTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* HeyCyanResponseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanResponseTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* ConversationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		F00000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -66,6 +146,7 @@
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000003 /* ADGlasses */,
+				C10000000000000000000001 /* ADGlassesTests */,
 				C00000000000000000000002 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000E /* ADGlasses.app */,
+				A10000000000000000000003 /* ADGlassesTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,6 +163,8 @@
 		C00000000000000000000003 /* ADGlasses */ = {
 			isa = PBXGroup;
 			children = (
+				A0000000000000000000001A /* Info.plist */,
+				A0000000000000000000001B /* ADGlasses.entitlements */,
 				C00000000000000000000004 /* App */,
 				C00000000000000000000005 /* Core */,
 				C00000000000000000000008 /* Integrations */,
@@ -106,6 +190,9 @@
 				C00000000000000000000006 /* Speech */,
 				C00000000000000000000007 /* Glasses */,
 				C0000000000000000000000E /* Chat */,
+				C00000000000000000000013 /* Translation */,
+				C00000000000000000000014 /* Lens */,
+				C00000000000000000000017 /* Library */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -117,6 +204,7 @@
 				A00000000000000000000004 /* AppleSpeechTranscriber.swift */,
 				A00000000000000000000005 /* LegacySpeechTranscriber.swift */,
 				A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */,
+				A0000000000000000000001E /* SpeechOutputController.swift */,
 			);
 			path = Speech;
 			sourceTree = "<group>";
@@ -144,8 +232,37 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000012 /* CloudAI.swift */,
+				A00000000000000000000024 /* AssistantRouting.swift */,
 			);
 			path = AI;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000013 /* Translation */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000001F /* TranslationModels.swift */,
+				A00000000000000000000020 /* NativeTranslationController.swift */,
+				A00000000000000000000021 /* NativeTranslationHost.swift */,
+			);
+			path = Translation;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000014 /* Lens */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000022 /* LensImageProcessor.swift */,
+			);
+			path = Lens;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000017 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000026 /* LibraryModels.swift */,
+				A00000000000000000000027 /* LibraryStore.swift */,
+				A00000000000000000000028 /* LibraryModel.swift */,
+			);
+			path = Library;
 			sourceTree = "<group>";
 		};
 		C00000000000000000000008 /* Integrations */ = {
@@ -161,6 +278,16 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000A /* HeyCyanGlassesProvider.swift */,
+				A00000000000000000000016 /* HeyCyanBLETransport.swift */,
+				A00000000000000000000017 /* HeyCyanSession.swift */,
+				A00000000000000000000015 /* HeyCyanProtocol.swift */,
+				A0000000000000000000002A /* HeyCyanResponses.swift */,
+				A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */,
+				A0000000000000000000002C /* HeyCyanOpusDecoder.swift */,
+				A00000000000000000000018 /* HeyCyanWiFiCoordinator.swift */,
+				A00000000000000000000019 /* HeyCyanMediaClient.swift */,
+				A0000000000000000000001C /* HeyCyanDiagnostics.swift */,
+				A0000000000000000000001D /* HeyCyanMediaTransferCoordinator.swift */,
 			);
 			path = HeyCyan;
 			sourceTree = "<group>";
@@ -180,6 +307,9 @@
 				C0000000000000000000000C /* Home */,
 				C0000000000000000000000F /* Assistant */,
 				C00000000000000000000012 /* Settings */,
+				C00000000000000000000015 /* Lens */,
+				C00000000000000000000016 /* Translation */,
+				C00000000000000000000018 /* Soundbites */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -216,12 +346,51 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		C00000000000000000000015 /* Lens */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000023 /* LensView.swift */,
+			);
+			path = Lens;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000016 /* Translation */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000025 /* TranslationView.swift */,
+			);
+			path = Translation;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000018 /* Soundbites */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000029 /* SoundbiteView.swift */,
+			);
+			path = Soundbites;
+			sourceTree = "<group>";
+		};
 		C0000000000000000000000D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000D /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000001 /* ADGlassesTests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000001 /* HeyCyanProtocolTests.swift */,
+				A10000000000000000000002 /* GlassesManagerTests.swift */,
+				A10000000000000000000004 /* HeyCyanSessionTests.swift */,
+				A10000000000000000000005 /* AssistantRoutingTests.swift */,
+				A10000000000000000000006 /* LensImageProcessorTests.swift */,
+				A10000000000000000000007 /* LibraryStoreTests.swift */,
+				A10000000000000000000008 /* HeyCyanResponseTests.swift */,
+				A10000000000000000000009 /* ConversationStoreTests.swift */,
+			);
+			path = ADGlassesTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -244,6 +413,24 @@
 			productReference = A0000000000000000000000E /* ADGlasses.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D10000000000000000000001 /* ADGlassesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E10000000000000000000003 /* Build configuration list for PBXNativeTarget "ADGlassesTests" */;
+			buildPhases = (
+				F10000000000000000000002 /* Sources */,
+				F10000000000000000000001 /* Frameworks */,
+				F10000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D10000000000000000000003 /* PBXTargetDependency */,
+			);
+			name = ADGlassesTests;
+			productName = ADGlassesTests;
+			productReference = A10000000000000000000003 /* ADGlassesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -256,6 +443,10 @@
 				TargetAttributes = {
 					D00000000000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					D10000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = D00000000000000000000001;
 					};
 				};
 			};
@@ -273,6 +464,7 @@
 			projectRoot = "";
 			targets = (
 				D00000000000000000000001 /* ADGlasses */,
+				D10000000000000000000001 /* ADGlassesTests */,
 			);
 		};
 /* End PBXProject section */
@@ -283,6 +475,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				B0000000000000000000000D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -311,10 +510,55 @@
 				B00000000000000000000011 /* CloudAI.swift in Sources */,
 				B00000000000000000000012 /* ConversationStore.swift in Sources */,
 				B00000000000000000000013 /* SettingsView.swift in Sources */,
+				B00000000000000000000014 /* HeyCyanProtocol.swift in Sources */,
+				B00000000000000000000015 /* HeyCyanBLETransport.swift in Sources */,
+				B00000000000000000000016 /* HeyCyanSession.swift in Sources */,
+				B00000000000000000000017 /* HeyCyanWiFiCoordinator.swift in Sources */,
+				B00000000000000000000018 /* HeyCyanMediaClient.swift in Sources */,
+				B00000000000000000000019 /* HeyCyanDiagnostics.swift in Sources */,
+				B0000000000000000000001A /* HeyCyanMediaTransferCoordinator.swift in Sources */,
+				B0000000000000000000001B /* SpeechOutputController.swift in Sources */,
+				B0000000000000000000001C /* TranslationModels.swift in Sources */,
+				B0000000000000000000001D /* NativeTranslationController.swift in Sources */,
+				B0000000000000000000001E /* NativeTranslationHost.swift in Sources */,
+				B0000000000000000000001F /* LensImageProcessor.swift in Sources */,
+				B00000000000000000000020 /* LensView.swift in Sources */,
+				B00000000000000000000021 /* AssistantRouting.swift in Sources */,
+				B00000000000000000000022 /* TranslationView.swift in Sources */,
+				B00000000000000000000023 /* LibraryModels.swift in Sources */,
+				B00000000000000000000024 /* LibraryStore.swift in Sources */,
+				B00000000000000000000025 /* LibraryModel.swift in Sources */,
+				B00000000000000000000026 /* SoundbiteView.swift in Sources */,
+				B00000000000000000000027 /* HeyCyanResponses.swift in Sources */,
+				B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */,
+				B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* HeyCyanProtocolTests.swift in Sources */,
+				B10000000000000000000002 /* GlassesManagerTests.swift in Sources */,
+				B10000000000000000000003 /* HeyCyanSessionTests.swift in Sources */,
+				B10000000000000000000004 /* AssistantRoutingTests.swift in Sources */,
+				B10000000000000000000005 /* LensImageProcessorTests.swift in Sources */,
+				B10000000000000000000006 /* LibraryStoreTests.swift in Sources */,
+				B10000000000000000000007 /* HeyCyanResponseTests.swift in Sources */,
+				B10000000000000000000008 /* ConversationStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D10000000000000000000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D00000000000000000000001 /* ADGlasses */;
+			targetProxy = D10000000000000000000002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E00000000000000000000001 /* Debug */ = {
@@ -356,17 +600,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ADGlasses/ADGlasses.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AD Glasses";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "AD Glasses uses Bluetooth to discover and connect to supported glasses.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "AD Glasses uses the microphone for native speech transcription and glasses voice features.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "AD Glasses converts speech to text using Apple's native speech recognition.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ADGlasses/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
@@ -382,16 +621,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ADGlasses/ADGlasses.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "AD Glasses";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "AD Glasses uses Bluetooth to discover and connect to supported glasses.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "AD Glasses uses the microphone for native speech transcription and glasses voice features.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "AD Glasses converts speech to text using Apple's native speech recognition.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ADGlasses/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
@@ -400,6 +634,45 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlassesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADGlasses.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADGlasses";
+			};
+			name = Debug;
+		};
+		E10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlassesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADGlasses.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADGlasses";
 			};
 			name = Release;
 		};
@@ -420,6 +693,15 @@
 			buildConfigurations = (
 				E00000000000000000000001 /* Debug */,
 				E00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E10000000000000000000003 /* Build configuration list for PBXNativeTarget "ADGlassesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E10000000000000000000001 /* Debug */,
+				E10000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -6,9 +6,15 @@ final class GlassesManager: ObservableObject {
     @Published private(set) var providers: [GlassesProviderSummary]
     @Published private(set) var devices: [GlassesDevice] = []
     @Published private(set) var selectedProviderID: String
+    @Published private(set) var activeProviderID: String?
     @Published var errorMessage: String?
+    @Published private(set) var assistantInputState: GlassesAssistantInputState = .idle
 
-    @Published private var batteryLevels: [String: Int] = [:]
+    var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
+
+    @Published private var batteryStatuses: [String: GlassesBatteryStatus] = [:]
+    @Published private var deviceInformationByProvider: [String: GlassesDeviceInformation] = [:]
+    @Published private var volumeProfiles: [String: GlassesVolumeProfile] = [:]
 
     private let providerInstances: [String: any GlassesProvider]
     private var scanRequestID = UUID()
@@ -18,11 +24,39 @@ final class GlassesManager: ObservableObject {
     }
 
     var connectionState: GlassesConnectionState {
-        selectedProvider.connectionState
+        if let activeProviderID,
+           let activeProvider = providers.first(where: { $0.id == activeProviderID }) {
+            return activeProvider.connectionState
+        }
+        return selectedProvider.connectionState
     }
 
     var batteryLevel: Int? {
-        batteryLevels[selectedProviderID]
+        batteryStatus?.level
+    }
+
+    var batteryStatus: GlassesBatteryStatus? {
+        batteryStatuses[activeProviderID ?? selectedProviderID]
+    }
+
+    var hasRememberedDevice: Bool {
+        let providerID = activeProviderID ?? selectedProviderID
+        return (providerInstances[providerID] as? any GlassesForgettable)?
+            .hasRememberedDevice == true
+    }
+
+    var deviceInformation: GlassesDeviceInformation? {
+        deviceInformationByProvider[activeProviderID ?? selectedProviderID]
+    }
+
+    var volumeProfile: GlassesVolumeProfile? {
+        volumeProfiles[activeProviderID ?? selectedProviderID]
+    }
+
+    var deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] {
+        let providerID = activeProviderID ?? selectedProviderID
+        return (providerInstances[providerID] as? any GlassesDeviceManagementPlanning)?
+            .deviceManagementPlaceholders ?? []
     }
 
     init(providers: [any GlassesProvider]) {
@@ -39,6 +73,7 @@ final class GlassesManager: ObservableObject {
             )
         }
         selectedProviderID = providers[0].id
+        activeProviderID = providers.first(where: { $0.connectionState.isConnected })?.id
 
         for provider in providers {
             let providerID = provider.id
@@ -47,9 +82,30 @@ final class GlassesManager: ObservableObject {
             }
 
             if let batteryProvider = provider as? any GlassesBatteryProviding {
-                updateProvider(providerID, batteryLevel: batteryProvider.batteryLevel)
-                batteryProvider.onBatteryLevelChange = { [weak self] level in
-                    self?.updateProvider(providerID, batteryLevel: level)
+                updateProvider(providerID, batteryStatus: batteryProvider.batteryStatus)
+                batteryProvider.onBatteryStatusChange = { [weak self] status in
+                    self?.updateProvider(providerID, batteryStatus: status)
+                }
+            }
+
+            if let informationProvider = provider as? any GlassesDeviceInformationProviding {
+                updateProvider(providerID, deviceInformation: informationProvider.deviceInformation)
+                informationProvider.onDeviceInformationChange = { [weak self] information in
+                    self?.updateProvider(providerID, deviceInformation: information)
+                }
+            }
+
+
+            if let volumeProvider = provider as? any GlassesVolumeProviding {
+                updateProvider(providerID, volumeProfile: volumeProvider.volumeProfile)
+                volumeProvider.onVolumeProfileChange = { [weak self] profile in
+                    self?.updateProvider(providerID, volumeProfile: profile)
+                }
+            }
+
+            if let audioProvider = provider as? any GlassesAssistantAudioProviding {
+                audioProvider.onAssistantAudioEvent = { [weak self] event in
+                    self?.consumeAssistantAudioEvent(event, from: providerID)
                 }
             }
         }
@@ -57,6 +113,10 @@ final class GlassesManager: ObservableObject {
 
     func selectProvider(_ providerID: String) {
         guard providerInstances[providerID] != nil else { return }
+        if let activeProviderID, activeProviderID != providerID {
+            errorMessage = "Disconnect the active glasses before choosing another integration."
+            return
+        }
         scanRequestID = UUID()
         selectedProviderID = providerID
         devices.removeAll()
@@ -96,6 +156,9 @@ final class GlassesManager: ObservableObject {
             for (id, otherProvider) in providerInstances where id != device.providerID {
                 if otherProvider.connectionState.isConnected {
                     await otherProvider.disconnect()
+                    if activeProviderID == id {
+                        activeProviderID = nil
+                    }
                 }
             }
             try await provider.connect(to: device)
@@ -107,7 +170,22 @@ final class GlassesManager: ObservableObject {
 
     func disconnect() async {
         errorMessage = nil
-        await providerInstances[selectedProviderID]?.disconnect()
+        let providerID = activeProviderID ?? selectedProviderID
+        await providerInstances[providerID]?.disconnect()
+        if activeProviderID == providerID {
+            activeProviderID = nil
+        }
+    }
+
+    func forgetLastDevice() async {
+        errorMessage = nil
+        let providerID = activeProviderID ?? selectedProviderID
+        guard let provider = providerInstances[providerID] as? any GlassesForgettable else { return }
+        await provider.forgetLastDevice()
+        if activeProviderID == providerID {
+            activeProviderID = nil
+        }
+        devices.removeAll { $0.providerID == providerID }
     }
 
     func reconnectLastDevice() async -> Bool {
@@ -123,6 +201,10 @@ final class GlassesManager: ObservableObject {
                 continue
             }
             do {
+                if let activeProviderID, activeProviderID != providerID {
+                    await providerInstances[activeProviderID]?.disconnect()
+                    self.activeProviderID = nil
+                }
                 selectedProviderID = providerID
                 if try await reconnectingProvider.reconnectLastDevice() {
                     return true
@@ -137,15 +219,120 @@ final class GlassesManager: ObservableObject {
     }
 
     func supports(_ capability: GlassesCapability) -> Bool {
-        selectedProvider.capabilities.contains(capability)
+        let providerID = activeProviderID ?? selectedProviderID
+        return providers
+            .first(where: { $0.id == providerID })?
+            .capabilities
+            .contains(capability) == true
+    }
+
+    func requestPhotoCapture() async -> Bool {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesPhotoCapturing else {
+            errorMessage = "Connect glasses with photo capture support first."
+            return false
+        }
+        do {
+            try await provider.requestPhotoCapture()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func refreshVolumeProfile() async {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesVolumeProviding else {
+            errorMessage = "Connect glasses with audio controls first."
+            return
+        }
+        do {
+            try await provider.refreshVolumeProfile()
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func setVolume(_ value: Int, for channel: GlassesVolumeChannel) async {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesVolumeProviding else {
+            errorMessage = "Connect glasses with audio controls first."
+            return
+        }
+        do {
+            try await provider.setVolume(value, for: channel)
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    var supportsHardwareDiagnostics: Bool {
+        let providerID = activeProviderID ?? selectedProviderID
+        return providerInstances[providerID] is any GlassesDiagnosticsProviding
+    }
+
+    func isHardwareDiagnosticsEnabled() async -> Bool? {
+        let providerID = activeProviderID ?? selectedProviderID
+        guard let provider = providerInstances[providerID] as? any GlassesDiagnosticsProviding else {
+            return nil
+        }
+        return await provider.isHardwareDiagnosticsEnabled()
+    }
+
+    func setHardwareDiagnosticsEnabled(_ enabled: Bool) async {
+        let providerID = activeProviderID ?? selectedProviderID
+        guard let provider = providerInstances[providerID] as? any GlassesDiagnosticsProviding else {
+            return
+        }
+        await provider.setHardwareDiagnosticsEnabled(enabled)
+    }
+
+    func hardwareDiagnosticsURL() async throws -> URL? {
+        let providerID = activeProviderID ?? selectedProviderID
+        guard let provider = providerInstances[providerID] as? any GlassesDiagnosticsProviding else {
+            return nil
+        }
+        return try await provider.hardwareDiagnosticsURL()
+    }
+
+    func clearHardwareDiagnostics() async throws {
+        let providerID = activeProviderID ?? selectedProviderID
+        guard let provider = providerInstances[providerID] as? any GlassesDiagnosticsProviding else {
+            return
+        }
+        try await provider.clearHardwareDiagnostics()
     }
 
     private func updateProvider(_ providerID: String, connectionState: GlassesConnectionState) {
         guard let index = providers.firstIndex(where: { $0.id == providerID }) else { return }
         providers[index].connectionState = connectionState
 
+        if connectionState.isConnected {
+            activeProviderID = providerID
+            selectedProviderID = providerID
+        } else if activeProviderID == providerID,
+                  case .disconnected = connectionState {
+            activeProviderID = nil
+        } else if activeProviderID == providerID,
+                  case .unavailable = connectionState {
+            activeProviderID = nil
+        }
+
         if !connectionState.isConnected {
-            batteryLevels.removeValue(forKey: providerID)
+            batteryStatuses.removeValue(forKey: providerID)
+            deviceInformationByProvider.removeValue(forKey: providerID)
+            volumeProfiles.removeValue(forKey: providerID)
+            if activeProviderID == nil || activeProviderID == providerID {
+                assistantInputState = .idle
+            }
         }
 
         if providerID == selectedProviderID,
@@ -154,13 +341,55 @@ final class GlassesManager: ObservableObject {
         }
     }
 
-    private func updateProvider(_ providerID: String, batteryLevel: Int?) {
+    private func updateProvider(_ providerID: String, batteryStatus: GlassesBatteryStatus?) {
         guard providerInstances[providerID] != nil else { return }
 
-        if let batteryLevel {
-            batteryLevels[providerID] = min(max(batteryLevel, 0), 100)
+        if let batteryStatus {
+            batteryStatuses[providerID] = GlassesBatteryStatus(
+                level: min(max(batteryStatus.level, 0), 100),
+                isCharging: batteryStatus.isCharging
+            )
         } else {
-            batteryLevels.removeValue(forKey: providerID)
+            batteryStatuses.removeValue(forKey: providerID)
         }
+    }
+
+    private func updateProvider(
+        _ providerID: String,
+        deviceInformation: GlassesDeviceInformation?
+    ) {
+        guard providerInstances[providerID] != nil else { return }
+
+        if let deviceInformation {
+            deviceInformationByProvider[providerID] = deviceInformation
+        } else {
+            deviceInformationByProvider.removeValue(forKey: providerID)
+        }
+    }
+
+    private func updateProvider(_ providerID: String, volumeProfile: GlassesVolumeProfile?) {
+        guard providerInstances[providerID] != nil else { return }
+
+        if let volumeProfile {
+            volumeProfiles[providerID] = volumeProfile
+        } else {
+            volumeProfiles.removeValue(forKey: providerID)
+        }
+    }
+
+    private func consumeAssistantAudioEvent(
+        _ event: GlassesAssistantAudioEvent,
+        from providerID: String
+    ) {
+        guard providerID == activeProviderID else { return }
+        switch event {
+        case .started:
+            assistantInputState = .listening
+        case .pcmBuffer:
+            guard assistantInputState == .listening else { return }
+        case .ended:
+            assistantInputState = .idle
+        }
+        onAssistantAudioEvent?(event)
     }
 }

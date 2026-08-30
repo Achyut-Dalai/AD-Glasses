@@ -43,6 +43,16 @@ protocol SpeechTranscribing: AnyObject {
     func resetTranscript()
 }
 
+/// Optional input seam for providers that already deliver decoded PCM, such as HeyCyan's BLE
+/// Assistant stream. It keeps vendor packets out of Apple speech implementations and avoids
+/// opening the iPhone microphone for audio that is already arriving from the glasses.
+@MainActor
+protocol ExternalAudioSpeechTranscribing: SpeechTranscribing {
+    func startExternalAudio() async throws
+    func appendExternalAudio(_ buffer: AVAudioPCMBuffer)
+    func finishExternalAudio() async
+}
+
 enum SpeechPermissions {
     static func requestSpeechRecognition() async -> Bool {
         await withCheckedContinuation { continuation in
@@ -64,6 +74,13 @@ enum SpeechPermissions {
         guard await requestMicrophone() else {
             throw SpeechTranscriptionError.microphonePermissionDenied
         }
+        guard await requestSpeechRecognition() else {
+            throw SpeechTranscriptionError.speechPermissionDenied
+        }
+    }
+
+
+    static func requestRecognition() async throws {
         guard await requestSpeechRecognition() else {
             throw SpeechTranscriptionError.speechPermissionDenied
         }

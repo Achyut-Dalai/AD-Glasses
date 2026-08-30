@@ -2,7 +2,7 @@
 
 Status: production-app evidence
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 This document records byte-level protocol details that have been reconstructed from the user-supplied official HeyCyan Android production package `1.0.142_20260807`.
 
@@ -30,7 +30,16 @@ CCCD
 
 The official app enables notifications on the primary service + notify/read characteristic before normal protocol use.
 
-A second serial-port-style UUID family exists in the artifact but its role is not yet attributed sufficiently to use in AD Glasses.
+The physical capture proves normal production traffic uses the serial/large-data family:
+
+```text
+service  de5bf728-d711-4e47-af26-65e3012a5dc7
+notify   de5bf729-d711-4e47-af26-65e3012a5dc7
+write    de5bf72a-d711-4e47-af26-65e3012a5dc7
+```
+
+The iOS transport discovers and subscribes to both verified service families. Application `0xBC`
+frames observed in the hardware capture travel on the large-data channel.
 
 ---
 
@@ -158,7 +167,8 @@ crc     = 0xB001
 frame   = BC 42 02 00 01 B0 00 00
 ```
 
-This byte sequence is a static-analysis reconstruction. Before relying on it as a physical-device test vector, verify it against an actual BLE capture or a controlled request to the glasses.
+This request family and its corresponding physical battery traffic are now validated in the
+hardware capture.
 
 ### Device-info request
 
@@ -197,13 +207,12 @@ CRC algorithm
 empty-payload special case
 ```
 
-But the application should still wait before exposing arbitrary higher-level commands until these are verified:
+The native implementation may now use the verified frame and command subset, while still holding
+arbitrary higher-level commands until these are verified:
 
 ```text
-0x41 payload/subcommand meanings
-response frame matching
-fragmentation / MTU behavior
-notification reassembly
+unmapped 0x41 payload/subcommand meanings
+per-command response fields beyond the work-type acknowledgement
 busy-state rules
 request timeout rules
 error-code recovery
@@ -213,10 +222,10 @@ error-code recovery
 
 ## 7. Next byte-level targets
 
-1. Map the `0x41` payload structure and all subcommands used by the production app.
-2. Reconstruct incoming notification framing and response-family dispatch.
-3. Determine BLE MTU/chunking behavior and whether large frames are segmented.
+1. Map the remaining `0x41` subcommands used by the production app.
+2. Map remaining `0x73` device-notification subtypes without assigning guessed meanings.
+3. Validate notification reassembly/corruption recovery on the physical iPhone.
 4. Map `GlassModelControlResponse` fields and error `255` to exact offsets/states.
 5. Reconstruct `WifiInfoReq` payload for `0xFC`.
-6. Trace glasses voice/audio packet family and transport.
-7. Validate representative frames against physical BLE traffic before shipping the raw Swift implementation.
+6. Validate the implemented native Opus decoder and Apple Speech input with live physical-iPhone audio.
+7. Validate the AP-mode network response and cleanup sequence on the physical iPhone.
