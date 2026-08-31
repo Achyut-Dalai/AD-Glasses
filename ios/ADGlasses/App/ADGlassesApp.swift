@@ -54,7 +54,7 @@ struct ADGlassesApp: App {
         ])
         appModel.attach(to: glassesManager)
         let phoneVoiceActivation = PhoneVoiceActivationController(
-            service: PorcupinePhoneWakeWordService(),
+            service: LiveKitPhoneWakeWordService(),
             glasses: glassesManager,
             app: appModel
         )
