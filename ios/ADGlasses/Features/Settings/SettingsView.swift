@@ -191,8 +191,7 @@ struct SettingsView: View {
 
 private struct PhoneVoiceActivationSettingsView: View {
     @ObservedObject var controller: PhoneVoiceActivationController
-    #if DEBUG
-    @State private var phrase = "Hey A D"
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     @State private var importsModel = false
     #endif
 
@@ -207,6 +206,13 @@ private struct PhoneVoiceActivationSettingsView: View {
                     value: controller.isListening ? "On" : "Off"
                 )
                 LabeledContent("Status", value: controller.configurationState.label)
+
+                if controller.configurationState == .missingModel {
+                    Text("Install the Hey A D wake-word model below. Voice activation becomes available as soon as the classifier is installed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text("Starts while AD Glasses is connected and the app is open, then stays available when you switch apps or lock your iPhone. It pauses for transcription and spoken responses; AI and Apple Speech do not start until the wake phrase is detected. It stops after a disconnect, when disabled, or if you force-quit the app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -218,15 +224,12 @@ private struct PhoneVoiceActivationSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                #if DEBUG
-                TextField("Wake phrase label", text: $phrase)
-                    .textInputAutocapitalization(.words)
-
-                Button("Import development .onnx model") {
+                #if DEBUG || AD_PERSONAL_TEAM_BUILD
+                Button("Install Hey A D .onnx model") {
                     importsModel = true
                 }
 
-                Text("Development override only. Release builds use the evaluated classifier bundled with AD Glasses.")
+                Text("Personal builds can install the local classifier directly. Once an evaluated Hey A D model is bundled with AD Glasses, this manual installation step is no longer needed.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 #endif
@@ -234,8 +237,7 @@ private struct PhoneVoiceActivationSettingsView: View {
         }
         .navigationTitle("Phone voice activation")
         .navigationBarTitleDisplayMode(.inline)
-        #if DEBUG
-        .onAppear { phrase = controller.phrase }
+        #if DEBUG || AD_PERSONAL_TEAM_BUILD
         .fileImporter(
             isPresented: $importsModel,
             allowedContentTypes: [.data],
@@ -244,7 +246,7 @@ private struct PhoneVoiceActivationSettingsView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    controller.importModel(from: url, phrase: phrase)
+                    controller.importModel(from: url, phrase: "Hey A D")
                 }
             case .failure(let error):
                 controller.errorMessage = error.localizedDescription
