@@ -347,6 +347,10 @@ final class HeyCyanMediaTransferCoordinator {
 
     private func waitForManualNetworkJoin(operationID: UUID) async throws {
         try ensureOperationIsActive(operationID)
+        if reportedDeviceIPv4Address != nil {
+            return
+        }
+
         let waitID = UUID()
         manualJoinWaitID = waitID
 
@@ -354,6 +358,13 @@ final class HeyCyanMediaTransferCoordinator {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 guard activeOperationID == operationID else {
                     continuation.resume(throwing: CancellationError())
+                    return
+                }
+                // The BLE address event may arrive between opening Settings and installing this
+                // continuation. Re-check here so that event cannot strand the transfer waiting.
+                if reportedDeviceIPv4Address != nil {
+                    manualJoinWaitID = nil
+                    continuation.resume()
                     return
                 }
                 manualJoinContinuation = continuation
