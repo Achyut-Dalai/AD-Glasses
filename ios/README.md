@@ -28,6 +28,14 @@ The main voice action is placed with SwiftUI's safe-area layout so it stays abov
 
 Both implementations currently consume the iPhone microphone. A verified HeyCyan audio transport can later feed the same speech abstraction instead of creating a second transcription stack.
 
+## Phone wake word
+
+Phone voice activation uses the open-source `LiveKitWakeWord` Swift package. Wake-word inference is local: the package runs ONNX models with ONNX Runtime and uses the CoreML execution provider by default. AD Glasses does not require a wake-word API key or hosted wake-word account.
+
+The app stores one imported LiveKit/openWakeWord-compatible `.onnx` classifier in Application Support. Custom classifier training happens outside the iOS app with LiveKit's open-source training/export workflow; the exported classifier is then imported from Settings.
+
+AD Glasses owns microphone/session continuity around the detector so an already-running foreground wake-word session can hand off cleanly to Apple Speech when the phone is locked or the user has switched apps.
+
 ## Glasses architecture
 
 ```text
@@ -57,13 +65,15 @@ See `MIGRATION_PLAN.md` for the Android product audit, architectural findings, a
 
 ## Installation and signing
 
-The project is kept as an ordinary iOS application target with no third-party package dependency. The repository does not ship a signed IPA or signing identity. Keep bundle/signing settings user-controlled so a development build can later be signed and installed with the user's preferred tooling, including SideStore-oriented workflows, without changing the app architecture.
+The repository does not ship a signed IPA or signing identity. Keep bundle/signing settings user-controlled so a development build can be signed and installed with a Personal Team or the user's preferred tooling, including SideStore-oriented workflows, without changing the app architecture.
+
+The iOS target uses Swift Package Manager for LiveKit WakeWord and its ONNX Runtime dependency. These are build dependencies only; phone wake-word detection remains local and does not require a paid service account.
 
 Avoid adding App Store-only assumptions to core app features.
 
 ## Build
 
-Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17.
+Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17. Xcode resolves the Swift packages on first open.
 
 When the app reaches a validation checkpoint, the command-line build is:
 
