@@ -50,6 +50,14 @@ protocol GlassesVolumeProviding: AnyObject {
 }
 
 @MainActor
+protocol GlassesVoiceWakeProviding: AnyObject {
+    var glassesVoiceWakeEnabled: Bool { get }
+    var onGlassesVoiceWakeChange: ((Bool) -> Void)? { get set }
+    func refreshGlassesVoiceWake() async throws
+    func setGlassesVoiceWakeEnabled(_ enabled: Bool) async throws
+}
+
+@MainActor
 protocol GlassesAssistantAudioProviding: AnyObject {
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)? { get set }
 }
@@ -73,9 +81,31 @@ protocol GlassesPhotoCapturing: AnyObject {
 }
 
 @MainActor
+protocol GlassesVisualCapturing: AnyObject {
+    var onVisualCapture: ((GlassesVisualCapture) -> Void)? { get set }
+
+    /// Requests the provider's verified visual-assistance capture and returns the bounded JPEG
+    /// delivered by that provider. This is distinct from taking a full-resolution Library photo.
+    func requestVisualCapture() async throws -> GlassesVisualCapture
+}
+
+@MainActor
+protocol GlassesMediaTransferring: AnyObject {
+    var mediaTransferState: GlassesMediaTransferState { get }
+    var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)? { get set }
+
+    func prepareMediaTransfer() async throws -> [GlassesMediaItem]
+    func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws
+    func finishMediaTransfer() async throws
+    func cancelMediaTransfer()
+}
+
+@MainActor
 protocol GlassesDiagnosticsProviding: AnyObject {
     func isHardwareDiagnosticsEnabled() async -> Bool
     func setHardwareDiagnosticsEnabled(_ enabled: Bool) async
     func hardwareDiagnosticsURL() async throws -> URL
     func clearHardwareDiagnostics() async throws
+    /// A diagnostics-only advertisement scan. Implementations must never connect or write.
+    func runPassiveDiscoveryDiagnostics(duration: Duration) async throws
 }

@@ -117,7 +117,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         inputSource = nil
         snapshot.isRunning = false
         if wasUsingPhoneMicrophone {
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
         }
     }
 

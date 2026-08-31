@@ -17,6 +17,7 @@ enum AssistantRoute: Equatable, Sendable {
     case clarify
     case conversation
     case visualQuestion
+    case capturePhoto
 }
 
 /// Structural routing for the Assistant entry point.
@@ -27,10 +28,28 @@ enum AssistantRoute: Equatable, Sendable {
 /// iOS app does not implement.
 struct AssistantRequestRouter: Sendable {
     func route(_ request: AssistantRequest) -> AssistantRoute {
-        guard !request.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let text = request.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
             return .clarify
         }
-        return request.hasImage ? .visualQuestion : .conversation
+        if request.hasImage { return .visualQuestion }
+        if Self.isPhotoCaptureCommand(text) { return .capturePhoto }
+        return .conversation
+    }
+
+    private static func isPhotoCaptureCommand(_ text: String) -> Bool {
+        let normalized = text
+            .lowercased()
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "’", with: "")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+        let words = Set(normalized)
+        guard words.isDisjoint(with: ["not", "dont", "never"]) else { return false }
+        guard !words.contains("how") else { return false }
+        let hasAction = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
+        let hasSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
+        return hasAction && hasSubject
     }
 }
 

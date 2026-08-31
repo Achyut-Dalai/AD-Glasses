@@ -7,6 +7,7 @@ struct ADGlassesApp: App {
     @StateObject private var appModel: AppModel
     @StateObject private var libraryModel: LibraryModel
     @StateObject private var glassesManager: GlassesManager
+    @StateObject private var phoneVoiceActivation: PhoneVoiceActivationController
 
     init() {
         let appModel = AppModel()
@@ -15,10 +16,16 @@ struct ADGlassesApp: App {
             MetaGlassesProvider()
         ])
         appModel.attach(to: glassesManager)
+        let phoneVoiceActivation = PhoneVoiceActivationController(
+            service: PorcupinePhoneWakeWordService(),
+            glasses: glassesManager,
+            app: appModel
+        )
 
         _appModel = StateObject(wrappedValue: appModel)
         _libraryModel = StateObject(wrappedValue: LibraryModel())
         _glassesManager = StateObject(wrappedValue: glassesManager)
+        _phoneVoiceActivation = StateObject(wrappedValue: phoneVoiceActivation)
     }
 
     var body: some Scene {
@@ -38,11 +45,14 @@ struct ADGlassesApp: App {
             .environmentObject(appModel)
             .environmentObject(glassesManager)
             .environmentObject(libraryModel)
+            .environmentObject(phoneVoiceActivation)
             .task {
                 appModel.setApplicationActive(scenePhase == .active)
+                phoneVoiceActivation.setApplicationActive(scenePhase == .active)
             }
             .onChange(of: scenePhase) { _, phase in
                 appModel.setApplicationActive(phase == .active)
+                phoneVoiceActivation.setApplicationActive(phase == .active)
             }
     }
 }

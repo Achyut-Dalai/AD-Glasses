@@ -48,6 +48,9 @@
 		B00000000000000000000027 /* HeyCyanResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* HeyCyanResponses.swift */; };
 		B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */; };
 		B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* HeyCyanOpusDecoder.swift */; };
+		B0000000000000000000002A /* PhoneVoiceActivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002D /* PhoneVoiceActivation.swift */; };
+		B0000000000000000000002B /* PorcupinePhoneWakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002E /* PorcupinePhoneWakeWordService.swift */; };
+		B0000000000000000000002C /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = D20000000000000000000002 /* Porcupine */; };
 		B10000000000000000000001 /* HeyCyanProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* HeyCyanProtocolTests.swift */; };
 		B10000000000000000000002 /* GlassesManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* GlassesManagerTests.swift */; };
 		B10000000000000000000003 /* HeyCyanSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HeyCyanSessionTests.swift */; };
@@ -113,6 +116,8 @@
 		A0000000000000000000002A /* HeyCyanResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanResponses.swift; sourceTree = "<group>"; };
 		A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanThumbnailTransfer.swift; sourceTree = "<group>"; };
 		A0000000000000000000002C /* HeyCyanOpusDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanOpusDecoder.swift; sourceTree = "<group>"; };
+		A0000000000000000000002D /* PhoneVoiceActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneVoiceActivation.swift; sourceTree = "<group>"; };
+		A0000000000000000000002E /* PorcupinePhoneWakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PorcupinePhoneWakeWordService.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* HeyCyanProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanProtocolTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* GlassesManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesManagerTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* ADGlassesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADGlassesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -129,6 +134,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0000000000000000000002C /* Porcupine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +199,7 @@
 				C00000000000000000000013 /* Translation */,
 				C00000000000000000000014 /* Lens */,
 				C00000000000000000000017 /* Library */,
+				C00000000000000000000019 /* VoiceActivation */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -219,57 +226,12 @@
 			path = Glasses;
 			sourceTree = "<group>";
 		};
-		C0000000000000000000000E /* Chat */ = {
-			isa = PBXGroup;
-			children = (
-				A0000000000000000000000F /* ChatModels.swift */,
-				A00000000000000000000013 /* ConversationStore.swift */,
-			);
-			path = Chat;
-			sourceTree = "<group>";
-		};
-		C00000000000000000000011 /* AI */ = {
-			isa = PBXGroup;
-			children = (
-				A00000000000000000000012 /* CloudAI.swift */,
-				A00000000000000000000024 /* AssistantRouting.swift */,
-			);
-			path = AI;
-			sourceTree = "<group>";
-		};
-		C00000000000000000000013 /* Translation */ = {
-			isa = PBXGroup;
-			children = (
-				A0000000000000000000001F /* TranslationModels.swift */,
-				A00000000000000000000020 /* NativeTranslationController.swift */,
-				A00000000000000000000021 /* NativeTranslationHost.swift */,
-			);
-			path = Translation;
-			sourceTree = "<group>";
-		};
-		C00000000000000000000014 /* Lens */ = {
-			isa = PBXGroup;
-			children = (
-				A00000000000000000000022 /* LensImageProcessor.swift */,
-			);
-			path = Lens;
-			sourceTree = "<group>";
-		};
-		C00000000000000000000017 /* Library */ = {
-			isa = PBXGroup;
-			children = (
-				A00000000000000000000026 /* LibraryModels.swift */,
-				A00000000000000000000027 /* LibraryStore.swift */,
-				A00000000000000000000028 /* LibraryModel.swift */,
-			);
-			path = Library;
-			sourceTree = "<group>";
-		};
 		C00000000000000000000008 /* Integrations */ = {
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000009 /* HeyCyan */,
 				C0000000000000000000000A /* Meta */,
+				C0000000000000000000001A /* Porcupine */,
 			);
 			path = Integrations;
 			sourceTree = "<group>";
@@ -322,6 +284,23 @@
 			path = Home;
 			sourceTree = "<group>";
 		};
+		C0000000000000000000000D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000D /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000000E /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000F /* ChatModels.swift */,
+				A00000000000000000000013 /* ConversationStore.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
 		C0000000000000000000000F /* Assistant */ = {
 			isa = PBXGroup;
 			children = (
@@ -338,12 +317,39 @@
 			path = Welcome;
 			sourceTree = "<group>";
 		};
+		C00000000000000000000011 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000012 /* CloudAI.swift */,
+				A00000000000000000000024 /* AssistantRouting.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
 		C00000000000000000000012 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000014 /* SettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000013 /* Translation */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000001F /* TranslationModels.swift */,
+				A00000000000000000000020 /* NativeTranslationController.swift */,
+				A00000000000000000000021 /* NativeTranslationHost.swift */,
+			);
+			path = Translation;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000014 /* Lens */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000022 /* LensImageProcessor.swift */,
+			);
+			path = Lens;
 			sourceTree = "<group>";
 		};
 		C00000000000000000000015 /* Lens */ = {
@@ -362,6 +368,16 @@
 			path = Translation;
 			sourceTree = "<group>";
 		};
+		C00000000000000000000017 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000026 /* LibraryModels.swift */,
+				A00000000000000000000027 /* LibraryStore.swift */,
+				A00000000000000000000028 /* LibraryModel.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
 		C00000000000000000000018 /* Soundbites */ = {
 			isa = PBXGroup;
 			children = (
@@ -370,12 +386,20 @@
 			path = Soundbites;
 			sourceTree = "<group>";
 		};
-		C0000000000000000000000D /* Resources */ = {
+		C00000000000000000000019 /* VoiceActivation */ = {
 			isa = PBXGroup;
 			children = (
-				A0000000000000000000000D /* Assets.xcassets */,
+				A0000000000000000000002D /* PhoneVoiceActivation.swift */,
 			);
-			path = Resources;
+			path = VoiceActivation;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000001A /* Porcupine */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000002E /* PorcupinePhoneWakeWordService.swift */,
+			);
+			path = Porcupine;
 			sourceTree = "<group>";
 		};
 		C10000000000000000000001 /* ADGlassesTests */ = {
@@ -409,6 +433,9 @@
 			dependencies = (
 			);
 			name = ADGlasses;
+			packageProductDependencies = (
+				D20000000000000000000002 /* Porcupine */,
+			);
 			productName = ADGlasses;
 			productReference = A0000000000000000000000E /* ADGlasses.app */;
 			productType = "com.apple.product-type.application";
@@ -459,6 +486,9 @@
 				Base,
 			);
 			mainGroup = C00000000000000000000001;
+			packageReferences = (
+				D20000000000000000000001 /* XCRemoteSwiftPackageReference "porcupine" */,
+			);
 			productRefGroup = C00000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -532,6 +562,8 @@
 				B00000000000000000000027 /* HeyCyanResponses.swift in Sources */,
 				B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */,
 				B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */,
+				B0000000000000000000002A /* PhoneVoiceActivation.swift in Sources */,
+				B0000000000000000000002B /* PorcupinePhoneWakeWordService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -600,17 +632,23 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = ADGlasses/ADGlasses.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ADGlasses/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG AD_PERSONAL_TEAM_BUILD";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -624,9 +662,15 @@
 				CODE_SIGN_ENTITLEMENTS = ADGlasses/ADGlasses.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ADGlasses/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -707,6 +751,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D20000000000000000000001 /* XCRemoteSwiftPackageReference "porcupine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/porcupine.git";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D20000000000000000000002 /* Porcupine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D20000000000000000000001 /* XCRemoteSwiftPackageReference "porcupine" */;
+			productName = Porcupine;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D00000000000000000000002 /* Project object */;
 }

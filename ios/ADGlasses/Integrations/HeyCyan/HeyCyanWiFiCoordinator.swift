@@ -87,10 +87,21 @@ final class HeyCyanWiFiCoordinator {
     }
 
     private let manager: NEHotspotConfigurationManager
+    private let defaults: UserDefaults
+    private let temporarySSIDKey = "heycyan.temporaryMediaSSID.v1"
     private var activeSSID: String?
 
-    init(manager: NEHotspotConfigurationManager = .shared) {
+    init(
+        manager: NEHotspotConfigurationManager = .shared,
+        defaults: UserDefaults = .standard
+    ) {
         self.manager = manager
+        self.defaults = defaults
+
+        if let staleSSID = defaults.string(forKey: temporarySSIDKey) {
+            manager.removeConfiguration(forSSID: staleSSID)
+            defaults.removeObject(forKey: temporarySSIDKey)
+        }
     }
 
     func join(_ accessPoint: HeyCyanAccessPoint) async throws {
@@ -100,11 +111,15 @@ final class HeyCyanWiFiCoordinator {
             passphrase: accessPoint.passphrase,
             isWEP: false
         )
-        configuration.joinOnce = true
+        // A join-once configuration is removed by iOS when the device sleeps or after the app
+        // remains backgrounded. This temporary persistent association is explicitly removed by
+        // `leave()`, with stale crash cleanup performed at the next coordinator initialization.
+        configuration.joinOnce = false
 
         do {
             try await apply(configuration)
             activeSSID = accessPoint.ssid
+            defaults.set(accessPoint.ssid, forKey: temporarySSIDKey)
             state = .joined(
                 ssid: accessPoint.ssid,
                 deviceIPv4Address: accessPoint.deviceIPv4Address
@@ -119,6 +134,7 @@ final class HeyCyanWiFiCoordinator {
         if let activeSSID {
             manager.removeConfiguration(forSSID: activeSSID)
         }
+        defaults.removeObject(forKey: temporarySSIDKey)
         self.activeSSID = nil
         state = .idle
     }

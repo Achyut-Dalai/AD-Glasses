@@ -9,12 +9,17 @@ final class GlassesManager: ObservableObject {
     @Published private(set) var activeProviderID: String?
     @Published var errorMessage: String?
     @Published private(set) var assistantInputState: GlassesAssistantInputState = .idle
+    @Published private(set) var isPassiveDiagnosticsScanRunning = false
+    @Published private(set) var mediaTransferState: GlassesMediaTransferState = .idle
+    @Published private(set) var latestVisualCapture: GlassesVisualCapture?
 
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
+    var onVisualCapture: ((GlassesVisualCapture) -> Void)?
 
     @Published private var batteryStatuses: [String: GlassesBatteryStatus] = [:]
     @Published private var deviceInformationByProvider: [String: GlassesDeviceInformation] = [:]
     @Published private var volumeProfiles: [String: GlassesVolumeProfile] = [:]
+    @Published private var voiceWakeStates: [String: Bool] = [:]
 
     private let providerInstances: [String: any GlassesProvider]
     private var scanRequestID = UUID()
@@ -53,6 +58,15 @@ final class GlassesManager: ObservableObject {
         volumeProfiles[activeProviderID ?? selectedProviderID]
     }
 
+    var supportsGlassesVoiceWake: Bool {
+        let providerID = activeProviderID ?? selectedProviderID
+        return providerInstances[providerID] is any GlassesVoiceWakeProviding
+    }
+
+    var glassesVoiceWakeEnabled: Bool {
+        voiceWakeStates[activeProviderID ?? selectedProviderID] ?? false
+    }
+
     var deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] {
         let providerID = activeProviderID ?? selectedProviderID
         return (providerInstances[providerID] as? any GlassesDeviceManagementPlanning)?
@@ -67,9 +81,9 @@ final class GlassesManager: ObservableObject {
         self.providers = providers.map {
             GlassesProviderSummary(
                 id: $0.id,
-                displayName: $0.displayName,
+                displayName: Self.consumerProviderName(id: $0.id, technicalName: $0.displayName),
                 capabilities: $0.capabilities,
-                connectionState: $0.connectionState
+                connectionState: Self.consumerConnectionState($0.connectionState, providerID: $0.id)
             )
         }
         selectedProviderID = providers[0].id
@@ -108,6 +122,29 @@ final class GlassesManager: ObservableObject {
                     self?.consumeAssistantAudioEvent(event, from: providerID)
                 }
             }
+
+            if let mediaProvider = provider as? any GlassesMediaTransferring {
+                mediaProvider.onMediaTransferStateChange = { [weak self] state in
+                    guard self?.activeProviderID == providerID else { return }
+                    self?.mediaTransferState = state
+                }
+            }
+
+            if let visualProvider = provider as? any GlassesVisualCapturing {
+                visualProvider.onVisualCapture = { [weak self] capture in
+                    guard self?.activeProviderID == providerID else { return }
+                    self?.latestVisualCapture = capture
+                    self?.onVisualCapture?(capture)
+                }
+            }
+
+
+            if let wakeProvider = provider as? any GlassesVoiceWakeProviding {
+                voiceWakeStates[providerID] = wakeProvider.glassesVoiceWakeEnabled
+                wakeProvider.onGlassesVoiceWakeChange = { [weak self] enabled in
+                    self?.voiceWakeStates[providerID] = enabled
+                }
+            }
         }
     }
 
@@ -135,7 +172,7 @@ final class GlassesManager: ObservableObject {
         do {
             let result = try await provider.scan()
             guard scanRequestID == requestID, selectedProviderID == providerID else { return }
-            devices = result
+            devices = result.map(Self.consumerDevice)
         } catch {
             if error is CancellationError { return }
             guard scanRequestID == requestID, selectedProviderID == providerID else { return }
@@ -242,6 +279,79 @@ final class GlassesManager: ObservableObject {
         }
     }
 
+    func requestVisualCapture() async -> GlassesVisualCapture? {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesVisualCapturing else {
+            errorMessage = "Connect glasses with visual capture support first."
+            return nil
+        }
+        do {
+            return try await provider.requestVisualCapture()
+        } catch is CancellationError {
+            return nil
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    var supportsMediaTransfer: Bool {
+        guard let activeProviderID,
+              supports(.mediaTransfer) else { return false }
+        return providerInstances[activeProviderID] is any GlassesMediaTransferring
+    }
+
+    func prepareMediaTransfer() async throws -> [GlassesMediaItem] {
+        errorMessage = nil
+        guard let activeProviderID,
+              supports(.mediaTransfer),
+              let provider = providerInstances[activeProviderID] as? any GlassesMediaTransferring else {
+            throw GlassesProviderError.notConfigured(
+                "Wi-Fi media sync is unavailable in this Personal Team development build."
+            )
+        }
+        do {
+            return try await provider.prepareMediaTransfer()
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {
+        guard let activeProviderID,
+              item.providerID == activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesMediaTransferring else {
+            throw GlassesProviderError.notConfigured("The media item does not belong to the connected glasses.")
+        }
+        do {
+            try await provider.downloadMediaItem(item, to: destinationURL)
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    func finishMediaTransfer() async {
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesMediaTransferring else {
+            mediaTransferState = .idle
+            return
+        }
+        do {
+            try await provider.finishMediaTransfer()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func cancelMediaTransfer() {
+        let providerID = activeProviderID ?? selectedProviderID
+        (providerInstances[providerID] as? any GlassesMediaTransferring)?.cancelMediaTransfer()
+        mediaTransferState = .idle
+    }
+
     func refreshVolumeProfile() async {
         errorMessage = nil
         guard let activeProviderID,
@@ -311,8 +421,47 @@ final class GlassesManager: ObservableObject {
         try await provider.clearHardwareDiagnostics()
     }
 
+    func runPassiveDiscoveryDiagnostics() async {
+        let providerID = activeProviderID ?? selectedProviderID
+        guard !isPassiveDiagnosticsScanRunning,
+              let provider = providerInstances[providerID] as? any GlassesDiagnosticsProviding else {
+            return
+        }
+        errorMessage = nil
+        isPassiveDiagnosticsScanRunning = true
+        defer { isPassiveDiagnosticsScanRunning = false }
+        do {
+            try await provider.runPassiveDiscoveryDiagnostics(duration: .seconds(60))
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func setGlassesVoiceWakeEnabled(_ enabled: Bool) async {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesVoiceWakeProviding else {
+            errorMessage = "Connect AD Glasses before changing glasses voice wake."
+            return
+        }
+        do {
+            try await provider.setGlassesVoiceWakeEnabled(enabled)
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func technicalProviderName(for providerID: String) -> String {
+        providerInstances[providerID]?.displayName ?? providerID
+    }
+
     private func updateProvider(_ providerID: String, connectionState: GlassesConnectionState) {
         guard let index = providers.firstIndex(where: { $0.id == providerID }) else { return }
+        let connectionState = Self.consumerConnectionState(connectionState, providerID: providerID)
         providers[index].connectionState = connectionState
 
         if connectionState.isConnected {
@@ -330,6 +479,7 @@ final class GlassesManager: ObservableObject {
             batteryStatuses.removeValue(forKey: providerID)
             deviceInformationByProvider.removeValue(forKey: providerID)
             volumeProfiles.removeValue(forKey: providerID)
+            mediaTransferState = .idle
             if activeProviderID == nil || activeProviderID == providerID {
                 assistantInputState = .idle
             }
@@ -338,6 +488,36 @@ final class GlassesManager: ObservableObject {
         if providerID == selectedProviderID,
            case .unavailable = connectionState {
             devices.removeAll()
+        }
+    }
+
+
+    private static func consumerProviderName(id: String, technicalName: String) -> String {
+        id == "heycyan" ? "AD Glasses" : technicalName
+    }
+
+    private static func consumerDevice(_ device: GlassesDevice) -> GlassesDevice {
+        guard device.providerID == "heycyan" else { return device }
+        return GlassesDevice(
+            id: device.id,
+            name: "AD Glasses",
+            providerID: device.providerID,
+            signalStrength: device.signalStrength
+        )
+    }
+
+    private static func consumerConnectionState(
+        _ state: GlassesConnectionState,
+        providerID: String
+    ) -> GlassesConnectionState {
+        guard providerID == "heycyan" else { return state }
+        switch state {
+        case .connecting:
+            return .connecting("AD Glasses")
+        case .connected:
+            return .connected("AD Glasses")
+        default:
+            return state
         }
     }
 

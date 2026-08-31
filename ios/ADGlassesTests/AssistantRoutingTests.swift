@@ -18,6 +18,18 @@ final class AssistantRoutingTests: XCTestCase {
             router.route(AssistantRequest(text: "   ", source: .phoneVoice, hasImage: false)),
             .clarify
         )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Click a photo", source: .glassesVoice, hasImage: false)),
+            .capturePhoto
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "How do I take a photo?", source: .chat, hasImage: false)),
+            .conversation
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Don't take a picture", source: .glassesVoice, hasImage: false)),
+            .conversation
+        )
     }
 
     func testConversationRequestBudgetKeepsNewestMessages() {
@@ -53,6 +65,32 @@ final class AssistantRoutingTests: XCTestCase {
 
 @MainActor
 final class GlassesAssistantPipelineTests: XCTestCase {
+    func testSpokenPhotoCommandExecutesLocalGlassesActionWithoutCloudProfile() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("conversations.json")
+        let app = AppModel(
+            transcriber: FakeExternalAudioTranscriber(finalTranscript: ""),
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults),
+            conversationStore: ConversationStore(fileURL: storeURL)
+        )
+        app.attach(to: manager)
+        app.chatDraft = "Click a photo"
+
+        app.sendChatMessage(source: .glassesVoice, speakResponse: false)
+        for _ in 0 ..< 200 where app.isGenerating {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(provider.photoRequestCount, 1)
+        XCTAssertEqual(app.conversation.map(\.role), [.user, .assistant])
+        XCTAssertEqual(app.conversation.last?.text, "Photo taken. It is saved on AD Glasses and will appear after your next Library sync.")
+    }
+
     func testDecodedProviderAudioBecomesOneGlassesVoiceConversationTurn() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let transcriber = FakeExternalAudioTranscriber(finalTranscript: "What can I see?")
@@ -92,6 +130,57 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(app.conversation.last?.role, .user)
         XCTAssertEqual(app.conversation.last?.text, "What can I see?")
     }
+
+    func testPhoneWakeListeningContinuesWhenAppMovesToBackground() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        defaults.set(true, forKey: "phoneVoiceActivation.enabled.v1")
+        let service = FakePhoneWakeWordService()
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: FakeExternalAudioTranscriber(finalTranscript: ""),
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        let controller = PhoneVoiceActivationController(
+            service: service,
+            glasses: manager,
+            app: app,
+            defaults: defaults
+        )
+
+        controller.setApplicationActive(true)
+        XCTAssertTrue(controller.isListening)
+        XCTAssertEqual(service.startCount, 1)
+
+        controller.setApplicationActive(false)
+        XCTAssertTrue(controller.isListening)
+        XCTAssertEqual(service.stopCount, 0)
+
+        controller.isEnabled = false
+        XCTAssertFalse(controller.isListening)
+        XCTAssertEqual(service.stopCount, 1)
+    }
+}
+
+@MainActor
+private final class FakePhoneWakeWordService: PhoneWakeWordDetecting {
+    let phrase = "Hey AD"
+    let configurationState = PhoneWakeWordConfigurationState.ready
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func start(onDetection: @escaping @MainActor () -> Void) throws {
+        startCount += 1
+    }
+
+    func stop() {
+        stopCount += 1
+    }
+
+    func saveAccessKey(_ value: String) throws {}
+    func importModel(from sourceURL: URL, phrase: String) throws {}
+    func trainModel(phrase: String, language: String) async throws {}
 }
 
 @MainActor
@@ -137,17 +226,23 @@ private final class FakeExternalAudioTranscriber: ExternalAudioSpeechTranscribin
 }
 
 @MainActor
-private final class FakeAssistantAudioProvider: GlassesProvider, GlassesAssistantAudioProviding {
+private final class FakeAssistantAudioProvider:
+    GlassesProvider,
+    GlassesAssistantAudioProviding,
+    GlassesPhotoCapturing
+{
     let id = "assistant-audio"
     let displayName = "Assistant Audio"
-    let capabilities: Set<GlassesCapability> = [.bluetoothConnection]
+    let capabilities: Set<GlassesCapability> = [.bluetoothConnection, .photoCapture]
     var connectionState: GlassesConnectionState = .connected("Test glasses")
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
+    private(set) var photoRequestCount = 0
 
     func scan() async throws -> [GlassesDevice] { [] }
     func connect(to device: GlassesDevice) async throws {}
     func disconnect() async { connectionState = .disconnected }
+    func requestPhotoCapture() async throws { photoRequestCount += 1 }
 
     func emit(_ event: GlassesAssistantAudioEvent) {
         onAssistantAudioEvent?(event)

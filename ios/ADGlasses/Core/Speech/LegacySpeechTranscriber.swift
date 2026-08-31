@@ -90,7 +90,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         clearRecognition()
         inputSource = nil
         snapshot.isRunning = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
     }
 
     func startExternalAudio() async throws {

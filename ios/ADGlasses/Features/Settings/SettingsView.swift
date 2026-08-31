@@ -1,10 +1,12 @@
 import AVFoundation
 import Speech
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
+    @EnvironmentObject private var phoneVoiceActivation: PhoneVoiceActivationController
     @Environment(\.dismiss) private var dismiss
     @State private var diagnosticsEnabled = false
     @State private var diagnosticsURL: URL?
@@ -37,6 +39,15 @@ struct SettingsView: View {
                         LabeledContent(
                             "Spoken voice",
                             value: selectedSpeechVoiceName
+                        )
+                    }
+
+                    NavigationLink {
+                        PhoneVoiceActivationSettingsView(controller: phoneVoiceActivation)
+                    } label: {
+                        LabeledContent(
+                            "Phone voice activation",
+                            value: phoneVoiceActivation.configurationState.label
                         )
                     }
                 }
@@ -89,6 +100,29 @@ struct SettingsView: View {
                             }
                         }
 
+                        Button {
+                            diagnosticsEnabled = true
+                            Task {
+                                await glasses.setHardwareDiagnosticsEnabled(true)
+                                await glasses.runPassiveDiscoveryDiagnostics()
+                                await refreshDiagnosticsURL()
+                            }
+                        } label: {
+                            if glasses.isPassiveDiagnosticsScanRunning {
+                                HStack {
+                                    ProgressView()
+                                    Text("Passive scan in progress…")
+                                }
+                            } else {
+                                Label("Run 60-second passive BLE scan", systemImage: "wave.3.right")
+                            }
+                        }
+                        .disabled(glasses.isPassiveDiagnosticsScanRunning)
+
+                        Text("The passive scan records advertisement time, peripheral identifier, RSSI, and whether the verified AD Glasses service was advertised. It never connects or writes.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
                         Text("Enable this only while validating physical glasses. The bounded log includes raw BLE bytes and may contain device or glasses-network details. It never includes Cloud AI keys; share an export only with people you trust.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -96,7 +130,10 @@ struct SettingsView: View {
 
                     DisclosureGroup("Provider details") {
                         ForEach(glasses.providers) { provider in
-                            LabeledContent(provider.displayName, value: provider.id)
+                            LabeledContent(
+                                glasses.technicalProviderName(for: provider.id),
+                                value: provider.id
+                            )
                         }
                         Text("Technical identifiers appear only here for troubleshooting.")
                             .font(.footnote)
@@ -148,6 +185,80 @@ struct SettingsView: View {
             diagnosticsURL = try await glasses.hardwareDiagnosticsURL()
         } catch {
             diagnosticsError = error.localizedDescription
+        }
+    }
+}
+
+private struct PhoneVoiceActivationSettingsView: View {
+    @ObservedObject var controller: PhoneVoiceActivationController
+    @State private var accessKey = ""
+    @State private var phrase = "Hey AD"
+    @State private var importsModel = false
+    @State private var isTraining = false
+
+    var body: some View {
+        List {
+            Section("Voice activation") {
+                Toggle("Phone Voice Activation", isOn: $controller.isEnabled)
+                    .disabled(controller.configurationState != .ready)
+                LabeledContent("Wake phrase", value: controller.phrase)
+                LabeledContent(
+                    "Listening",
+                    value: controller.isListening ? "On" : "Off"
+                )
+                Text("Starts while AD Glasses is connected and the app is open, then stays available when you switch apps or lock your iPhone. It pauses for transcription and spoken responses; AI and Apple Speech do not start until the wake phrase is detected. It stops after a disconnect, when disabled, or if you force-quit the app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Picovoice") {
+                SecureField("AccessKey", text: $accessKey)
+                    .textContentType(.password)
+                Button("Save AccessKey") {
+                    controller.saveAccessKey(accessKey)
+                    accessKey = ""
+                }
+
+                TextField("Wake phrase", text: $phrase)
+                Button("Import iOS .ppn model") { importsModel = true }
+                Button(isTraining ? "Training…" : "Train wake phrase") {
+                    isTraining = true
+                    Task {
+                        await controller.trainModel(phrase: phrase)
+                        isTraining = false
+                    }
+                }
+                .disabled(isTraining)
+
+                Text("The AccessKey is stored in Keychain and is never bundled in the app. Custom phrases require a Picovoice-generated iOS .ppn model.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Phone voice activation")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { phrase = controller.phrase }
+        .fileImporter(
+            isPresented: $importsModel,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    controller.importModel(from: url, phrase: phrase)
+                }
+            case .failure(let error):
+                controller.errorMessage = error.localizedDescription
+            }
+        }
+        .alert("Phone voice activation", isPresented: Binding(
+            get: { controller.errorMessage != nil },
+            set: { if !$0 { controller.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(controller.errorMessage ?? "")
         }
     }
 }

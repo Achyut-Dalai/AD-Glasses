@@ -113,11 +113,19 @@ final class SpeechOutputController: NSObject, ObservableObject {
         }
 
         do {
-            try audioSession.setCategory(
-                .playback,
-                mode: .spokenAudio,
-                options: [.allowBluetoothA2DP]
-            )
+            if VoiceAudioSessionContinuity.shared.keepsRecordingSessionActive {
+                try audioSession.setCategory(
+                    .playAndRecord,
+                    mode: .spokenAudio,
+                    options: [.allowBluetoothA2DP, .allowBluetoothHFP]
+                )
+            } else {
+                try audioSession.setCategory(
+                    .playback,
+                    mode: .spokenAudio,
+                    options: [.allowBluetoothA2DP]
+                )
+            }
             try audioSession.setActive(true)
         } catch {
             throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
@@ -129,13 +137,14 @@ final class SpeechOutputController: NSObject, ObservableObject {
         let utterance = AVSpeechUtterance(string: value)
         utterance.voice = voice
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        isSpeaking = true
         synthesizer.speak(utterance)
     }
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
-        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
     }
 
     func preferredVoice(languageCode: String?) -> SpeechVoiceOption? {
@@ -206,7 +215,7 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         didFinish utterance: AVSpeechUtterance
     ) {
         isSpeaking = false
-        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
     }
 
     func speechSynthesizer(
@@ -214,6 +223,6 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         didCancel utterance: AVSpeechUtterance
     ) {
         isSpeaking = false
-        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
     }
 }

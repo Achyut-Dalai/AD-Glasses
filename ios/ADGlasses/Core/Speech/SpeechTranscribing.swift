@@ -2,6 +2,41 @@ import AVFoundation
 import Foundation
 import Speech
 
+/// Keeps the recording audio session alive across the short Porcupine → Speech → spoken-answer
+/// handoff. iOS permits an already-running recording session to continue after the app is
+/// backgrounded, but does not permit an ordinary app to create a new recording session there.
+/// The lease is therefore acquired only after wake-word capture starts successfully in foreground.
+@MainActor
+final class VoiceAudioSessionContinuity {
+    static let shared = VoiceAudioSessionContinuity()
+
+    private(set) var keepsRecordingSessionActive = false
+
+    private init() {}
+
+    func holdRecordingSession() {
+        keepsRecordingSessionActive = true
+    }
+
+    func releaseRecordingSession(deactivateIfIdle: Bool) {
+        keepsRecordingSessionActive = false
+        if deactivateIfIdle {
+            try? AVAudioSession.sharedInstance().setActive(
+                false,
+                options: .notifyOthersOnDeactivation
+            )
+        }
+    }
+
+    func deactivateIfAllowed() {
+        guard !keepsRecordingSessionActive else { return }
+        try? AVAudioSession.sharedInstance().setActive(
+            false,
+            options: .notifyOthersOnDeactivation
+        )
+    }
+}
+
 struct SpeechTranscriptionSnapshot: Equatable, Sendable {
     var transcript: String
     var isRunning: Bool

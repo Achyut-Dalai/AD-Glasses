@@ -14,6 +14,35 @@ final class HeyCyanResponseTests: XCTestCase {
         )
     }
 
+    func testGlassesVoiceWakeResponseUsesVerifiedOperationAndBoolean() throws {
+        XCTAssertTrue(
+            try decoder.decodeGlassesVoiceWake(
+                decodedFrame(command: 0x44, payload: Data([0x01, 0x01])),
+                expectedOperation: 0x01
+            )
+        )
+        XCTAssertFalse(
+            try decoder.decodeGlassesVoiceWake(
+                decodedFrame(command: 0x44, payload: Data([0x02, 0x00])),
+                expectedOperation: 0x02
+            )
+        )
+    }
+
+    func testGlassesVoiceWakeRejectsUnknownBoolean() throws {
+        XCTAssertThrowsError(
+            try decoder.decodeGlassesVoiceWake(
+                decodedFrame(command: 0x44, payload: Data([0x01, 0x02])),
+                expectedOperation: 0x01
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? HeyCyanResponseDecodingError,
+                .invalidVoiceWakeValue(0x02)
+            )
+        }
+    }
+
     func testControlAcknowledgementUsesConfirmedOffsets() throws {
         let frame = try decodedFrame(
             command: 0x41,

@@ -44,9 +44,9 @@ enum HeyCyanBLETransportError: LocalizedError, Sendable {
         case .bluetoothUnavailable(let reason):
             return "Bluetooth is unavailable: \(reason)"
         case .operationInProgress:
-            return "Another HeyCyan Bluetooth operation is already running."
+            return "Another glasses Bluetooth operation is already running."
         case .deviceNotFound:
-            return "The selected HeyCyan glasses are no longer available. Scan again."
+            return "The selected AD Glasses are no longer available. Scan again."
         case .connectionTimedOut:
             return "The Bluetooth connection timed out."
         case .readinessTimedOut:
@@ -54,15 +54,15 @@ enum HeyCyanBLETransportError: LocalizedError, Sendable {
         case .disconnectedDuringSetup:
             return "The glasses disconnected before protocol setup completed."
         case .missingService(let uuid):
-            return "The connected device does not expose the required HeyCyan service \(uuid)."
+            return "The connected device does not expose the required AD Glasses service \(uuid)."
         case .missingCharacteristic(let uuid):
-            return "The connected device does not expose the required HeyCyan characteristic \(uuid)."
+            return "The connected device does not expose a required AD Glasses characteristic \(uuid)."
         case .notificationSetupFailed(let reason):
-            return "HeyCyan notification setup failed: \(reason)"
+            return "AD Glasses notification setup failed: \(reason)"
         case .transportNotReady:
-            return "The HeyCyan protocol transport is not ready."
+            return "The AD Glasses control connection is not ready."
         case .unsupportedWriteMode(let uuid):
-            return "The HeyCyan write characteristic \(uuid) does not support write without response."
+            return "The AD Glasses write characteristic \(uuid) does not support the required write mode."
         }
     }
 }
@@ -192,12 +192,12 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
         do {
             try await Task.sleep(for: duration)
         } catch {
-            central.stopScan()
+            stopScanIfPossible()
             if !state.isReady { state = .idle }
             throw error
         }
 
-        central.stopScan()
+        stopScanIfPossible()
         if !state.isReady { state = .idle }
         return sortedDevices
     }
@@ -334,6 +334,14 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
         devices.values.sorted {
             ($0.signalStrength ?? Int.min) > ($1.signalStrength ?? Int.min)
         }
+    }
+
+    private func stopScanIfPossible() {
+        // CoreBluetooth logs an API-misuse warning if `stopScan()` is sent while the manager is
+        // still initializing or Bluetooth has just powered off. There is nothing to stop unless
+        // CoreBluetooth reports both a powered-on manager and an active scan.
+        guard central.state == .poweredOn, central.isScanning else { return }
+        central.stopScan()
     }
 
     private func waitUntilBluetoothIsPoweredOn() async throws {
@@ -674,7 +682,7 @@ extension HeyCyanBLETransport: @preconcurrency CBCentralManagerDelegate {
                 )
             )
         }
-        central.stopScan()
+        stopScanIfPossible()
         reconnectTask?.cancel()
         reconnectTask = nil
         resetGATTState()

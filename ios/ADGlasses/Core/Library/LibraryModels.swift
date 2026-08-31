@@ -13,6 +13,7 @@ struct LibraryItem: Identifiable, Codable, Equatable, Sendable {
     let kind: LibraryItemKind
     let relativeFileName: String
     let sourceProviderID: String?
+    let sourceReference: String?
     let createdAt: Date
     var isFavorite: Bool
 
@@ -22,6 +23,7 @@ struct LibraryItem: Identifiable, Codable, Equatable, Sendable {
         kind: LibraryItemKind,
         relativeFileName: String,
         sourceProviderID: String? = nil,
+        sourceReference: String? = nil,
         createdAt: Date = Date(),
         isFavorite: Bool = false
     ) {
@@ -30,6 +32,7 @@ struct LibraryItem: Identifiable, Codable, Equatable, Sendable {
         self.kind = kind
         self.relativeFileName = relativeFileName
         self.sourceProviderID = sourceProviderID
+        self.sourceReference = sourceReference
         self.createdAt = createdAt
         self.isFavorite = isFavorite
     }

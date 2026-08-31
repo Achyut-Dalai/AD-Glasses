@@ -1,6 +1,7 @@
 @preconcurrency import AVFoundation
 import Combine
 import Foundation
+import UIKit
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -13,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var conversations: [ConversationThread] = []
     @Published private(set) var currentConversationID = UUID()
     @Published private(set) var isGenerating = false
+    @Published private(set) var isGlassesAssistantAudioActive = false
     @Published private(set) var isConversationStoreReady = false
     @Published var conversationNotice: String?
 
@@ -25,6 +27,7 @@ final class AppModel: ObservableObject {
     private let requestRouter: AssistantRequestRouter
     private var generationTask: Task<Void, Never>?
     private var generationID: UUID?
+    private var responseBackgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     private var conversationLoadTask: Task<[ConversationThread], Error>?
     private var didLoadConversations = false
     private var userChangedConversationBeforeLoad = false
@@ -35,6 +38,7 @@ final class AppModel: ObservableObject {
     private var glassesStreamDidEnd = false
     private var applicationIsActive = true
     private let maximumPendingGlassesPackets = 100
+    private weak var glassesManager: GlassesManager?
 
     init(
         transcriber: (any SpeechTranscribing)? = nil,
@@ -88,6 +92,34 @@ final class AppModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func startPhoneVoiceTranscriptionFromWakeWord() async -> Bool {
+        guard !transcriber.snapshot.isRunning else { return false }
+        cancelResponse()
+        speechOutput.stop()
+        clearTranscript()
+        do {
+            try await transcriber.start()
+            return true
+        } catch {
+            speechError = error.localizedDescription
+            return false
+        }
+    }
+
+    func finishPhoneVoiceTranscriptionFromWakeWord() async {
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if transcriber.snapshot.isRunning {
+            await transcriber.stop()
+        }
+        guard !text.isEmpty else {
+            speechError = "I didn’t hear a question. Try saying Hey AD again."
+            return
+        }
+        chatDraft = text
+        sendChatMessage(source: .phoneVoice, speakResponse: true)
+    }
+
     func stopTranscription() async {
         guard transcriber.snapshot.isRunning else { return }
         await transcriber.stop()
@@ -111,18 +143,37 @@ final class AppModel: ObservableObject {
         let route = requestRouter.route(
             AssistantRequest(text: text, source: source, hasImage: false)
         )
-        guard route == .conversation, generationTask == nil else { return }
+        guard route != .clarify, generationTask == nil else { return }
         chatDraft = ""
 
         let id = UUID()
         generationID = id
         isGenerating = true
+        if speakResponse {
+            beginVoiceResponseBackgroundTask()
+        }
         generationTask = Task { [weak self] in
-            await self?.send(text, generationID: id, speakResponse: speakResponse)
+            guard let self else { return }
+            switch route {
+            case .capturePhoto:
+                await executePhotoCapture(
+                    text,
+                    generationID: id,
+                    speakResponse: speakResponse
+                )
+            case .conversation:
+                await send(text, generationID: id, speakResponse: speakResponse)
+            case .visualQuestion:
+                conversationNotice = "Lens needs an image before it can answer that question."
+                finishGeneration(id)
+            case .clarify:
+                finishGeneration(id)
+            }
         }
     }
 
     func attach(to glassesManager: GlassesManager) {
+        self.glassesManager = glassesManager
         glassesManager.onAssistantAudioEvent = { [weak self] event in
             self?.consume(event)
         }
@@ -130,9 +181,6 @@ final class AppModel: ObservableObject {
 
     func setApplicationActive(_ active: Bool) {
         applicationIsActive = active
-        if !active, glassesAssistantSessionID != nil {
-            Task { [weak self] in await self?.cancelGlassesAssistantSession() }
-        }
     }
 
     func cancelResponse() {
@@ -140,6 +188,7 @@ final class AppModel: ObservableObject {
         generationTask = nil
         generationID = nil
         isGenerating = false
+        endVoiceResponseBackgroundTask()
     }
 
     func startNewConversation() {
@@ -240,11 +289,68 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func executePhotoCapture(
+        _ text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
+        defer { finishGeneration(generationID) }
+        await loadConversationsIfNeeded()
+        guard self.generationID == generationID, !Task.isCancelled else { return }
+
+        conversation.append(ConversationMessage(role: .user, text: text))
+        await persistCurrentConversation()
+
+        let didCapture = await glassesManager?.requestPhotoCapture() == true
+        try? Task.checkCancellation()
+        guard self.generationID == generationID, !Task.isCancelled else { return }
+
+        let answer: String
+        if didCapture {
+            answer = "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
+            conversationNotice = nil
+        } else {
+            answer = glassesManager?.errorMessage ?? "Connect AD Glasses before taking a photo."
+            conversationNotice = answer
+        }
+        conversation.append(ConversationMessage(role: .assistant, text: answer))
+        await persistCurrentConversation()
+
+        if speakResponse {
+            do {
+                try speechOutput.speak(answer)
+            } catch {
+                conversationNotice = "The result is saved, but it could not be spoken: \(error.localizedDescription)"
+            }
+        }
+    }
+
     private func finishGeneration(_ id: UUID) {
         guard generationID == id else { return }
         generationID = nil
         generationTask = nil
         isGenerating = false
+        endVoiceResponseBackgroundTask()
+    }
+
+    /// Gives a glasses/phone voice turn a finite opportunity to finish its network response and
+    /// persist it when the user locks the screen or changes apps. Spoken output then continues
+    /// under the app's background-audio mode; this is not used as an indefinite execution claim.
+    private func beginVoiceResponseBackgroundTask() {
+        endVoiceResponseBackgroundTask()
+        responseBackgroundTaskID = UIApplication.shared.beginBackgroundTask(
+            withName: "Finish AD Glasses voice response"
+        ) { [weak self] in
+            guard let self else { return }
+            generationTask?.cancel()
+            endVoiceResponseBackgroundTask()
+        }
+    }
+
+    private func endVoiceResponseBackgroundTask() {
+        guard responseBackgroundTaskID != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(responseBackgroundTaskID)
+        responseBackgroundTaskID = .invalid
     }
 
     private func consume(_ event: GlassesAssistantAudioEvent) {
@@ -259,10 +365,6 @@ final class AppModel: ObservableObject {
     }
 
     private func beginGlassesAssistantSession() {
-        guard applicationIsActive else {
-            speechError = "Open AD Glasses to use the glasses Assistant button or “Hey Cyan”."
-            return
-        }
         guard let streamingTranscriber = transcriber as? any ExternalAudioSpeechTranscribing else {
             speechError = "The selected Apple speech engine cannot accept glasses audio."
             return
@@ -275,6 +377,7 @@ final class AppModel: ObservableObject {
         glassesSpeechStartTask?.cancel()
         let sessionID = UUID()
         glassesAssistantSessionID = sessionID
+        isGlassesAssistantAudioActive = true
         pendingGlassesAudio.removeAll(keepingCapacity: true)
         isGlassesSpeechReady = false
         glassesStreamDidEnd = false
@@ -364,6 +467,7 @@ final class AppModel: ObservableObject {
         pendingGlassesAudio.removeAll(keepingCapacity: true)
         isGlassesSpeechReady = false
         glassesStreamDidEnd = false
+        isGlassesAssistantAudioActive = false
     }
 
     private func loadConversationsIfNeeded() async {

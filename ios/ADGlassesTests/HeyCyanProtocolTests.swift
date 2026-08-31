@@ -37,6 +37,24 @@ final class HeyCyanProtocolTests: XCTestCase {
         )
     }
 
+    func testVerifiedGlassesVoiceWakeReadAndWritePayloads() throws {
+        XCTAssertEqual(HeyCyanCommand.readGlassesVoiceWake.family, 0x44)
+        XCTAssertEqual(HeyCyanCommand.readGlassesVoiceWake.payload, Data([0x01, 0x00]))
+        XCTAssertEqual(HeyCyanCommand.setGlassesVoiceWake(false).family, 0x44)
+        XCTAssertEqual(HeyCyanCommand.setGlassesVoiceWake(false).payload, Data([0x02, 0x00]))
+        XCTAssertEqual(HeyCyanCommand.setGlassesVoiceWake(true).payload, Data([0x02, 0x01]))
+
+        let readResponse = try codec.decode(
+            codec.encode(command: 0x44, payload: Data([0x01, 0x01]))
+        )
+        let writeResponse = try codec.decode(
+            codec.encode(command: 0x44, payload: Data([0x02, 0x00]))
+        )
+        XCTAssertTrue(HeyCyanCommand.readGlassesVoiceWake.matchesResponse(readResponse))
+        XCTAssertFalse(HeyCyanCommand.readGlassesVoiceWake.matchesResponse(writeResponse))
+        XCTAssertTrue(HeyCyanCommand.setGlassesVoiceWake(false).matchesResponse(writeResponse))
+    }
+
     func testBatteryRequestVector() throws {
         let frame = try codec.encode(command: 0x42, payload: Data([0x00, 0x00]))
         XCTAssertEqual(frame, Data([0xBC, 0x42, 0x02, 0x00, 0x01, 0xB0, 0x00, 0x00]))

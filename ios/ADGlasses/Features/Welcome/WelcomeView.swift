@@ -112,7 +112,7 @@ private struct WelcomeView: View {
 
     private var headline: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text("Your glasses.\nYour AI. Your data.")
+            Text("AD Glasses.\nYour AI. Your data.")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .tracking(-1)
                 .fixedSize(horizontal: false, vertical: true)
@@ -177,6 +177,7 @@ private struct WelcomeView: View {
             VStack(spacing: 12) {
                 Button(action: onConnectManually) {
                     Text("Connect glasses")
+                        .foregroundStyle(Color(uiColor: .systemBackground))
                         .frame(maxWidth: .infinity)
                 }
                     .buttonStyle(.borderedProminent)

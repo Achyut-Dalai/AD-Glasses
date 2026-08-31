@@ -24,8 +24,8 @@ enum HeyCyanThumbnailTransferError: LocalizedError, Sendable {
 }
 
 /// Sequential thumbnail retrieval translated from `LargeDataHandler.syncPictureThumbnails`.
-/// This component performs no capture command and remains below the provider capability boundary
-/// until the real glasses confirm when a fresh thumbnail is ready to request.
+/// This component performs no capture command; the provider starts it only after the glasses emit
+/// the captured `0x73` visual-ready event verified in the physical Android/HCI trace.
 @MainActor
 final class HeyCyanThumbnailTransfer {
     private let session: HeyCyanSession

@@ -26,20 +26,20 @@ enum HeyCyanSessionError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .notReady:
-            return "The glasses are connected, but the HeyCyan protocol session is not ready."
+            return "The glasses are connected, but their control session is not ready."
         case .commandFamilyBusy(let family):
             return String(
-                format: "A HeyCyan 0x%02X request is still waiting for its response.",
+                format: "An AD Glasses 0x%02X request is still waiting for its response.",
                 family
             )
         case .responseTimedOut(let family):
             return String(
-                format: "The glasses did not answer the HeyCyan 0x%02X request in time.",
+                format: "The glasses did not answer the 0x%02X request in time.",
                 family
             )
         case .disconnectedWhileAwaitingResponse(let family):
             return String(
-                format: "The glasses disconnected while HeyCyan 0x%02X was waiting for a response.",
+                format: "The glasses disconnected while request 0x%02X was waiting for a response.",
                 family
             )
         }

@@ -145,7 +145,7 @@ private struct HomeScreen: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 4)
+                .padding(.bottom, 10)
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -201,10 +201,10 @@ private struct HomeScreen: View {
         }
 
         if glasses.supports(capability) {
-            return "Your glasses support this capability, but the iOS action is not ready yet."
+            return "AD Glasses support this capability, but the iOS action is not ready yet."
         }
 
-        return "Your glasses do not currently expose this capability to the app."
+        return "AD Glasses do not currently expose this capability to the app."
     }
 
     private func perform(_ feature: ProductFeature) {
@@ -250,6 +250,7 @@ private struct ConnectionPill: View {
         }
         .buttonStyle(.plain)
         .modifier(ConnectionPillSurface(reduceTransparency: reduceTransparency))
+        .contentShape(.interaction, Capsule())
         .accessibilityHint("Opens glasses connection controls")
     }
 
@@ -322,6 +323,7 @@ private struct LibraryScreen: View {
 
     let openDeviceCenter: () -> Void
     let openSettings: () -> Void
+    @State private var showsMediaSync = false
 
     var body: some View {
         NavigationStack {
@@ -403,12 +405,17 @@ private struct LibraryScreen: View {
                     .accessibilityLabel("Settings")
                 }
             }
+            .sheet(isPresented: $showsMediaSync) {
+                MediaSyncSheet()
+                    .environmentObject(glasses)
+                    .environmentObject(library)
+            }
         }
     }
 
     @ViewBuilder
     private var syncRow: some View {
-        Button(action: openDeviceCenter) {
+        Button(action: openSyncDestination) {
             VStack(alignment: .leading, spacing: 4) {
                 Label("Sync from glasses", systemImage: "arrow.triangle.2.circlepath")
                     .foregroundStyle(.primary)
@@ -419,6 +426,15 @@ private struct LibraryScreen: View {
         }
     }
 
+    private func openSyncDestination() {
+        guard glasses.connectionState.isConnected,
+              glasses.supportsMediaTransfer else {
+            openDeviceCenter()
+            return
+        }
+        showsMediaSync = true
+    }
+
     private var syncStatus: String {
         if !glasses.connectionState.isConnected {
             return "Connect a supported pair to check sync availability"
@@ -426,12 +442,232 @@ private struct LibraryScreen: View {
         if !glasses.supports(.mediaTransfer) {
             return "Media transfer is not available for this integration yet"
         }
-        return "Open glasses connections to begin"
+        return "Ready to check for new photos, videos, and recordings"
     }
 
     private func countLabel(for kinds: Set<LibraryItemKind>, empty: String) -> String {
         let count = library.items.filter { kinds.contains($0.kind) }.count
         return count == 0 ? empty : "\(count) saved"
+    }
+}
+
+private struct MediaSyncSheet: View {
+    @EnvironmentObject private var glasses: GlassesManager
+    @EnvironmentObject private var library: LibraryModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var items = [GlassesMediaItem]()
+    @State private var isPreparing = true
+    @State private var isSyncing = false
+    @State private var transferNeedsCleanup = false
+    @State private var didFinishTransfer = false
+    @State private var errorMessage: String?
+    @State private var completionMessage: String?
+    @State private var syncTask: Task<Void, Never>?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isPreparing {
+                    ContentUnavailableView {
+                        ProgressView()
+                        Text("Preparing sync")
+                    } description: {
+                        Text(glasses.mediaTransferState.label)
+                    }
+                } else if let errorMessage {
+                    ContentUnavailableView(
+                        "Sync couldn’t start",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(errorMessage)
+                    )
+                } else if items.isEmpty {
+                    ContentUnavailableView(
+                        "Nothing to sync",
+                        systemImage: "checkmark.circle",
+                        description: Text("No photos, videos, or recordings are currently reported by AD Glasses.")
+                    )
+                } else {
+                    List {
+                        if let completionMessage {
+                            Section {
+                                Label(completionMessage, systemImage: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+
+                        Section("On AD Glasses") {
+                            ForEach(items) { item in
+                                HStack(spacing: 12) {
+                                    Image(systemName: item.kind.systemImage)
+                                        .foregroundStyle(item.kind.tint)
+                                        .frame(width: 24)
+                                    Text(item.fileName)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    if isImported(item) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                            .accessibilityLabel("Already synced")
+                                    }
+                                }
+                            }
+                        }
+
+                        Section {
+                            Button {
+                                syncTask = Task { await syncNewItems() }
+                            } label: {
+                                if isSyncing {
+                                    HStack {
+                                        ProgressView()
+                                        Text(glasses.mediaTransferState.label)
+                                    }
+                                } else {
+                                    Label(syncButtonTitle, systemImage: "arrow.down.circle.fill")
+                                }
+                            }
+                            .disabled(isSyncing || unsyncedItems.isEmpty || didFinishTransfer)
+                        } footer: {
+                            Text("Original files are copied to this iPhone. Sync never deletes media from the glasses.")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Sync from glasses")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isSyncing ? "Cancel" : "Close") { close() }
+                }
+            }
+            .interactiveDismissDisabled(isPreparing || isSyncing)
+            .task { await prepare() }
+            .onDisappear {
+                syncTask?.cancel()
+                if transferNeedsCleanup {
+                    glasses.cancelMediaTransfer()
+                }
+            }
+        }
+    }
+
+    private var unsyncedItems: [GlassesMediaItem] {
+        items.filter { !isImported($0) }
+    }
+
+    private var syncButtonTitle: String {
+        let count = unsyncedItems.count
+        return count == 1 ? "Sync 1 new item" : "Sync \(count) new items"
+    }
+
+    private func isImported(_ item: GlassesMediaItem) -> Bool {
+        library.contains(
+            sourceProviderID: item.providerID,
+            sourceReference: item.remoteIdentifier
+        )
+    }
+
+    private func prepare() async {
+        transferNeedsCleanup = true
+        do {
+            items = try await glasses.prepareMediaTransfer()
+        } catch is CancellationError {
+            glasses.cancelMediaTransfer()
+            transferNeedsCleanup = false
+        } catch {
+            errorMessage = error.localizedDescription
+            transferNeedsCleanup = false
+        }
+        isPreparing = false
+    }
+
+    private func syncNewItems() async {
+        let pending = unsyncedItems
+        guard !pending.isEmpty else { return }
+        isSyncing = true
+        errorMessage = nil
+        completionMessage = nil
+        var completed = 0
+        var shouldFinishTransfer = true
+
+        do {
+            for item in pending {
+                try Task.checkCancellation()
+                let temporaryURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension(URL(fileURLWithPath: item.fileName).pathExtension)
+                defer { try? FileManager.default.removeItem(at: temporaryURL) }
+
+                try await glasses.downloadMediaItem(item, to: temporaryURL)
+                _ = try await library.ingest(
+                    fileURL: temporaryURL,
+                    title: URL(fileURLWithPath: item.fileName).deletingPathExtension().lastPathComponent,
+                    kind: item.kind.libraryKind,
+                    sourceProviderID: item.providerID,
+                    sourceReference: item.remoteIdentifier
+                )
+                completed += 1
+            }
+            completionMessage = completed == 1 ? "1 new item synced" : "\(completed) new items synced"
+        } catch is CancellationError {
+            glasses.cancelMediaTransfer()
+            shouldFinishTransfer = false
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        if shouldFinishTransfer {
+            await glasses.finishMediaTransfer()
+        }
+        transferNeedsCleanup = false
+        didFinishTransfer = true
+        isSyncing = false
+    }
+
+    private func close() {
+        syncTask?.cancel()
+        if isPreparing || isSyncing {
+            glasses.cancelMediaTransfer()
+            transferNeedsCleanup = false
+            dismiss()
+            return
+        }
+        guard transferNeedsCleanup else {
+            dismiss()
+            return
+        }
+        Task {
+            await glasses.finishMediaTransfer()
+            transferNeedsCleanup = false
+            dismiss()
+        }
+    }
+}
+
+private extension GlassesMediaKind {
+    var libraryKind: LibraryItemKind {
+        switch self {
+        case .photo: return .photo
+        case .video: return .video
+        case .audio: return .audio
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .photo: return "photo"
+        case .video: return "video"
+        case .audio: return "waveform"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .photo: return .blue
+        case .video: return .indigo
+        case .audio: return .purple
+        }
     }
 }
 
@@ -608,7 +844,9 @@ private extension LibraryItemKind {
 private struct DeviceCenterSheet: View {
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("setup.iphoneAudioReviewed.v1") private var didReviewIPhoneAudioSetup = false
     @State private var confirmsForget = false
+    @State private var showsIPhoneAudioSetup = false
 
     var body: some View {
         NavigationStack {
@@ -637,7 +875,7 @@ private struct DeviceCenterSheet: View {
                     }
                 }
 
-                Section("Your glasses") {
+                Section("AD Glasses") {
                     connectionAction
 
                     if !glasses.devices.isEmpty {
@@ -720,6 +958,39 @@ private struct DeviceCenterSheet: View {
                     }
                 }
 
+                if glasses.connectionState.isConnected,
+                   glasses.supportsGlassesVoiceWake {
+                    Section("Voice activation") {
+                        Toggle(
+                            "Glasses voice wake",
+                            isOn: Binding(
+                                get: { glasses.glassesVoiceWakeEnabled },
+                                set: { enabled in
+                                    Task { await glasses.setGlassesVoiceWakeEnabled(enabled) }
+                                }
+                            )
+                        )
+
+                        Text("Controls the wake phrase built into the glasses. It is Off by default; the Assistant button remains available.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Learn") {
+                    NavigationLink {
+                        GlassesControlsGuideView()
+                    } label: {
+                        Label("Buttons and gestures", systemImage: "hand.tap")
+                    }
+
+                    NavigationLink {
+                        IPhoneAudioSetupView(showsDismissButton: false)
+                    } label: {
+                        Label("iPhone audio setup", systemImage: "ear.badge.waveform")
+                    }
+                }
+
                 if !glasses.deviceManagementPlaceholders.isEmpty {
                     Section {
                         ForEach(glasses.deviceManagementPlaceholders) { placeholder in
@@ -740,7 +1011,7 @@ private struct DeviceCenterSheet: View {
                     } header: {
                         Text("Device controls")
                     } footer: {
-                        Text("Firmware update, factory reset, restart, and wake-phrase changes cannot send a command from this build.")
+                        Text("These controls remain unavailable until their complete recovery behavior is validated on your physical pair.")
                     }
                 }
 
@@ -752,16 +1023,6 @@ private struct DeviceCenterSheet: View {
                     }
                 }
 
-                Section("Available capabilities") {
-                    if glasses.selectedProvider.capabilities.isEmpty {
-                        Text("No capabilities are configured for this integration in the current build.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(glasses.selectedProvider.capabilities.sorted(by: { $0.title < $1.title }), id: \.self) { capability in
-                            Label(capability.title, systemImage: capability.systemImage)
-                        }
-                    }
-                }
             }
             .navigationTitle("Glasses")
             .navigationBarTitleDisplayMode(.inline)
@@ -782,8 +1043,24 @@ private struct DeviceCenterSheet: View {
             } message: {
                 Text("AD Glasses will disconnect and stop reconnecting automatically. You can scan and connect again at any time.")
             }
+            .onAppear { offerIPhoneAudioSetupIfNeeded() }
+            .onChange(of: glasses.connectionState) { _, state in
+                guard state.isConnected else { return }
+                offerIPhoneAudioSetupIfNeeded()
+            }
+            .sheet(isPresented: $showsIPhoneAudioSetup) {
+                NavigationStack {
+                    IPhoneAudioSetupView(showsDismissButton: true)
+                }
+            }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private func offerIPhoneAudioSetupIfNeeded() {
+        guard glasses.connectionState.isConnected,
+              !didReviewIPhoneAudioSetup else { return }
+        showsIPhoneAudioSetup = true
     }
 
     @ViewBuilder
@@ -818,6 +1095,126 @@ private struct DeviceCenterSheet: View {
         case let value where value >= -55: return "Strong signal"
         case -70 ..< -55: return "Good signal"
         default: return "Weak signal"
+        }
+    }
+}
+
+private struct IPhoneAudioSetupView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("setup.iphoneAudioReviewed.v1") private var didReviewSetup = false
+
+    let showsDismissButton: Bool
+
+    var body: some View {
+        List {
+            Section("Identify the audio device") {
+                SetupInstructionRow(
+                    number: 1,
+                    text: "Open Settings, then Bluetooth. Tap the info button beside the connected glasses audio device."
+                )
+                SetupInstructionRow(
+                    number: 2,
+                    text: "Choose Device Type, then Headphone. This helps iPhone interpret third-party Bluetooth audio correctly."
+                )
+            }
+
+            Section("Reduce loud audio") {
+                SetupInstructionRow(
+                    number: 3,
+                    text: "In Settings, open Sounds & Haptics, Headphone Safety, then turn on Reduce Loud Audio."
+                )
+                SetupInstructionRow(
+                    number: 4,
+                    text: "Choose the listening limit you prefer. iPhone applies it to Bluetooth headphone audio without AD Glasses changing the speaker firmware."
+                )
+            }
+
+            Section {
+                Button("I've reviewed these settings", systemImage: "checkmark.circle.fill") {
+                    didReviewSetup = true
+                    dismiss()
+                }
+            } footer: {
+                Text("You can return here from Glasses > iPhone audio setup. AD Glasses cannot read or change the Headphone Safety setting.")
+            }
+        }
+        .navigationTitle("iPhone audio setup")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if showsDismissButton {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Not now") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct SetupInstructionRow: View {
+    let number: Int
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.caption.bold())
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(.blue, in: Circle())
+                .accessibilityHidden(true)
+
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Step \(number). \(text)")
+    }
+}
+
+private struct GlassesControlsGuideView: View {
+    var body: some View {
+        List {
+            Section("Camera and power button") {
+                ControlGuideRow(action: "Press once", result: "Take a photo")
+                ControlGuideRow(action: "Press twice", result: "Start video; press once to stop")
+                ControlGuideRow(action: "Hold 3 seconds while off", result: "Turn on")
+                ControlGuideRow(action: "Hold 5 seconds", result: "Turn off")
+            }
+
+            Section("Assistant button") {
+                ControlGuideRow(action: "Press once", result: "Start the glasses Assistant")
+                ControlGuideRow(action: "Press twice", result: "Capture for visual assistance")
+                ControlGuideRow(action: "Hold 3 seconds", result: "Start or stop an audio recording")
+            }
+
+            Section("Touch area") {
+                ControlGuideRow(action: "Tap twice", result: "Play or pause")
+                ControlGuideRow(action: "Tap three times", result: "Previous track")
+                ControlGuideRow(action: "Press and hold", result: "Next track")
+                ControlGuideRow(action: "Swipe forward or back", result: "Raise or lower volume")
+            }
+
+            Section("Emergency hardware actions") {
+                ControlGuideRow(action: "Hold power 10 seconds", result: "Factory-reset the glasses")
+                ControlGuideRow(action: "Hold power 16 seconds", result: "Force-restart and return to pairing")
+                Text("Long holds can erase media or pairing. Use them only when recovery is necessary.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Buttons & gestures")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct ControlGuideRow: View {
+    let action: String
+    let result: String
+
+    var body: some View {
+        LabeledContent(action) {
+            Text(result)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
@@ -980,15 +1377,18 @@ private struct FeatureTile: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
         .modifier(
             HomeGlassSurface(
                 cornerRadius: 20,
-                reduceTransparency: reduceTransparency,
-                interactive: true
+                reduceTransparency: reduceTransparency
             )
+        )
+        .contentShape(
+            .interaction,
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
         .accessibilityHint(availability == .unsupported ? "Requires supported glasses. \(detail)" : detail)
     }
@@ -1020,15 +1420,18 @@ private struct LensTile: View {
             }
             .padding(18)
             .frame(maxWidth: .infinity, minHeight: 148, alignment: .leading)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
         .buttonStyle(.plain)
         .modifier(
             HomeGlassSurface(
                 cornerRadius: 26,
-                reduceTransparency: reduceTransparency,
-                interactive: true
+                reduceTransparency: reduceTransparency
             )
+        )
+        .contentShape(
+            .interaction,
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
         )
         .accessibilityHint(
             availability == .unsupported
@@ -1039,14 +1442,6 @@ private struct LensTile: View {
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 9) {
-                Text("Lens")
-                    .font(.title2.bold())
-                    .foregroundStyle(.primary)
-
-                LensStatusPill(availability: availability)
-            }
-
             Text("Look. Ask. Understand.")
                 .font(.headline)
                 .foregroundStyle(.primary)
@@ -1055,35 +1450,6 @@ private struct LensTile: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-private struct LensStatusPill: View {
-    let availability: FeatureAvailability
-
-    var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(tint.opacity(0.10), in: Capsule())
-    }
-
-    private var label: String {
-        switch availability {
-        case .available: return "Ready"
-        case .notImplemented: return "Preview"
-        case .unsupported: return "Needs camera"
-        }
-    }
-
-    private var tint: Color {
-        switch availability {
-        case .available: return .green
-        case .notImplemented: return .indigo
-        case .unsupported: return .secondary
         }
     }
 }
@@ -1199,6 +1565,7 @@ private struct HomeAmbientBackground: View {
             )
         }
         .ignoresSafeArea()
+        .allowsHitTesting(false)
     }
 }
 
@@ -1217,7 +1584,7 @@ private struct ConnectionPillSurface: ViewModifier {
                 .shadow(color: .black.opacity(0.07), radius: 8, y: 4)
         } else if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular.interactive(), in: Capsule())
+                .glassEffect(.regular, in: Capsule())
                 .shadow(color: .black.opacity(0.07), radius: 8, y: 4)
         } else {
             content
@@ -1234,7 +1601,6 @@ private struct ConnectionPillSurface: ViewModifier {
 private struct HomeGlassSurface: ViewModifier {
     let cornerRadius: CGFloat
     let reduceTransparency: Bool
-    let interactive: Bool
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1249,13 +1615,8 @@ private struct HomeGlassSurface: ViewModifier {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             } else if #available(iOS 26.0, *) {
-                if interactive {
-                    content
-                        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
-                } else {
-                    content
-                        .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-                }
+                content
+                    .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
             } else {
                 content
                     .background(

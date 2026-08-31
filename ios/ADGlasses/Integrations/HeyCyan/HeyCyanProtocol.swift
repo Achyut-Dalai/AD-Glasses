@@ -18,16 +18,16 @@ enum HeyCyanProtocolError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .frameTooShort(let actual):
-            return "The HeyCyan frame is too short (\(actual) bytes)."
+            return "The AD Glasses response is too short (\(actual) bytes)."
         case .invalidMarker(let actual):
-            return String(format: "The HeyCyan frame marker is invalid (0x%02X).", actual)
+            return String(format: "The AD Glasses response marker is invalid (0x%02X).", actual)
         case .invalidLength(let expected, let actual):
-            return "The HeyCyan frame length is invalid (expected \(expected), received \(actual))."
+            return "The AD Glasses response length is invalid (expected \(expected), received \(actual))."
         case .payloadTooLarge(let actual):
-            return "The HeyCyan payload is too large (\(actual) bytes)."
+            return "The AD Glasses command is too large (\(actual) bytes)."
         case .checksumMismatch(let expected, let actual):
             return String(
-                format: "The HeyCyan checksum is invalid (expected 0x%04X, received 0x%04X).",
+                format: "The AD Glasses response checksum is invalid (expected 0x%04X, received 0x%04X).",
                 expected,
                 actual
             )
@@ -367,6 +367,8 @@ enum HeyCyanCommand: Equatable, Sendable {
     case synchronizeBattery
     case synchronizeDeviceInfo
     case openClassicBluetooth
+    case readGlassesVoiceWake
+    case setGlassesVoiceWake(Bool)
     case readVolumeControl
     case setVolumeControl(HeyCyanVolumeProfile)
 
@@ -382,6 +384,8 @@ enum HeyCyanCommand: Equatable, Sendable {
             return 0x43
         case .openClassicBluetooth:
             return 0x49
+        case .readGlassesVoiceWake, .setGlassesVoiceWake:
+            return 0x44
         case .readVolumeControl, .setVolumeControl:
             return 0x51
         default:
@@ -421,6 +425,10 @@ enum HeyCyanCommand: Equatable, Sendable {
             return Data([0x00, 0x00])
         case .openClassicBluetooth:
             return Data([0x02, 0x01])
+        case .readGlassesVoiceWake:
+            return Data([0x01, 0x00])
+        case .setGlassesVoiceWake(let enabled):
+            return Data([0x02, enabled ? 0x01 : 0x00])
         case .readVolumeControl:
             return Data([0x01])
         case .setVolumeControl(let profile):
@@ -477,6 +485,10 @@ enum HeyCyanCommand: Equatable, Sendable {
             return true
         case .openClassicBluetooth:
             return frame.payload == payload
+        case .readGlassesVoiceWake:
+            return frame.payload.first == 0x01
+        case .setGlassesVoiceWake:
+            return frame.payload.first == 0x02
         case .readVolumeControl:
             return frame.payload.first == 0x01
         case .setVolumeControl:

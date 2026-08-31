@@ -1,3 +1,4 @@
+import CoreBluetooth
 import Foundation
 
 /// A bounded, user-controlled JSONL recorder for physical-hardware validation.
@@ -102,6 +103,23 @@ actor HeyCyanDiagnosticRecorder {
         )
     }
 
+    func recordDiscovery(
+        peripheralIdentifier: UUID,
+        rssi: Int,
+        verifiedServiceMatch: Bool
+    ) {
+        append(
+            Record(
+                timestamp: Date(),
+                category: "ble-discovery",
+                message: "peripheral=\(peripheralIdentifier.uuidString) rssi=\(rssi) verifiedServiceMatch=\(verifiedServiceMatch)",
+                byteCount: nil,
+                hex: nil,
+                truncated: nil
+            )
+        )
+    }
+
     func exportURL() throws -> URL {
         try ensureLogExists()
         return logURL
@@ -147,5 +165,91 @@ actor HeyCyanDiagnosticRecorder {
     private func currentLogSize() -> UInt64 {
         let attributes = try? fileManager.attributesOfItem(atPath: logURL.path)
         return (attributes?[.size] as? NSNumber)?.uint64Value ?? 0
+    }
+}
+
+/// A separate diagnostics-only CoreBluetooth central. It only observes advertisements: this type
+/// has no peripheral connection or characteristic-writing API by design.
+@MainActor
+final class HeyCyanPassiveBLEScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
+    private enum ScanError: LocalizedError {
+        case bluetoothUnavailable(String)
+        case alreadyScanning
+
+        var errorDescription: String? {
+            switch self {
+            case .bluetoothUnavailable(let reason):
+                return "Bluetooth is unavailable: \(reason)"
+            case .alreadyScanning:
+                return "A passive Bluetooth diagnostic scan is already running."
+            }
+        }
+    }
+
+    private static let verifiedService = HeyCyanBLETransport.GATT.baseService
+
+    private let diagnostics: HeyCyanDiagnosticRecorder
+    private var central: CBCentralManager!
+    private var isRunning = false
+
+    init(diagnostics: HeyCyanDiagnosticRecorder) {
+        self.diagnostics = diagnostics
+        super.init()
+        central = CBCentralManager(delegate: self, queue: .main)
+    }
+
+    func scan(duration: Duration) async throws {
+        guard !isRunning else { throw ScanError.alreadyScanning }
+        isRunning = true
+        defer {
+            central.stopScan()
+            isRunning = false
+        }
+
+        for _ in 0 ..< 30 where central.state == .unknown || central.state == .resetting {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        guard central.state == .poweredOn else {
+            throw ScanError.bluetoothUnavailable(central.state.diagnosticLabel)
+        }
+
+        central.scanForPeripherals(
+            withServices: nil,
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+        )
+        try await Task.sleep(for: duration)
+    }
+
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {}
+
+    func centralManager(
+        _ central: CBCentralManager,
+        didDiscover peripheral: CBPeripheral,
+        advertisementData: [String: Any],
+        rssi RSSI: NSNumber
+    ) {
+        guard isRunning else { return }
+        let services = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
+        Task {
+            await diagnostics.recordDiscovery(
+                peripheralIdentifier: peripheral.identifier,
+                rssi: RSSI.intValue,
+                verifiedServiceMatch: services.contains(Self.verifiedService)
+            )
+        }
+    }
+}
+
+private extension CBManagerState {
+    var diagnosticLabel: String {
+        switch self {
+        case .unknown: return "initializing"
+        case .resetting: return "resetting"
+        case .unsupported: return "unsupported"
+        case .unauthorized: return "not authorized"
+        case .poweredOff: return "turned off"
+        case .poweredOn: return "ready"
+        @unknown default: return "unknown"
+        }
     }
 }

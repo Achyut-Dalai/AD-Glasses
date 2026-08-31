@@ -3,6 +3,28 @@ import XCTest
 
 @MainActor
 final class GlassesManagerTests: XCTestCase {
+    func testHeyCyanTechnicalNamesStayBehindConsumerBoundary() async throws {
+        let provider = FakeGlassesProvider(id: "heycyan", displayName: "HeyCyan")
+        let manager = GlassesManager(providers: [provider])
+        provider.scanResult = [
+            GlassesDevice(
+                id: UUID(),
+                name: "Raw-HeyCyan-Peripheral",
+                providerID: provider.id,
+                signalStrength: -48
+            )
+        ]
+
+        await manager.scan()
+        let device = try XCTUnwrap(manager.devices.first)
+        await manager.connect(to: device)
+
+        XCTAssertEqual(manager.providers.first?.displayName, "AD Glasses")
+        XCTAssertEqual(device.name, "AD Glasses")
+        XCTAssertEqual(manager.connectionState, .connected("AD Glasses"))
+        XCTAssertEqual(manager.technicalProviderName(for: provider.id), "HeyCyan")
+    }
+
     func testActiveProviderCannotBeHiddenBySelection() async {
         let heyCyan = FakeGlassesProvider(id: "heycyan", displayName: "HeyCyan")
         let meta = FakeGlassesProvider(id: "meta", displayName: "Meta")
@@ -47,6 +69,30 @@ final class GlassesManagerTests: XCTestCase {
         XCTAssertEqual(manager.connectionState, .disconnected)
     }
 
+    func testDisconnectKeepsRememberedGlassesWhileForgetClearsThem() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+
+        await manager.scan()
+        await manager.connect(to: device)
+        XCTAssertTrue(manager.hasRememberedDevice)
+
+        await manager.disconnect()
+        XCTAssertTrue(manager.hasRememberedDevice)
+        XCTAssertEqual(provider.forgetCount, 0)
+
+        await manager.forgetLastDevice()
+        XCTAssertFalse(manager.hasRememberedDevice)
+        XCTAssertEqual(provider.forgetCount, 1)
+    }
+
     func testPhotoRequestResolvesCapabilityWithoutVendorBranching() async {
         let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
         let manager = GlassesManager(providers: [provider])
@@ -64,6 +110,30 @@ final class GlassesManagerTests: XCTestCase {
         let didRequestPhoto = await manager.requestPhotoCapture()
         XCTAssertTrue(didRequestPhoto)
         XCTAssertEqual(provider.photoRequestCount, 1)
+    }
+
+    func testVisualCaptureFlowsThroughProviderBoundaryAndPublishesLatestCapture() async throws {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        var publishedCapture: GlassesVisualCapture?
+        manager.onVisualCapture = { publishedCapture = $0 }
+        let requestedCapture = await manager.requestVisualCapture()
+        let result = try XCTUnwrap(requestedCapture)
+
+        XCTAssertEqual(provider.visualCaptureRequestCount, 1)
+        XCTAssertEqual(result.jpegData, Data([0xFF, 0xD8, 0xFF, 0xD9]))
+        XCTAssertEqual(manager.latestVisualCapture, result)
+        XCTAssertEqual(publishedCapture, result)
     }
 
     func testProviderDeviceStatusFlowsWithoutVendorBranchingAndClearsOnDisconnect() async {
@@ -106,19 +176,56 @@ final class GlassesManagerTests: XCTestCase {
             provider.deviceManagementPlaceholders
         )
     }
+
+    func testMediaTransferRoutesThroughCapabilityProvider() async throws {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        let items = try await manager.prepareMediaTransfer()
+        let item = try XCTUnwrap(items.first)
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ADGlasses-MediaTest-\(UUID().uuidString).jpg")
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        try await manager.downloadMediaItem(item, to: destination)
+        await manager.finishMediaTransfer()
+
+        XCTAssertTrue(manager.supportsMediaTransfer)
+        XCTAssertEqual(provider.prepareMediaCount, 1)
+        XCTAssertEqual(provider.downloadMediaCount, 1)
+        XCTAssertEqual(provider.finishMediaCount, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+    }
 }
 
 @MainActor
 private final class FakeGlassesProvider:
     GlassesProvider,
     GlassesPhotoCapturing,
+    GlassesVisualCapturing,
+    GlassesMediaTransferring,
     GlassesBatteryProviding,
     GlassesDeviceInformationProviding,
-    GlassesDeviceManagementPlanning
+    GlassesDeviceManagementPlanning,
+    GlassesForgettable
 {
     let id: String
     let displayName: String
-    let capabilities: Set<GlassesCapability> = [.bluetoothConnection, .photoCapture]
+    let capabilities: Set<GlassesCapability> = [
+        .bluetoothConnection,
+        .photoCapture,
+        .camera,
+        .mediaTransfer
+    ]
     let deviceManagementPlaceholders = [
         GlassesDeviceManagementPlaceholder(
             operation: .firmwareUpdate,
@@ -130,13 +237,24 @@ private final class FakeGlassesProvider:
         didSet { onConnectionStateChange?(connectionState) }
     }
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
+    var onVisualCapture: ((GlassesVisualCapture) -> Void)?
     var onBatteryStatusChange: ((GlassesBatteryStatus?) -> Void)?
     var onDeviceInformationChange: ((GlassesDeviceInformation?) -> Void)?
+    var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)?
+    private(set) var mediaTransferState: GlassesMediaTransferState = .idle {
+        didSet { onMediaTransferStateChange?(mediaTransferState) }
+    }
     private(set) var batteryStatus: GlassesBatteryStatus?
     private(set) var deviceInformation: GlassesDeviceInformation?
     var scanResult = [GlassesDevice]()
     private(set) var disconnectCount = 0
     private(set) var photoRequestCount = 0
+    private(set) var visualCaptureRequestCount = 0
+    private(set) var prepareMediaCount = 0
+    private(set) var downloadMediaCount = 0
+    private(set) var finishMediaCount = 0
+    private(set) var forgetCount = 0
+    private(set) var hasRememberedDevice = true
 
     init(id: String, displayName: String) {
         self.id = id
@@ -159,8 +277,50 @@ private final class FakeGlassesProvider:
         connectionState = .disconnected
     }
 
+    func forgetLastDevice() async {
+        forgetCount += 1
+        hasRememberedDevice = false
+        connectionState = .disconnected
+    }
+
     func requestPhotoCapture() async throws {
         photoRequestCount += 1
+    }
+
+    func requestVisualCapture() async throws -> GlassesVisualCapture {
+        visualCaptureRequestCount += 1
+        let capture = GlassesVisualCapture(
+            jpegData: Data([0xFF, 0xD8, 0xFF, 0xD9]),
+            providerID: id
+        )
+        onVisualCapture?(capture)
+        return capture
+    }
+
+    func prepareMediaTransfer() async throws -> [GlassesMediaItem] {
+        prepareMediaCount += 1
+        let item = GlassesMediaItem(
+            remoteIdentifier: "capture.jpg",
+            fileName: "capture.jpg",
+            kind: .photo,
+            providerID: id
+        )
+        mediaTransferState = .ready(itemCount: 1)
+        return [item]
+    }
+
+    func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {
+        downloadMediaCount += 1
+        try Data([0xFF, 0xD8, 0xFF, 0xD9]).write(to: destinationURL)
+    }
+
+    func finishMediaTransfer() async throws {
+        finishMediaCount += 1
+        mediaTransferState = .idle
+    }
+
+    func cancelMediaTransfer() {
+        mediaTransferState = .idle
     }
 
     func refreshBatteryStatus() async throws {}

@@ -1,4 +1,4 @@
-# Native iOS backend readiness — 2026-08-30
+# Native iOS backend readiness — revised 2026-08-31
 
 This is the implementation audit for the current SwiftUI app, the physical Android HCI capture,
 the bundled HeyCyan SDK, `heycyan-core`, and the repository's Wi-Fi architecture research.
@@ -23,6 +23,34 @@ the bundled HeyCyan SDK, `heycyan-core`, and the repository's Wi-Fi architecture
   consumes two retry slots.
 - Welcome-screen auto-connect starts immediately while the brief launch moment is still displayed.
 
+The 2026-08-31 Android log does **not** show task/backgrounding unpairing the glasses. It shows the
+official app explicitly calling `BluetoothDevice.removeBond()` during its Unpair action. Ordinary
+backgrounding only changed the app's foreground flag. AD Glasses therefore keeps Disconnect and
+Forget separate: Disconnect does not erase the remembered CoreBluetooth peripheral; Forget does.
+
+### Lock screen and background execution
+
+- The app declares only the justified `bluetooth-central` and `audio` background modes.
+- CoreBluetooth state restoration can relaunch the provider for accessory events and rebuild its
+  verified GATT session. If the user force-quits the app, iOS will not relaunch it for Bluetooth;
+  the user must open AD Glasses once again. The same first-open requirement applies after reboot.
+- Phone `Hey AD` listening must first start while the app is active. Once its recording session is
+  established, it is designed to continue while another app is used or the phone is locked. It
+  stops immediately on glasses disconnect/feature disable and pauses for Speech/TTS.
+- Wake models, conversations, imported media and Library indexes use after-first-unlock file
+  protection. They remain device-only but can be read and written after a subsequently locked
+  screen. AI and Porcupine credentials use matching device-only Keychain accessibility.
+- A spoken Assistant request receives a finite iOS background-task lease to finish its network
+  answer and local persistence; spoken output then uses background audio. This is bounded work,
+  not a claim of unrestricted background execution.
+- The glasses AP association is explicit and temporary, but no longer uses `joinOnce`: Apple
+  removes a `joinOnce` configuration after the app backgrounds for over 15 seconds or the device
+  sleeps. AD Glasses records and removes its own temporary SSID on finish, cancellation, failure,
+  disconnect, or next launch.
+- The complete wake → Speech → answer → wake-resume handoff and Wi-Fi download while locked still
+  require the physical-iPhone run. Simulator lifecycle tests cannot prove microphone, Bluetooth,
+  local-network, or system-suspension behavior.
+
 ### Ready-session initialization
 
 The native sequence now includes the captured production operations:
@@ -40,9 +68,12 @@ The exact SDK BCD/time-zone algorithm and the captured India vector are regressi
 - Photo, video start/stop, local audio-record start/stop, AI photo, media prepare/finish, P2P
   cleanup, thumbnail chunks, battery, device information and volume structures use only captured
   or supplied-SDK values.
-- Photo is product-facing. Video, AI photo, local audio recording and media sync remain beneath a
-  hardware-validation boundary until their complete state/result sequences are exercised from the
-  iPhone.
+- Photo and user-initiated Library sync are product-facing. The Android/HCI capture now proves the
+  visual-assistance path: detailed AI-photo request, `0x73` ready event, then 50 sequential `0xFD`
+  chunks containing a 960×720 JPEG. That exact path is implemented behind
+  `GlassesVisualCapturing` and can feed Lens without vendor logic in SwiftUI.
+- Video and local audio recording remain beneath a hardware-validation boundary until their full
+  start/stop/result sequences are exercised from the iPhone.
 - Music/call/system volume uses the ranges returned by this pair of glasses; values are not
   hardcoded. Physical touch music/volume gestures stay in iOS/Classic Bluetooth rather than being
   duplicated as BLE commands.
@@ -57,8 +88,11 @@ The exact SDK BCD/time-zone algorithm and the captured India vector are regressi
 - `NEHotspotConfiguration`, local-network permission, the Hotspot Configuration entitlement,
   deadline-based server readiness, non-cellular ephemeral HTTP, redirect rejection, safe file
   names and transactional cleanup are implemented.
-- The AP response sequence is not yet physically validated on the iPhone, so Library sync is not
-  advertised as complete.
+- Library now invokes this transport through a provider-neutral media capability, displays explicit
+  progress, imports only previously unsynced originals, retains the provider's remote identity for
+  deduplication, and always exits transfer mode on completion, cancellation, error or disconnect.
+- The AP response sequence still requires its first physical-iPhone validation. The UI therefore
+  starts it only after an explicit Sync action; connection alone never enters Wi-Fi transfer mode.
 
 ### Glasses Assistant audio
 
@@ -76,11 +110,13 @@ The exact SDK BCD/time-zone algorithm and the captured India vector are regressi
 
 ## Product backends already present
 
-- Conversations are stored atomically with complete file protection, survive launch, support
+- Conversations are stored atomically with after-first-unlock file protection, survive launch, support
   open/new/delete/delete-all, and send a bounded recent context without deleting older local turns.
-- Assistant routing currently selects only executors that actually exist: conversation, visual
-  question, or clarification. It deliberately does not pretend that keywords are working weather,
-  sports, places or search tools. Those routes should be registered only with real services.
+- Assistant routing currently selects only executors that actually exist: conversation, local
+  glasses photo capture, visual question, or clarification. “Click/take/capture a photo” invokes
+  the provider-neutral photo capability directly without a cloud profile. It deliberately does
+  not pretend that keywords are working weather, sports, places or search tools. Those routes
+  should be registered only with real services.
 - Lens performs bounded orientation-correct image preparation, local Vision OCR, voice-or-text
   questions, local Apple Translation, and spoken output. General visual questions correctly remain
   unavailable until a visual-model adapter exists.
@@ -105,13 +141,15 @@ The exact SDK BCD/time-zone algorithm and the captured India vector are regressi
 - Firmware update / OTA
 - Factory reset
 - Forced restart
-- Custom wake phrase
+- Custom glasses-side wake phrase
 
-The restart work type `0x0E` and OTA work type `0x05` exist in static evidence, but neither is
-sendable from the native provider. Factory reset lacks a dedicated captured app command/result.
-OTA additionally lacks the real signed artifact-source, bootloader/DFU transition, post-flash
-verification and recovery/rollback trace. These operations must remain inert until those paths are
-captured deliberately.
+The 2026-08-31 official-app HCI capture now confirms restart work type `0x0E` and factory-reset work
+type `0x0A`, their acknowledgements, and the following protocol reinitialization. The official OTA
+check called `https://www.qlifesnap.com/glasses/app-update/last-ota` and returned “No upgraded
+version”; this did not expose an update artifact, signature, bootloader/DFU transition, rollback,
+or recovery path. Restart, reset, and OTA remain disabled product placeholders until their first
+controlled physical-iPhone recovery tests. Captured destructive codes are evidence, not permission
+for the native app to send them automatically.
 
 ## Wake phrase, shutter sound and LED
 
@@ -119,9 +157,11 @@ The current `Hey Cyan` detector is glasses-side. Family `0x44` exposes wake list
 capture contains no phrase model or phrase text. Safe alternatives before firmware research are:
 
 - keep the physical Assistant button as the dependable no-wake-word entry;
-- expose the verified wake-listening toggle later;
-- optionally add an iPhone-foreground `Hey AD` detector as a separate phone-microphone feature,
-  with clear battery/audio-route limitations;
+- use the implemented family `0x44` glasses wake-listening toggle, which defaults Off for AD;
+- use the implemented phone-owned `Hey AD` Porcupine service as a separate microphone feature. It
+  starts only while the app is active, glasses are connected and the feature is enabled; the
+  established audio session is intended to remain alive across app switching/lock and suspends
+  detection while Speech or spoken output owns the turn;
 - use an App Intent/Siri phrase for phone-owned entry.
 
 Changing the embedded phrase requires firmware evidence and a recovery method, not a renamed app
@@ -139,11 +179,31 @@ continuous glasses-microphone stream before its own wake/button event.
 
 1. Connect/disconnect/forget/relaunch/Bluetooth-off-on and confirm one reconnect attempt per delay.
 2. Verify `0x40`, `0x42`, `0x43`, `0x51`, and `0x49` request/response vectors and real UI state.
-3. Test glasses button/`Hey Cyan` audio in quiet speech only; save packet diagnostics if decoding or
-   transcription fails.
-4. Exercise photo once and verify acknowledgement plus physical media count/status.
-5. Exercise AP media preparation once without downloading; capture returned mode, credential
+3. With glasses-side voice wake still Off, test the physical Assistant button and phone `Hey AD`
+   in foreground, another app, and locked-screen states. Verify two consecutive locked-screen turns
+   so wake listening must resume after Speech/TTS.
+4. Say “Hey AD, click a photo” and verify the local photo executor, acknowledgement, and physical
+   media count. Then run one Lens capture and verify the `0x73` → sequential `0xFD` JPEG path.
+5. Exercise AP media preparation once without downloading; verify returned mode, credential
    lengths, `0x73/08` address, association result and cleanup.
-6. Only after step 5 succeeds, list media and download one small photo to a temporary Library item.
-7. Capture OTA check-only screens passively. Do not start an update, restart or reset during the
-   foundation session.
+6. Only after step 5 succeeds, use Library sync to list media and download one small photo. Lock the
+   phone once during transfer. Confirm the original is retained, a second sync recognizes it as
+   already imported, and success, cancellation, and expiry all leave the glasses AP.
+7. Keep OTA, restart and reset disabled during the first foundation session. Validate each later as
+   a separate recovery test with the official app available for repair.
+
+## Honest feature execution matrix before the first iPhone/glasses run
+
+| Workflow | Code state | Remaining physical proof |
+| --- | --- | --- |
+| BLE connect, restore, reconnect, disconnect, forget | Implemented | iPhone pairing and restoration callbacks |
+| Phone `Hey AD` → Speech → AI → spoken answer | Implemented/configuration-gated | locked-screen audio transition and battery use |
+| Glasses button audio → Opus → Apple Speech → answer | Implemented from captured packets | physical routing, packet continuity, recognition |
+| “Click a photo” voice tool | Implemented locally | command acknowledgement and saved media on this pair |
+| Lens glasses JPEG intake | Implemented from captured `0x73`/`0xFD` flow | first iPhone capture; general cloud vision still absent |
+| Library AP/HTTP sync | Implemented with cleanup/deduplication | returned AP details and lock/suspension behavior |
+| Conversations and local Library persistence | Implemented and simulator-tested | device file-protection check after lock |
+| Phrase translation and spoken output | Implemented | installed model/voice and route on the iPhone |
+| Continuous live translation | Not implemented | requires a non-echoing listen/translate/speak loop |
+| Video/audio recording controls | Verified commands, not product-wired | complete start/stop/result state on iPhone |
+| Restart, reset, OTA | Disabled placeholders | isolated recovery and artifact-validation sessions |

@@ -11,6 +11,72 @@ enum GlassesCapability: String, Hashable, Sendable {
     case notifications
 }
 
+enum GlassesMediaKind: String, Hashable, Sendable {
+    case photo
+    case video
+    case audio
+}
+
+struct GlassesMediaItem: Identifiable, Equatable, Sendable {
+    var id: String { "\(providerID):\(remoteIdentifier)" }
+
+    let remoteIdentifier: String
+    let fileName: String
+    let kind: GlassesMediaKind
+    let providerID: String
+}
+
+struct GlassesVisualCapture: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let jpegData: Data
+    let capturedAt: Date
+    let providerID: String
+
+    init(
+        id: UUID = UUID(),
+        jpegData: Data,
+        capturedAt: Date = Date(),
+        providerID: String
+    ) {
+        self.id = id
+        self.jpegData = jpegData
+        self.capturedAt = capturedAt
+        self.providerID = providerID
+    }
+}
+
+enum GlassesMediaTransferState: Equatable, Sendable {
+    case idle
+    case preparing
+    case joiningNetwork
+    case checkingLibrary
+    case ready(itemCount: Int)
+    case downloading(fileName: String)
+    case finishing
+    case failed(reason: String)
+
+    var label: String {
+        switch self {
+        case .idle:
+            return "Ready to sync"
+        case .preparing:
+            return "Preparing glasses"
+        case .joiningNetwork:
+            return "Joining glasses Wi-Fi"
+        case .checkingLibrary:
+            return "Checking media"
+        case .ready(let itemCount):
+            return itemCount == 1 ? "1 item found" : "\(itemCount) items found"
+        case .downloading(let fileName):
+            return "Syncing \(fileName)"
+        case .finishing:
+            return "Finishing safely"
+        case .failed(let reason):
+            return reason
+        }
+    }
+}
+
 struct GlassesDevice: Identifiable, Hashable, Sendable {
     let id: UUID
     let name: String

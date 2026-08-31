@@ -65,12 +65,15 @@ final class LensSessionController: ObservableObject {
 
 struct LensView: View {
     @EnvironmentObject private var app: AppModel
+    @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var lens = LensSessionController()
 
     @State private var selectedItem: PhotosPickerItem?
     @State private var question = ""
     @State private var errorMessage: String?
+    @State private var isCapturingFromGlasses = false
+    @State private var lastLoadedVisualCaptureID: UUID?
 
     var body: some View {
         let photoPickerTitle = lens.image == nil ? "Choose a photo" : "Choose another photo"
@@ -84,6 +87,23 @@ struct LensView: View {
                 .listRowBackground(Color.clear)
 
                 Section("Image") {
+                    if glasses.connectionState.isConnected,
+                       glasses.supports(.camera) {
+                        Button {
+                            Task { await captureFromGlasses() }
+                        } label: {
+                            if isCapturingFromGlasses {
+                                HStack(spacing: 10) {
+                                    ProgressView()
+                                    Text("Capturing with AD Glasses…")
+                                }
+                            } else {
+                                Label("Capture with AD Glasses", systemImage: "camera.viewfinder")
+                            }
+                        }
+                        .disabled(isCapturingFromGlasses)
+                    }
+
                     PhotosPicker(selection: $selectedItem, matching: .images) {
                         Label(
                             photoPickerTitle,
@@ -109,12 +129,6 @@ struct LensView: View {
                         }
                     }
 
-                    Label(
-                        "Glasses capture will appear here after the camera-to-library transfer is verified on your pair.",
-                        systemImage: "eyeglasses"
-                    )
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
                 }
 
                 if lens.image != nil {
@@ -189,6 +203,10 @@ struct LensView: View {
                     errorMessage = reason
                 }
             }
+            .onChange(of: glasses.latestVisualCapture?.id) { _, _ in
+                guard let capture = glasses.latestVisualCapture else { return }
+                loadVisualCapture(capture)
+            }
             .onDisappear {
                 Task { await app.stopTranscription() }
             }
@@ -201,6 +219,23 @@ struct LensView: View {
                 Text(errorMessage ?? "")
             }
         }
+    }
+
+    private func captureFromGlasses() async {
+        guard !isCapturingFromGlasses else { return }
+        isCapturingFromGlasses = true
+        defer { isCapturingFromGlasses = false }
+        guard let capture = await glasses.requestVisualCapture() else {
+            errorMessage = glasses.errorMessage ?? "AD Glasses could not capture an image."
+            return
+        }
+        loadVisualCapture(capture)
+    }
+
+    private func loadVisualCapture(_ capture: GlassesVisualCapture) {
+        guard lastLoadedVisualCaptureID != capture.id else { return }
+        lastLoadedVisualCaptureID = capture.id
+        lens.load(capture.jpegData)
     }
 
     @ViewBuilder

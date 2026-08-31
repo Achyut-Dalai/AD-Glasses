@@ -62,23 +62,25 @@ enum HeyCyanResponseDecodingError: LocalizedError, Equatable, Sendable {
     case unexpectedNetworkMode(expected: UInt8, actual: UInt8)
     case invalidNetworkCredentialLengths(expected: Int, actual: Int)
     case invalidNetworkCredentialEncoding
+    case unexpectedVoiceWakeOperation(expected: UInt8, actual: UInt8)
+    case invalidVoiceWakeValue(UInt8)
 
     var errorDescription: String? {
         switch self {
         case .unexpectedCommand(let expected, let actual):
             return String(
-                format: "Expected HeyCyan response 0x%02X, received 0x%02X.",
+                format: "Expected AD Glasses response 0x%02X, received 0x%02X.",
                 expected,
                 actual
             )
         case .payloadTooShort(let expectedAtLeast, let actual):
-            return "The HeyCyan response payload is too short (expected at least \(expectedAtLeast) bytes, received \(actual))."
+            return "The AD Glasses response is too short (expected at least \(expectedAtLeast) bytes, received \(actual))."
         case .invalidBatteryLevel(let value):
             return "The glasses reported an invalid battery level (\(value))."
         case .invalidChargingValue(let value):
             return "The glasses reported an unknown charging value (\(value))."
         case .invalidDeviceInformationLengths(let expectedAtLeast, let actual):
-            return "The HeyCyan device-information lengths require at least \(expectedAtLeast) bytes, but the payload contains \(actual)."
+            return "The AD Glasses device-information response requires at least \(expectedAtLeast) bytes, but contains \(actual)."
         case .unexpectedControlDataType(let value):
             return "The glasses returned control data type \(value) instead of a command acknowledgement."
         case .unexpectedControlWorkType(let expected, let actual):
@@ -111,6 +113,14 @@ enum HeyCyanResponseDecodingError: LocalizedError, Equatable, Sendable {
             return "The glasses network response requires \(expected) bytes, but contains \(actual)."
         case .invalidNetworkCredentialEncoding:
             return "The glasses returned network credentials that are not valid UTF-8."
+        case .unexpectedVoiceWakeOperation(let expected, let actual):
+            return String(
+                format: "Expected glasses voice-wake operation 0x%02X, received 0x%02X.",
+                expected,
+                actual
+            )
+        case .invalidVoiceWakeValue(let value):
+            return "The glasses returned an invalid voice-wake value (\(value))."
         }
     }
 }
@@ -122,6 +132,35 @@ enum HeyCyanResponseDecodingError: LocalizedError, Equatable, Sendable {
 /// six. No response field is interpreted beyond behavior present in that SDK.
 struct HeyCyanResponseDecoder: Sendable {
     static let deviceNotificationFamily: UInt8 = 0x73
+
+    func decodeGlassesVoiceWake(
+        _ frame: HeyCyanFrame,
+        expectedOperation: UInt8
+    ) throws -> Bool {
+        guard frame.command == HeyCyanCommand.readGlassesVoiceWake.family else {
+            throw HeyCyanResponseDecodingError.unexpectedCommand(
+                expected: HeyCyanCommand.readGlassesVoiceWake.family,
+                actual: frame.command
+            )
+        }
+        guard frame.payload.count >= 2 else {
+            throw HeyCyanResponseDecodingError.payloadTooShort(
+                expectedAtLeast: 2,
+                actual: frame.payload.count
+            )
+        }
+        let bytes = [UInt8](frame.payload)
+        guard bytes[0] == expectedOperation else {
+            throw HeyCyanResponseDecodingError.unexpectedVoiceWakeOperation(
+                expected: expectedOperation,
+                actual: bytes[0]
+            )
+        }
+        guard bytes[1] <= 1 else {
+            throw HeyCyanResponseDecodingError.invalidVoiceWakeValue(bytes[1])
+        }
+        return bytes[1] == 1
+    }
 
     func decodeControlAcknowledgement(
         _ frame: HeyCyanFrame,

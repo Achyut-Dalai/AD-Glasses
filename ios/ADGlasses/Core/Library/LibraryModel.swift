@@ -36,17 +36,25 @@ final class LibraryModel: ObservableObject {
         fileURL: URL,
         title: String,
         kind: LibraryItemKind,
-        sourceProviderID: String?
+        sourceProviderID: String?,
+        sourceReference: String? = nil
     ) async throws -> LibraryItem {
         let item = try await store.importFile(
             from: fileURL,
             title: title,
             kind: kind,
-            sourceProviderID: sourceProviderID
+            sourceProviderID: sourceProviderID,
+            sourceReference: sourceReference
         )
         items.removeAll { $0.id == item.id }
         items.insert(item, at: 0)
         return item
+    }
+
+    func contains(sourceProviderID: String, sourceReference: String) -> Bool {
+        items.contains {
+            $0.sourceProviderID == sourceProviderID && $0.sourceReference == sourceReference
+        }
     }
 
     func toggleFavorite(_ item: LibraryItem) async {

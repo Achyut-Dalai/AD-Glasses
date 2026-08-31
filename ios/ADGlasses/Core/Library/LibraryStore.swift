@@ -44,7 +44,7 @@ actor LibraryStore {
         let relativeName = "\(id.uuidString).txt"
         try Data(value.utf8).write(
             to: filesURL.appendingPathComponent(relativeName),
-            options: [.atomic, .completeFileProtection]
+            options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
         )
         let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let item = LibraryItem(
@@ -62,7 +62,8 @@ actor LibraryStore {
         from sourceURL: URL,
         title: String,
         kind: LibraryItemKind,
-        sourceProviderID: String?
+        sourceProviderID: String?,
+        sourceReference: String? = nil
     ) throws -> LibraryItem {
         guard sourceURL.isFileURL,
               fileManager.fileExists(atPath: sourceURL.path) else {
@@ -80,7 +81,7 @@ actor LibraryStore {
         let destination = filesURL.appendingPathComponent(relativeName)
         try fileManager.copyItem(at: sourceURL, to: destination)
         try fileManager.setAttributes(
-            [.protectionKey: FileProtectionType.complete],
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
             ofItemAtPath: destination.path
         )
 
@@ -90,7 +91,8 @@ actor LibraryStore {
             title: normalizedTitle.isEmpty ? sourceURL.deletingPathExtension().lastPathComponent : normalizedTitle,
             kind: kind,
             relativeFileName: relativeName,
-            sourceProviderID: sourceProviderID
+            sourceProviderID: sourceProviderID,
+            sourceReference: sourceReference
         )
         items.insert(item, at: 0)
         do {
@@ -118,14 +120,19 @@ actor LibraryStore {
         try fileManager.createDirectory(
             at: filesURL,
             withIntermediateDirectories: true,
-            attributes: [.protectionKey: FileProtectionType.complete]
+            attributes: [
+                .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+            ]
         )
     }
 
     private func saveIndex(_ items: [LibraryItem]) throws {
         try ensureDirectories()
         let data = try Self.encoder.encode(items.sorted { $0.createdAt > $1.createdAt })
-        try data.write(to: indexURL, options: [.atomic, .completeFileProtection])
+        try data.write(
+            to: indexURL,
+            options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+        )
     }
 
     private func safeRelativeName(_ value: String) -> String? {

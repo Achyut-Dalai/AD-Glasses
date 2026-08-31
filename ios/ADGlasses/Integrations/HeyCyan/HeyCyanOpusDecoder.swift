@@ -13,7 +13,7 @@ enum HeyCyanOpusDecodingError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidPacketSize(let expected, let actual):
-            return "Expected a \(expected)-byte HeyCyan Opus packet, received \(actual) bytes."
+            return "Expected a \(expected)-byte glasses audio packet, received \(actual) bytes."
         case .formatUnavailable:
             return "The native Opus audio format is unavailable on this device."
         case .converterUnavailable:

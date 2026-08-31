@@ -44,4 +44,26 @@ final class LibraryStoreTests: XCTestCase {
             }
         }
     }
+
+    func testImportedMediaPreservesItsRemoteIdentityForDeduplication() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ADGlasses-LibraryTests-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("capture.jpg")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data([0xFF, 0xD8, 0xFF, 0xD9]).write(to: source)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        let store = LibraryStore(rootURL: root.appendingPathComponent("Library", isDirectory: true))
+
+        let imported = try await store.importFile(
+            from: source,
+            title: "Capture",
+            kind: .photo,
+            sourceProviderID: "provider",
+            sourceReference: "DCIM_0001.jpg"
+        )
+        let loaded = try await store.load()
+
+        XCTAssertEqual(imported.sourceReference, "DCIM_0001.jpg")
+        XCTAssertEqual(loaded.first?.sourceReference, "DCIM_0001.jpg")
+    }
 }

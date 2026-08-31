@@ -6,21 +6,32 @@ final class HeyCyanGlassesProvider: NSObject,
     GlassesReconnecting,
     GlassesForgettable,
     GlassesPhotoCapturing,
+    GlassesVisualCapturing,
     GlassesBatteryProviding,
     GlassesDeviceInformationProviding,
     GlassesDeviceManagementPlanning,
     GlassesVolumeProviding,
+    GlassesVoiceWakeProviding,
     GlassesAssistantAudioProviding,
+    GlassesMediaTransferring,
     GlassesDiagnosticsProviding
 {
     let id = "heycyan"
     let displayName = "HeyCyan"
-    let capabilities: Set<GlassesCapability> = [
-        .bluetoothConnection,
-        .photoCapture,
-        .deviceInformation,
-        .volumeControl
-    ]
+    let capabilities: Set<GlassesCapability> = {
+        var capabilities: Set<GlassesCapability> = [
+            .bluetoothConnection,
+            .photoCapture,
+            .camera,
+            .microphoneAudio,
+            .deviceInformation,
+            .volumeControl
+        ]
+#if !AD_PERSONAL_TEAM_BUILD
+        capabilities.insert(.mediaTransfer)
+#endif
+        return capabilities
+    }()
     let deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] = [
         GlassesDeviceManagementPlaceholder(
             operation: .firmwareUpdate,
@@ -34,17 +45,23 @@ final class HeyCyanGlassesProvider: NSObject,
             operation: .forcedRestart,
             reason: "A restart call site exists; its result and recovery trace are not verified."
         ),
-        GlassesDeviceManagementPlaceholder(
-            operation: .customWakePhrase,
-            reason: "This firmware exposes wake listening on/off, not custom phrase data."
-        )
     ]
 
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
     var onBatteryStatusChange: ((GlassesBatteryStatus?) -> Void)?
     var onDeviceInformationChange: ((GlassesDeviceInformation?) -> Void)?
     var onVolumeProfileChange: ((GlassesVolumeProfile?) -> Void)?
+    var onGlassesVoiceWakeChange: ((Bool) -> Void)?
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
+    var onVisualCapture: ((GlassesVisualCapture) -> Void)?
+    var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)?
+
+    private(set) var mediaTransferState: GlassesMediaTransferState = .idle {
+        didSet {
+            guard mediaTransferState != oldValue else { return }
+            onMediaTransferStateChange?(mediaTransferState)
+        }
+    }
 
     private(set) var connectionState: GlassesConnectionState = .disconnected {
         didSet {
@@ -74,19 +91,37 @@ final class HeyCyanGlassesProvider: NSObject,
         }
     }
 
+    private(set) var glassesVoiceWakeEnabled = false {
+        didSet {
+            guard glassesVoiceWakeEnabled != oldValue else { return }
+            onGlassesVoiceWakeChange?(glassesVoiceWakeEnabled)
+        }
+    }
+
     private let transport: HeyCyanBLETransport
     private let session: HeyCyanSession
+    private let thumbnailTransfer: HeyCyanThumbnailTransfer
     private let mediaTransfer: HeyCyanMediaTransferCoordinator
     private let diagnostics: HeyCyanDiagnosticRecorder
+    private let passiveScanner: HeyCyanPassiveBLEScanner
     private let opusDecoder: HeyCyanOpusDecoder?
     private let opusDecoderStartupError: String?
     private let responseDecoder = HeyCyanResponseDecoder()
     private let defaults: UserDefaults
     private let lastPeripheralIdentifierKey = "heycyan.lastPeripheralIdentifier.v1"
+    private let desiredVoiceWakeKey = "heycyan.glassesVoiceWake.enabled.v1"
     private var discoveredDevices: [UUID: HeyCyanBLEDevice] = [:]
     private var statusRefreshTask: Task<Void, Never>?
     private var volumeChannelCode: UInt8 = 0x03
     private var isAssistantAudioStreaming = false
+    private var visualCaptureTask: Task<Void, Never>?
+    private var pendingVisualCapture: PendingVisualCapture?
+
+    private struct PendingVisualCapture {
+        let id: UUID
+        let continuation: CheckedContinuation<GlassesVisualCapture, Error>
+        let timeoutTask: Task<Void, Never>
+    }
 
     var hasRememberedDevice: Bool {
         defaults.string(forKey: lastPeripheralIdentifierKey) != nil
@@ -107,10 +142,13 @@ final class HeyCyanGlassesProvider: NSObject,
         diagnostics: HeyCyanDiagnosticRecorder = .shared
     ) {
         self.transport = transport
-        session = HeyCyanSession(transport: transport)
+        let session = HeyCyanSession(transport: transport)
+        self.session = session
+        thumbnailTransfer = HeyCyanThumbnailTransfer(session: session)
         mediaTransfer = HeyCyanMediaTransferCoordinator(session: session)
         self.defaults = defaults
         self.diagnostics = diagnostics
+        passiveScanner = HeyCyanPassiveBLEScanner(diagnostics: diagnostics)
         do {
             opusDecoder = try HeyCyanOpusDecoder()
             opusDecoderStartupError = nil
@@ -125,6 +163,9 @@ final class HeyCyanGlassesProvider: NSObject,
         }
         session.onFrame = { [weak self] frame in
             self?.consume(frame)
+        }
+        mediaTransfer.onStateChange = { [weak self] state in
+            self?.mediaTransferState = state.glassesState
         }
     }
 
@@ -207,6 +248,95 @@ final class HeyCyanGlassesProvider: NSObject,
         }
     }
 
+    func requestVisualCapture() async throws -> GlassesVisualCapture {
+        guard pendingVisualCapture == nil, visualCaptureTask == nil else {
+            throw HeyCyanThumbnailTransferError.operationInProgress
+        }
+        guard session.state.isReady else { throw HeyCyanSessionError.notReady }
+
+        let requestID = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let timeoutTask = Task { [weak self] in
+                    do {
+                        try await Task.sleep(for: .seconds(30))
+                    } catch {
+                        return
+                    }
+                    self?.finishVisualCaptureRequest(
+                        id: requestID,
+                        result: .failure(
+                            GlassesProviderError.connectionFailed(
+                                "The glasses did not deliver their visual capture in time."
+                            )
+                        )
+                    )
+                }
+                pendingVisualCapture = PendingVisualCapture(
+                    id: requestID,
+                    continuation: continuation,
+                    timeoutTask: timeoutTask
+                )
+
+                Task { [weak self] in
+                    guard let self else { return }
+                    do {
+                        let frame = try await session.send(
+                            .requestAIPhoto(quality: .detailed)
+                        )
+                        _ = try responseDecoder.decodeControlAcknowledgement(
+                            frame,
+                            expectedWorkType: 0x06
+                        )
+                    } catch {
+                        finishVisualCaptureRequest(
+                            id: requestID,
+                            result: .failure(error)
+                        )
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.finishVisualCaptureRequest(
+                    id: requestID,
+                    result: .failure(CancellationError())
+                )
+            }
+        }
+    }
+
+    func prepareMediaTransfer() async throws -> [GlassesMediaItem] {
+        try await mediaTransfer.prepare().map {
+            GlassesMediaItem(
+                remoteIdentifier: $0.fileName,
+                fileName: $0.fileName,
+                kind: $0.kind.glassesKind,
+                providerID: id
+            )
+        }
+    }
+
+    func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {
+        guard item.providerID == id,
+              item.remoteIdentifier == item.fileName,
+              let kind = HeyCyanMediaKind(glassesKind: item.kind) else {
+            throw HeyCyanMediaError.unsafeFileName
+        }
+        try await mediaTransfer.download(
+            HeyCyanMediaItem(fileName: item.remoteIdentifier, kind: kind),
+            to: destinationURL
+        )
+    }
+
+    func finishMediaTransfer() async throws {
+        try await mediaTransfer.finish()
+    }
+
+    func cancelMediaTransfer() {
+        mediaTransfer.cancel()
+    }
+
     func refreshBatteryStatus() async throws {
         let frame = try await session.send(.synchronizeBattery)
         let response = try responseDecoder.decodeBattery(frame)
@@ -280,6 +410,28 @@ final class HeyCyanGlassesProvider: NSObject,
 
     func clearHardwareDiagnostics() async throws {
         try await diagnostics.clear()
+    }
+
+    func runPassiveDiscoveryDiagnostics(duration: Duration) async throws {
+        await diagnostics.setPacketCaptureEnabled(true)
+        try await passiveScanner.scan(duration: duration)
+    }
+
+    func refreshGlassesVoiceWake() async throws {
+        let frame = try await session.send(.readGlassesVoiceWake)
+        glassesVoiceWakeEnabled = try responseDecoder.decodeGlassesVoiceWake(
+            frame,
+            expectedOperation: 0x01
+        )
+    }
+
+    func setGlassesVoiceWakeEnabled(_ enabled: Bool) async throws {
+        let frame = try await session.send(.setGlassesVoiceWake(enabled))
+        glassesVoiceWakeEnabled = try responseDecoder.decodeGlassesVoiceWake(
+            frame,
+            expectedOperation: 0x02
+        )
+        defaults.set(enabled, forKey: desiredVoiceWakeKey)
     }
 
     // Confirmed commands that still lack complete response/state semantics remain beneath the
@@ -368,6 +520,8 @@ final class HeyCyanGlassesProvider: NSObject,
                     beginAssistantAudioStream()
                 case .assistantListeningEnded:
                     finishAssistantAudioStream()
+                case .aiPhotoReady:
+                    fetchReadyVisualCapture()
                 default:
                     break
                 }
@@ -441,6 +595,21 @@ final class HeyCyanGlassesProvider: NSObject,
                     "Classic Bluetooth connection request failed: \(error.localizedDescription)"
                 )
             }
+
+            guard !Task.isCancelled else { return }
+            do {
+                let desired = defaults.object(forKey: desiredVoiceWakeKey) as? Bool ?? false
+                try await refreshGlassesVoiceWake()
+                if glassesVoiceWakeEnabled != desired {
+                    try await setGlassesVoiceWakeEnabled(desired)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await diagnostics.recordDiagnostic(
+                    "Glasses voice-wake synchronization failed: \(error.localizedDescription)"
+                )
+            }
         }
     }
 
@@ -497,13 +666,99 @@ final class HeyCyanGlassesProvider: NSObject,
         onAssistantAudioEvent?(.ended)
     }
 
+    private func fetchReadyVisualCapture() {
+        guard visualCaptureTask == nil else {
+            Task {
+                await diagnostics.recordDiagnostic(
+                    "Ignored a duplicate visual-ready event while its JPEG was being fetched."
+                )
+            }
+            return
+        }
+
+        visualCaptureTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let jpegData = try await thumbnailTransfer.fetchLatestThumbnail()
+                try Task.checkCancellation()
+                let capture = GlassesVisualCapture(
+                    jpegData: jpegData,
+                    providerID: id
+                )
+                visualCaptureTask = nil
+                onVisualCapture?(capture)
+                finishVisualCaptureRequest(result: .success(capture))
+            } catch {
+                visualCaptureTask = nil
+                finishVisualCaptureRequest(result: .failure(error))
+                await diagnostics.recordDiagnostic(
+                    "Visual JPEG transfer failed: \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    private func finishVisualCaptureRequest(
+        id: UUID? = nil,
+        result: Result<GlassesVisualCapture, Error>
+    ) {
+        guard let pending = pendingVisualCapture,
+              id == nil || pending.id == id else { return }
+        pendingVisualCapture = nil
+        pending.timeoutTask.cancel()
+        pending.continuation.resume(with: result)
+    }
+
     private func clearDeviceStatus() {
         finishAssistantAudioStream()
+        visualCaptureTask?.cancel()
+        visualCaptureTask = nil
+        finishVisualCaptureRequest(
+            result: .failure(
+                GlassesProviderError.connectionFailed(
+                    "The glasses disconnected during visual capture."
+                )
+            )
+        )
         statusRefreshTask?.cancel()
         statusRefreshTask = nil
         batteryStatus = nil
         deviceInformation = nil
         volumeProfile = nil
+        glassesVoiceWakeEnabled = false
+    }
+}
+
+private extension HeyCyanMediaTransferState {
+    var glassesState: GlassesMediaTransferState {
+        switch self {
+        case .idle: return .idle
+        case .preparingBluetooth: return .preparing
+        case .joiningNetwork: return .joiningNetwork
+        case .verifyingMediaServer: return .checkingLibrary
+        case .ready(let items): return .ready(itemCount: items.count)
+        case .downloading(let fileName): return .downloading(fileName: fileName)
+        case .finishing: return .finishing
+        case .failed(let reason): return .failed(reason: reason)
+        }
+    }
+}
+
+private extension HeyCyanMediaKind {
+    var glassesKind: GlassesMediaKind {
+        switch self {
+        case .photo: return .photo
+        case .video: return .video
+        case .audio: return .audio
+        }
+    }
+
+    init?(glassesKind: GlassesMediaKind) {
+        switch glassesKind {
+        case .photo: self = .photo
+        case .video: self = .video
+        case .audio: self = .audio
+        }
     }
 }
 
