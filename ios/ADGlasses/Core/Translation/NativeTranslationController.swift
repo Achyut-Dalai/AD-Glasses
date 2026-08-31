@@ -8,6 +8,7 @@ final class NativeTranslationController: ObservableObject {
     private struct PendingRequest {
         let id: UUID
         let text: String
+        let shouldPrepareTranslation: Bool
         let continuation: CheckedContinuation<TextTranslationResult, Error>
     }
 
@@ -50,6 +51,7 @@ final class NativeTranslationController: ObservableObject {
                 pendingRequest = PendingRequest(
                     id: requestID,
                     text: value,
+                    shouldPrepareTranslation: sourceLanguage != nil,
                     continuation: continuation
                 )
 
@@ -85,10 +87,18 @@ final class NativeTranslationController: ObservableObject {
     func performPendingRequest(using session: TranslationSession) async {
         guard let pendingRequest else { return }
         do {
-            statusMessage = "Preparing Apple Translation…"
-            try await session.prepareTranslation()
-            try Task.checkCancellation()
-            statusMessage = "Translating…"
+            // `prepareTranslation()` requires a concrete source language. When the source is
+            // automatic (`nil`), `translate(_:)` must receive the sample text first so Apple's
+            // Translation framework can identify the language and request any required assets.
+            if pendingRequest.shouldPrepareTranslation {
+                statusMessage = "Preparing Apple Translation…"
+                try await session.prepareTranslation()
+                try Task.checkCancellation()
+            }
+
+            statusMessage = pendingRequest.shouldPrepareTranslation
+                ? "Translating…"
+                : "Detecting language and translating…"
             let response = try await session.translate(pendingRequest.text)
             finish(
                 id: pendingRequest.id,
