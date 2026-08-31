@@ -1554,15 +1554,6 @@ private struct HomeAmbientBackground: View {
                 startRadius: 0,
                 endRadius: 300
             )
-            RadialGradient(
-                colors: [
-                    Color.indigo.opacity(colorScheme == .dark ? 0.14 : 0.055),
-                    .clear
-                ],
-                center: .bottomLeading,
-                startRadius: 0,
-                endRadius: 360
-            )
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
