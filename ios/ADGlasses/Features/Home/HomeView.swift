@@ -408,7 +408,7 @@ private struct LibraryScreen: View {
                 }
 
                 Section {
-                    Text("Synced photos, videos, and recordings are kept as original files. Lens and thumbnails use separate processed copies and never replace the original.")
+                    Text("Synced photos, videos, and recordings are kept as original files. Photo Auto Enhance creates a separate processed copy and never replaces the original.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -480,6 +480,7 @@ private struct MediaSyncSheet: View {
     @EnvironmentObject private var glasses: GlassesManager
     @EnvironmentObject private var library: LibraryModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var items = [GlassesMediaItem]()
     @State private var isPreparing = true
@@ -502,9 +503,9 @@ private struct MediaSyncSheet: View {
                             .foregroundStyle(.blue)
 
                         VStack(spacing: 8) {
-                            Text("Join the glasses Wi-Fi")
+                            Text("Switch to the glasses Wi-Fi")
                                 .font(.title3.weight(.semibold))
-                            Text("Open iPhone Settings → Wi-Fi and select this temporary network. AD Glasses continues automatically when the glasses confirm the connection.")
+                            Text("Open iPhone Settings → Wi-Fi, tap the network below, then return to AD Glasses. Sync checks the connection automatically when you come back.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -550,12 +551,14 @@ private struct MediaSyncSheet: View {
                             }
                         }
 
-                        Button("Check connection") {
-                            glasses.continueMediaTransferAfterManualNetworkJoin()
+                        HStack(spacing: 10) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Waiting for the Wi-Fi handoff")
+                                .font(.footnote.weight(.medium))
                         }
-                        .buttonStyle(.borderedProminent)
 
-                        Text("iOS normally remembers the password after the first join. If it switches back to your internet Wi-Fi, select the glasses network again; sync will wait without restarting.")
+                        Text("iOS normally remembers this password after the first join. If it switches back to your internet Wi-Fi, select the glasses network again; this sync session stays open while you do it.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -636,6 +639,10 @@ private struct MediaSyncSheet: View {
             }
             .interactiveDismissDisabled(isPreparing || isSyncing)
             .task { await prepare() }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active, manualNetworkJoin != nil else { return }
+                glasses.continueMediaTransferAfterManualNetworkJoin()
+            }
             .onDisappear {
                 syncTask?.cancel()
                 if transferNeedsCleanup {
@@ -863,12 +870,31 @@ private struct LibraryItemRow: View {
     }
 }
 
+private enum PhotoDisplayVariant: String, CaseIterable, Identifiable {
+    case original
+    case enhanced
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .original: return "Original"
+        case .enhanced: return "Enhanced"
+        }
+    }
+}
+
 private struct LibraryItemDetailView: View {
     @EnvironmentObject private var library: LibraryModel
     let item: LibraryItem
 
     @State private var transcript: String?
     @State private var photo: UIImage?
+    @State private var enhancedPhoto: UIImage?
+    @State private var enhancedPhotoURL: URL?
+    @State private var photoDisplayVariant: PhotoDisplayVariant = .original
+    @State private var isEnhancingPhoto = false
+    @State private var photoEnhancementError: String?
     @State private var player: AVPlayer?
     @State private var isPlayingAudio = false
     @State private var loadError: String?
@@ -899,15 +925,21 @@ private struct LibraryItemDetailView: View {
                     description: Text(loadError)
                 )
             } else if item.kind == .photo, let photo {
-                GeometryReader { proxy in
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(
-                            width: proxy.size.width,
-                            height: proxy.size.height,
-                            alignment: .center
-                        )
+                ZStack(alignment: .bottom) {
+                    GeometryReader { proxy in
+                        Image(uiImage: displayedPhoto ?? photo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(
+                                width: proxy.size.width,
+                                height: proxy.size.height,
+                                alignment: .center
+                            )
+                    }
+
+                    photoControls
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
                 }
                 .background(.black)
             } else if item.kind == .video, let player {
@@ -937,7 +969,7 @@ private struct LibraryItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: library.fileURL(for: item))
+                ShareLink(item: shareURL)
             }
         }
         .task {
@@ -957,6 +989,7 @@ private struct LibraryItemDetailView: View {
                         throw LibraryStoreError.invalidSourceFile
                     }
                     photo = value
+                    await loadExistingEnhancedPhotoIfAvailable()
                 case .video, .audio:
                     player = AVPlayer(url: url)
                 }
@@ -974,6 +1007,98 @@ private struct LibraryItemDetailView: View {
             if item.kind == .photo || item.kind == .video {
                 AppOrientationController.shared.usePortraitOnly()
             }
+        }
+        .alert("Photo enhancement", isPresented: Binding(
+            get: { photoEnhancementError != nil },
+            set: { if !$0 { photoEnhancementError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(photoEnhancementError ?? "")
+        }
+    }
+
+    private var displayedPhoto: UIImage? {
+        if photoDisplayVariant == .enhanced, let enhancedPhoto {
+            return enhancedPhoto
+        }
+        return photo
+    }
+
+    private var shareURL: URL {
+        if item.kind == .photo,
+           photoDisplayVariant == .enhanced,
+           let enhancedPhotoURL {
+            return enhancedPhotoURL
+        }
+        return library.fileURL(for: item)
+    }
+
+    @ViewBuilder
+    private var photoControls: some View {
+        VStack(spacing: 10) {
+            if enhancedPhoto != nil {
+                Picker("Photo version", selection: $photoDisplayVariant) {
+                    ForEach(PhotoDisplayVariant.allCases) { variant in
+                        Text(variant.title).tag(variant)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Photo version")
+            } else {
+                Button {
+                    Task { await autoEnhancePhoto() }
+                } label: {
+                    HStack(spacing: 10) {
+                        if isEnhancingPhoto {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "wand.and.sparkles")
+                        }
+                        Text(isEnhancingPhoto ? "Enhancing…" : "Auto Enhance")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isEnhancingPhoto)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: 360)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func loadExistingEnhancedPhotoIfAvailable() async {
+        guard let url = await library.enhancedPhotoURL(for: item) else { return }
+        do {
+            let data = try await Task.detached { try Data(contentsOf: url) }.value
+            guard let value = UIImage(data: data) else { return }
+            enhancedPhotoURL = url
+            enhancedPhoto = value
+        } catch {
+            photoEnhancementError = "The saved enhanced copy could not be opened: \(error.localizedDescription)"
+        }
+    }
+
+    private func autoEnhancePhoto() async {
+        guard !isEnhancingPhoto else { return }
+        isEnhancingPhoto = true
+        photoEnhancementError = nil
+        defer { isEnhancingPhoto = false }
+
+        do {
+            let url = try await library.enhancePhoto(item)
+            let data = try await Task.detached { try Data(contentsOf: url) }.value
+            guard let value = UIImage(data: data) else {
+                throw PhotoEnhancementError.encodingFailed
+            }
+            enhancedPhotoURL = url
+            enhancedPhoto = value
+            photoDisplayVariant = .enhanced
+        } catch is CancellationError {
+            return
+        } catch {
+            photoEnhancementError = error.localizedDescription
         }
     }
 }
