@@ -138,7 +138,7 @@ actor LibraryStore {
     }
 
     nonisolated func enhancedPhotoURL(for item: LibraryItem) -> URL {
-        enhancedPhotosURL.appendingPathComponent("\(item.id.uuidString).jpg", isDirectory: false)
+        enhancedPhotosURL.appendingPathComponent("\(item.id.uuidString)-ad-v1.jpg", isDirectory: false)
     }
 
     private func ensureDirectories() throws {
