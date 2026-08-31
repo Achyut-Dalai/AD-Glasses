@@ -60,6 +60,7 @@ private struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     brand
                     headline
+                        .padding(.top, 14)
                     glassesStage
                     statusArea
                 }
