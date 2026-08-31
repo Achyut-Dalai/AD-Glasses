@@ -182,8 +182,10 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     func stop() async {
         let wasUsingPhoneMicrophone = inputSource == .phoneMicrophone
-        if wasUsingPhoneMicrophone, audioEngine.isRunning {
-            audioEngine.stop()
+        if wasUsingPhoneMicrophone {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+            }
             audioEngine.inputNode.removeTap(onBus: 0)
         }
 

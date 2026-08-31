@@ -470,7 +470,7 @@ final class LiveTranslationController: ObservableObject {
     /// SpeechAnalyzer is configured for the selected source locale. NaturalLanguage is a second,
     /// conservative guard so the user's reply in the target language is not translated back.
     private func isLikelySourceLanguage(_ text: String) -> Bool {
-        guard text.count >= 6 else { return true }
+        guard text.count >= 3 else { return true }
 
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(text)
@@ -478,10 +478,25 @@ final class LiveTranslationController: ObservableObject {
         guard !hypotheses.isEmpty else { return true }
 
         let expectedBase = languageBase(sourceLanguageCode)
+        let targetBase = languageBase(targetLanguageCode)
         let expectedScore = hypotheses
             .filter { languageBase($0.key.rawValue) == expectedBase }
             .map(\.value)
             .max() ?? 0
+
+        // A nearby person's short reply in the translated language can otherwise be recognized
+        // as source speech and immediately translated back. Prefer the explicitly selected target
+        // when NaturalLanguage identifies it more confidently than the selected source.
+        if targetBase != expectedBase {
+            let targetScore = hypotheses
+                .filter { languageBase($0.key.rawValue) == targetBase }
+                .map(\.value)
+                .max() ?? 0
+            if targetScore >= 0.45, targetScore > expectedScore {
+                return false
+            }
+        }
+
         if expectedScore >= 0.20 { return true }
 
         let strongestOther = hypotheses
