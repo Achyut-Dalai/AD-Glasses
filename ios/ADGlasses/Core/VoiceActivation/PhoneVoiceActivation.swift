@@ -3,15 +3,13 @@ import Foundation
 
 enum PhoneWakeWordConfigurationState: Equatable, Sendable {
     case ready
-    case missingAccessKey
     case missingModel
     case unavailable(String)
 
     var label: String {
         switch self {
         case .ready: return "Ready"
-        case .missingAccessKey: return "AccessKey required"
-        case .missingModel: return "AD model required"
+        case .missingModel: return "Wake-word model required"
         case .unavailable(let reason): return reason
         }
     }
@@ -22,11 +20,9 @@ protocol PhoneWakeWordDetecting: AnyObject {
     var phrase: String { get }
     var configurationState: PhoneWakeWordConfigurationState { get }
 
-    func start(onDetection: @escaping @MainActor () -> Void) throws
+    func start(onDetection: @escaping @MainActor () -> Void) async throws
     func stop()
-    func saveAccessKey(_ value: String) throws
     func importModel(from sourceURL: URL, phrase: String) throws
-    func trainModel(phrase: String, language: String) async throws
 }
 
 /// Owns product policy for phone wake-word listening. The engine itself remains replaceable.
@@ -56,6 +52,7 @@ final class PhoneVoiceActivationController: ObservableObject {
     private var hasForegroundRecordingLease = false
     private var isHandlingWakeTurn = false
     private var isExternallySuspended = false
+    private var startListeningTask: Task<Void, Never>?
     private var wakeTurnTimeoutTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -106,28 +103,11 @@ final class PhoneVoiceActivationController: ObservableObject {
         evaluate()
     }
 
-    func saveAccessKey(_ value: String) {
-        do {
-            try service.saveAccessKey(value)
-            refreshConfiguration()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     func importModel(from sourceURL: URL, phrase: String) {
-        do {
-            try service.importModel(from: sourceURL, phrase: phrase)
-            refreshConfiguration()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func trainModel(phrase: String, language: String = "en") async {
         stopListening()
         do {
-            try await service.trainModel(phrase: phrase, language: language)
+            try service.importModel(from: sourceURL, phrase: phrase)
+            errorMessage = nil
             refreshConfiguration()
         } catch {
             errorMessage = error.localizedDescription
@@ -178,23 +158,36 @@ final class PhoneVoiceActivationController: ObservableObject {
     }
 
     private func startListeningIfNeeded() {
-        guard !isListening else { return }
-        do {
-            try service.start { [weak self] in self?.wakeWordDetected() }
-            isListening = true
-            if applicationIsActive, !hasForegroundRecordingLease {
-                hasForegroundRecordingLease = true
-                VoiceAudioSessionContinuity.shared.holdRecordingSession()
+        guard !isListening, startListeningTask == nil else { return }
+
+        startListeningTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await service.start { [weak self] in self?.wakeWordDetected() }
+                try Task.checkCancellation()
+
+                isListening = true
+                if applicationIsActive, !hasForegroundRecordingLease {
+                    hasForegroundRecordingLease = true
+                    VoiceAudioSessionContinuity.shared.holdRecordingSession()
+                }
+                errorMessage = nil
+            } catch is CancellationError {
+                service.stop()
+                isListening = false
+            } catch {
+                service.stop()
+                isListening = false
+                errorMessage = error.localizedDescription
             }
-            errorMessage = nil
-        } catch {
-            isListening = false
-            errorMessage = error.localizedDescription
+
+            startListeningTask = nil
+            evaluate()
         }
     }
 
     private func stopListening() {
-        guard isListening else { return }
+        startListeningTask?.cancel()
         service.stop()
         isListening = false
     }
