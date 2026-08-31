@@ -12,12 +12,12 @@ final class LibraryModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let store: LibraryStore
-    private let photoEnhancer: PhotoAutoEnhancer
+    private let photoEnhancer: PhotoEnhancementEngine
     private var loadTask: Task<Void, Never>?
 
     init(
         store: LibraryStore = LibraryStore(),
-        photoEnhancer: PhotoAutoEnhancer = PhotoAutoEnhancer()
+        photoEnhancer: PhotoEnhancementEngine = PhotoEnhancementEngine()
     ) {
         self.store = store
         self.photoEnhancer = photoEnhancer
@@ -127,13 +127,16 @@ enum PhotoEnhancementError: LocalizedError, Sendable {
     }
 }
 
-/// Creates a separate Apple Core Image Auto Enhance derivative. The source Library file is never
-/// modified. A single Metal-backed CIContext is reused because Core Image contexts are expensive
-/// to create and are designed to be shared across renders.
-actor PhotoAutoEnhancer {
+/// Produces a conservative, deterministic AD Glasses derivative with Apple's Core Image/Metal
+/// stack. The original Library asset is never changed. This profile improves the common small-
+/// sensor look without inventing detail: modest exposure recovery, protected highlights, restrained
+/// color, denoise, then mild luminance sharpening.
+actor PhotoEnhancementEngine {
     private let context: CIContext
+    private let outputColorSpace: CGColorSpace
 
     init() {
+        outputColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
         if let device = MTLCreateSystemDefaultDevice() {
             context = CIContext(mtlDevice: device)
         } else {
@@ -142,32 +145,76 @@ actor PhotoAutoEnhancer {
     }
 
     func enhance(fileURL: URL) throws -> Data {
-        guard var output = CIImage(
+        guard var image = CIImage(
             contentsOf: fileURL,
             options: [.applyOrientationProperty: true]
         ) else {
             throw PhotoEnhancementError.unreadableImage
         }
 
-        let filters = output.autoAdjustmentFilters(
-            options: [
-                .enhance: true,
-                .redEye: true,
-                .crop: false,
-                .level: false
-            ]
-        )
-        for filter in filters {
-            filter.setValue(output, forKey: kCIInputImageKey)
-            if let next = filter.outputImage {
-                output = next
-            }
+        let sourceExtent = image.extent.integral
+        guard !sourceExtent.isEmpty, !sourceExtent.isInfinite else {
+            throw PhotoEnhancementError.unreadableImage
         }
 
-        let extent = output.extent.integral
-        guard !extent.isEmpty,
-              !extent.isInfinite,
-              let rendered = context.createCGImage(output, from: extent) else {
+        let exposure = exposureCorrection(for: image)
+        if abs(exposure) > 0.01 {
+            image = try applying(
+                "CIExposureAdjust",
+                to: image,
+                parameters: ["inputEV": exposure]
+            )
+        }
+
+        image = try applying(
+            "CIHighlightShadowAdjust",
+            to: image,
+            parameters: [
+                "inputShadowAmount": 0.15,
+                "inputHighlightAmount": 0.90
+            ]
+        )
+
+        image = try applying(
+            "CIColorControls",
+            to: image,
+            parameters: [
+                "inputSaturation": 1.03,
+                "inputBrightness": 0.0,
+                "inputContrast": 1.06
+            ]
+        )
+
+        image = try applying(
+            "CIVibrance",
+            to: image,
+            parameters: ["inputAmount": 0.10]
+        )
+
+        image = try applying(
+            "CINoiseReduction",
+            to: image,
+            parameters: [
+                "inputNoiseLevel": 0.012,
+                "inputSharpness": 0.35
+            ]
+        )
+
+        image = try applying(
+            "CISharpenLuminance",
+            to: image,
+            parameters: ["inputSharpness": 0.20]
+        )
+        .cropped(to: sourceExtent)
+
+        // Keep v1 white balance neutral. Temperature/tint correction should be tuned from a real
+        // set of AD Glasses daylight, indoor, face, text, and low-light captures rather than guessed.
+        guard let rendered = context.createCGImage(
+            image,
+            from: sourceExtent,
+            format: .RGBA8,
+            colorSpace: outputColorSpace
+        ) else {
             throw PhotoEnhancementError.renderFailed
         }
 
@@ -189,5 +236,56 @@ actor PhotoAutoEnhancer {
             throw PhotoEnhancementError.encodingFailed
         }
         return data as Data
+    }
+
+    private func exposureCorrection(for image: CIImage) -> Double {
+        guard let luminance = meanLuminance(of: image) else { return 0 }
+        let safeLuminance = max(0.05, luminance)
+        let targetLuminance = 0.46
+        let measuredEV = log2(targetLuminance / safeLuminance) * 0.30
+        return min(0.40, max(-0.25, measuredEV))
+    }
+
+    private func meanLuminance(of image: CIImage) -> Double? {
+        guard let averageFilter = CIFilter(name: "CIAreaAverage") else { return nil }
+        averageFilter.setValue(image, forKey: kCIInputImageKey)
+        averageFilter.setValue(CIVector(cgRect: image.extent), forKey: kCIInputExtentKey)
+        guard let averageImage = averageFilter.outputImage else { return nil }
+
+        var pixel = [UInt8](repeating: 0, count: 4)
+        pixel.withUnsafeMutableBytes { bytes in
+            guard let address = bytes.baseAddress else { return }
+            context.render(
+                averageImage,
+                toBitmap: address,
+                rowBytes: 4,
+                bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+                format: .RGBA8,
+                colorSpace: outputColorSpace
+            )
+        }
+
+        let red = Double(pixel[0]) / 255.0
+        let green = Double(pixel[1]) / 255.0
+        let blue = Double(pixel[2]) / 255.0
+        return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+    }
+
+    private func applying(
+        _ filterName: String,
+        to image: CIImage,
+        parameters: [String: Any]
+    ) throws -> CIImage {
+        guard let filter = CIFilter(name: filterName) else {
+            throw PhotoEnhancementError.renderFailed
+        }
+        filter.setValue(image, forKey: kCIInputImageKey)
+        for (key, value) in parameters {
+            filter.setValue(value, forKey: key)
+        }
+        guard let output = filter.outputImage else {
+            throw PhotoEnhancementError.renderFailed
+        }
+        return output
     }
 }
