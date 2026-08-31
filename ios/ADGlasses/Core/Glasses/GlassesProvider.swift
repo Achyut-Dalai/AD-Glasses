@@ -81,6 +81,24 @@ protocol GlassesPhotoCapturing: AnyObject {
 }
 
 @MainActor
+protocol GlassesVideoRecording: AnyObject {
+    var isVideoRecording: Bool { get }
+    var onVideoRecordingStateChange: ((Bool) -> Void)? { get set }
+
+    func startVideoRecording() async throws
+    func stopVideoRecording() async throws
+}
+
+@MainActor
+protocol GlassesAudioRecording: AnyObject {
+    var isAudioRecording: Bool { get }
+    var onAudioRecordingStateChange: ((Bool) -> Void)? { get set }
+
+    func startAudioRecording() async throws
+    func stopAudioRecording() async throws
+}
+
+@MainActor
 protocol GlassesVisualCapturing: AnyObject {
     var onVisualCapture: ((GlassesVisualCapture) -> Void)? { get set }
 
@@ -95,6 +113,7 @@ protocol GlassesMediaTransferring: AnyObject {
     var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)? { get set }
 
     func prepareMediaTransfer() async throws -> [GlassesMediaItem]
+    func continueMediaTransferAfterManualNetworkJoin()
     func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws
     func finishMediaTransfer() async throws
     func cancelMediaTransfer()

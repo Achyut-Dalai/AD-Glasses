@@ -112,6 +112,14 @@ final class SpeechOutputController: NSObject, ObservableObject {
             throw SpeechOutputError.noVoiceAvailable
         }
 
+        // Publish the competing-audio state before touching AVAudioSession. This gives the
+        // phone wake-word controller a chance to stop its audio engine while retaining the
+        // foreground-established background recording lease.
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        isSpeaking = true
+
         do {
             if VoiceAudioSessionContinuity.shared.keepsRecordingSessionActive {
                 try audioSession.setCategory(
@@ -120,24 +128,23 @@ final class SpeechOutputController: NSObject, ObservableObject {
                     options: [.allowBluetoothA2DP, .allowBluetoothHFP]
                 )
             } else {
+                // Playback already routes to the selected Bluetooth output. Supplying
+                // `allowBluetoothA2DP` with the playback category is an invalid category-option
+                // combination on physical devices and caused voice previews to fail with -50.
                 try audioSession.setCategory(
                     .playback,
-                    mode: .spokenAudio,
-                    options: [.allowBluetoothA2DP]
+                    mode: .spokenAudio
                 )
             }
             try audioSession.setActive(true)
         } catch {
+            isSpeaking = false
             throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
         }
 
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
-        }
         let utterance = AVSpeechUtterance(string: value)
         utterance.voice = voice
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        isSpeaking = true
         synthesizer.speak(utterance)
     }
 

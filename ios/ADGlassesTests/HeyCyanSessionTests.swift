@@ -1,8 +1,39 @@
+import CoreBluetooth
 import XCTest
 @testable import ADGlasses
 
 @MainActor
 final class HeyCyanSessionTests: XCTestCase {
+    func testPhysicalAM01AdvertisementIsAdmittedByVerifiedNameFamily() {
+        XCTAssertTrue(
+            HeyCyanBLETransport.matchesSupportedAdvertisement(
+                localName: "JS-01 Pro_B0B1",
+                peripheralName: nil,
+                advertisedServices: nil
+            )
+        )
+    }
+
+    func testVerifiedServiceAdvertisementIsAdmittedWithoutName() {
+        XCTAssertTrue(
+            HeyCyanBLETransport.matchesSupportedAdvertisement(
+                localName: nil,
+                peripheralName: nil,
+                advertisedServices: [HeyCyanBLETransport.GATT.baseService]
+            )
+        )
+    }
+
+    func testUnrelatedAdvertisementIsNotAdmitted() {
+        XCTAssertFalse(
+            HeyCyanBLETransport.matchesSupportedAdvertisement(
+                localName: "Living Room Speaker",
+                peripheralName: nil,
+                advertisedServices: nil
+            )
+        )
+    }
+
     func testRequestCompletesOnlyAfterMatchingFamilyResponse() async throws {
         let transport = FakeHeyCyanByteTransport(state: .ready(name: "Test glasses"))
         let session = HeyCyanSession(

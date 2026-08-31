@@ -10,8 +10,8 @@ enum PorcupinePhoneWakeWordError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .accessKeyMissing: return "Add a Picovoice AccessKey before configuring Hey AD."
-        case .modelMissing: return "Import or train an iOS .ppn model for Hey AD first."
+        case .accessKeyMissing: return "Add a Picovoice AccessKey before configuring AD."
+        case .modelMissing: return "Import or train an iOS .ppn model for AD first."
         case .invalidModel: return "Choose a Porcupine iOS model with the .ppn extension."
         case .storageUnavailable: return "The wake-word model could not be stored on this iPhone."
         }
@@ -38,10 +38,19 @@ final class PorcupinePhoneWakeWordService: PhoneWakeWordDetecting {
     init(defaults: UserDefaults = .standard, fileManager: FileManager = .default) {
         self.defaults = defaults
         self.fileManager = fileManager
+
+        let storedPhrase = defaults.string(forKey: phraseKey)
+        if storedPhrase == nil {
+            defaults.set("AD", forKey: phraseKey)
+        } else if storedPhrase?.localizedCaseInsensitiveCompare("Hey AD") == .orderedSame {
+            // A .ppn is phrase-specific. Do not silently label an old Hey AD model as AD.
+            defaults.set("AD", forKey: phraseKey)
+            try? fileManager.removeItem(at: modelURL)
+        }
     }
 
     var phrase: String {
-        defaults.string(forKey: phraseKey) ?? "Hey AD"
+        defaults.string(forKey: phraseKey) ?? "AD"
     }
 
     var configurationState: PhoneWakeWordConfigurationState {
@@ -160,7 +169,7 @@ final class PorcupinePhoneWakeWordService: PhoneWakeWordDetecting {
 
     private func normalized(_ phrase: String) -> String {
         let trimmed = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Hey AD" : trimmed
+        return trimmed.isEmpty ? "AD" : trimmed
     }
 }
 

@@ -507,10 +507,10 @@ private extension HeyCyanFrame {
         guard matchesControlAcknowledgement(workType: 0x04), payload.count >= 4 else {
             return false
         }
-        // Successful preparation echoes the selected mode. The official failure form uses FF;
-        // accept it for correlation so the response decoder can fail immediately instead of
-        // turning a device rejection into a timeout.
+        // Physical AM01 firmware may answer an AP request with a valid P2P-mode credential
+        // payload. Correlate any documented mode here and let the decoder preserve the mode the
+        // glasses actually selected. FF is the documented rejection form.
         let responseMode = payload[payload.startIndex + 3]
-        return responseMode == mode.rawValue || responseMode == 0xFF
+        return HeyCyanNetworkMode(rawValue: responseMode) != nil || responseMode == 0xFF
     }
 }

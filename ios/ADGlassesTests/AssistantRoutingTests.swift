@@ -165,7 +165,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
 
 @MainActor
 private final class FakePhoneWakeWordService: PhoneWakeWordDetecting {
-    let phrase = "Hey AD"
+    let phrase = "AD"
     let configurationState = PhoneWakeWordConfigurationState.ready
     private(set) var startCount = 0
     private(set) var stopCount = 0

@@ -154,7 +154,7 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
         reconnectTask?.cancel()
     }
 
-    func scan(duration: Duration = .seconds(4)) async throws -> [HeyCyanBLEDevice] {
+    func scan(duration: Duration = .seconds(12)) async throws -> [HeyCyanBLEDevice] {
         try await waitUntilBluetoothIsPoweredOn()
         guard connectionContinuation == nil, disconnectContinuations.isEmpty else {
             throw HeyCyanBLETransportError.operationInProgress
@@ -182,15 +182,23 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
         }
         state = .scanning
 
-        // The service UUID is verified from the official production application. Filtering here
-        // prevents unrelated BLE accessories from being presented or saved as HeyCyan glasses.
+        // The verified UUIDs describe the GATT database after connection; the physical AM01
+        // glasses are not proven to include the base service in every advertisement. The official
+        // Oudmon flow consequently scans without a service filter and identifies supported product
+        // advertisements before connecting. Service discovery below remains the authoritative
+        // safety boundary and rejects a candidate before any application write if either verified
+        // service or characteristic family is absent.
         central.scanForPeripherals(
-            withServices: [GATT.baseService],
+            withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
 
         do {
-            try await Task.sleep(for: duration)
+            let clock = ContinuousClock()
+            let deadline = clock.now.advanced(by: duration)
+            while devices.isEmpty, clock.now < deadline {
+                try await Task.sleep(for: .milliseconds(100))
+            }
         } catch {
             stopScanIfPossible()
             if !state.isReady { state = .idle }
@@ -627,10 +635,10 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
             )
         }
 #if DEBUG
-        let hex = data.prefix(512).map { String(format: "%02X", $0) }.joined(separator: " ")
-        let suffix = data.count > 512 ? " … (\(data.count) bytes)" : ""
+        let rendered = HeyCyanDiagnosticRecorder.sanitizedPacketHex(data, maximumBytes: 512)
+        let suffix = rendered.wasTruncated ? " … (\(data.count) bytes)" : ""
         logger.debug(
-            "\(direction, privacy: .public) [\(channel.rawValue, privacy: .public)] \(hex + suffix, privacy: .public)"
+            "\(direction, privacy: .public) [\(channel.rawValue, privacy: .public)] \(rendered.hex + suffix, privacy: .public)"
         )
 #else
         logger.debug(
@@ -726,14 +734,14 @@ extension HeyCyanBLETransport: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        let advertisedServices = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]
-        guard advertisedServices?.contains(GATT.baseService) == true else {
-            // A service-filtered scan should already enforce this. Retain the guard so a future
-            // broad diagnostic scan cannot accidentally turn an arbitrary accessory into HeyCyan.
-            return
-        }
-
         let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let advertisedServices = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]
+        guard Self.matchesSupportedAdvertisement(
+            localName: advertisedName,
+            peripheralName: peripheral.name,
+            advertisedServices: advertisedServices
+        ) else { return }
+
         let device = HeyCyanBLEDevice(
             id: peripheral.identifier,
             name: advertisedName ?? peripheral.name ?? "HeyCyan glasses",
@@ -743,6 +751,30 @@ extension HeyCyanBLETransport: @preconcurrency CBCentralManagerDelegate {
         peripherals[peripheral.identifier] = peripheral
         devices[peripheral.identifier] = device
         onDiscoveredDevicesChange?(sortedDevices)
+    }
+
+    /// Admission is deliberately narrow. `JS-01` is the observed physical AM01 product family;
+    /// the remaining prefixes are retained from the existing Oudmon product classifier. A name
+    /// match only makes a device selectable—the verified GATT database must still be discovered
+    /// before the transport becomes ready or writes any application command.
+    static func matchesSupportedAdvertisement(
+        localName: String?,
+        peripheralName: String?,
+        advertisedServices: [CBUUID]?
+    ) -> Bool {
+        if advertisedServices?.contains(GATT.baseService) == true {
+            return true
+        }
+
+        guard let rawName = localName ?? peripheralName else { return false }
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let folded = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+
+        return folded.hasPrefix("js-01") ||
+            folded.contains("heycyan") ||
+            folded.contains("hey cyan") ||
+            folded.hasPrefix("o_") ||
+            folded.hasPrefix("q_")
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {

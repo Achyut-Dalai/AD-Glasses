@@ -12,6 +12,8 @@ final class GlassesManager: ObservableObject {
     @Published private(set) var isPassiveDiagnosticsScanRunning = false
     @Published private(set) var mediaTransferState: GlassesMediaTransferState = .idle
     @Published private(set) var latestVisualCapture: GlassesVisualCapture?
+    @Published private(set) var isVideoRecording = false
+    @Published private(set) var isAudioRecording = false
 
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
     var onVisualCapture: ((GlassesVisualCapture) -> Void)?
@@ -135,6 +137,26 @@ final class GlassesManager: ObservableObject {
                     guard self?.activeProviderID == providerID else { return }
                     self?.latestVisualCapture = capture
                     self?.onVisualCapture?(capture)
+                }
+            }
+
+            if let videoProvider = provider as? any GlassesVideoRecording {
+                if provider.connectionState.isConnected {
+                    isVideoRecording = videoProvider.isVideoRecording
+                }
+                videoProvider.onVideoRecordingStateChange = { [weak self] isRecording in
+                    guard self?.activeProviderID == providerID else { return }
+                    self?.isVideoRecording = isRecording
+                }
+            }
+
+            if let recordingProvider = provider as? any GlassesAudioRecording {
+                if provider.connectionState.isConnected {
+                    isAudioRecording = recordingProvider.isAudioRecording
+                }
+                recordingProvider.onAudioRecordingStateChange = { [weak self] isRecording in
+                    guard self?.activeProviderID == providerID else { return }
+                    self?.isAudioRecording = isRecording
                 }
             }
 
@@ -279,6 +301,50 @@ final class GlassesManager: ObservableObject {
         }
     }
 
+    func toggleVideoRecording() async -> Bool {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesVideoRecording else {
+            errorMessage = "Connect glasses with video recording support first."
+            return false
+        }
+        do {
+            if provider.isVideoRecording {
+                try await provider.stopVideoRecording()
+            } else {
+                try await provider.startVideoRecording()
+            }
+            return true
+        } catch is CancellationError {
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func toggleAudioRecording() async -> Bool {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesAudioRecording else {
+            errorMessage = "Connect glasses with audio recording support first."
+            return false
+        }
+        do {
+            if provider.isAudioRecording {
+                try await provider.stopAudioRecording()
+            } else {
+                try await provider.startAudioRecording()
+            }
+            return true
+        } catch is CancellationError {
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func requestVisualCapture() async -> GlassesVisualCapture? {
         errorMessage = nil
         guard let activeProviderID,
@@ -317,6 +383,14 @@ final class GlassesManager: ObservableObject {
             errorMessage = error.localizedDescription
             throw error
         }
+    }
+
+    func continueMediaTransferAfterManualNetworkJoin() {
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesMediaTransferring else {
+            return
+        }
+        provider.continueMediaTransferAfterManualNetworkJoin()
     }
 
     func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {

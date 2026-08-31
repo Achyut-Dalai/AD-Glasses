@@ -191,10 +191,12 @@ struct HeyCyanResponseDecoder: Sendable {
             )
         }
 
-        // Java sign-extends the response byte into `int`; preserve that behavior because the
-        // supplied app explicitly handles -1 (0xFF) for a refused transfer request.
-        let errorCode = Int(Int8(bitPattern: bytes[3]))
-        guard errorCode == 0 else {
+        // The official parser converts this byte to an unsigned value and special-cases 255 by
+        // ending the acknowledgement without reading an active work type. Physical AM01 testing
+        // confirms that photo and AI-photo requests execute while returning this 0xFF sentinel;
+        // it must not be sign-extended to -1 or surfaced as a rejection.
+        let errorCode = Int(bytes[3])
+        guard errorCode == 0 || errorCode == 0xFF else {
             throw HeyCyanResponseDecodingError.controlRejected(errorCode: errorCode)
         }
 
@@ -202,7 +204,7 @@ struct HeyCyanResponseDecoder: Sendable {
             responseCode: bytes[0],
             requestedWorkType: bytes[2],
             errorCode: errorCode,
-            activeWorkType: bytes.count > 4 ? bytes[4] : nil
+            activeWorkType: errorCode == 0 && bytes.count > 4 ? bytes[4] : nil
         )
     }
 
@@ -263,7 +265,7 @@ struct HeyCyanResponseDecoder: Sendable {
         guard bytes[3] != 0xFF else {
             throw HeyCyanResponseDecodingError.networkPreparationRejected
         }
-        guard bytes[3] == expectedMode.rawValue else {
+        guard let actualMode = HeyCyanNetworkMode(rawValue: bytes[3]) else {
             throw HeyCyanResponseDecodingError.unexpectedNetworkMode(
                 expected: expectedMode.rawValue,
                 actual: bytes[3]
@@ -288,7 +290,7 @@ struct HeyCyanResponseDecoder: Sendable {
         }
         return HeyCyanNetworkPreparation(
             responseCode: bytes[0],
-            mode: expectedMode,
+            mode: actualMode,
             ssid: ssid,
             passphrase: passphrase
         )

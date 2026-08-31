@@ -112,6 +112,54 @@ final class GlassesManagerTests: XCTestCase {
         XCTAssertEqual(provider.photoRequestCount, 1)
     }
 
+    func testVideoRecordingToggleRoutesThroughCapabilityProvider() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        let didStart = await manager.toggleVideoRecording()
+        XCTAssertTrue(didStart)
+        XCTAssertTrue(manager.isVideoRecording)
+        XCTAssertEqual(provider.startVideoCount, 1)
+
+        let didStop = await manager.toggleVideoRecording()
+        XCTAssertTrue(didStop)
+        XCTAssertFalse(manager.isVideoRecording)
+        XCTAssertEqual(provider.stopVideoCount, 1)
+    }
+
+    func testAudioRecordingToggleRoutesThroughCapabilityProvider() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        let didStart = await manager.toggleAudioRecording()
+        XCTAssertTrue(didStart)
+        XCTAssertTrue(manager.isAudioRecording)
+        XCTAssertEqual(provider.startAudioCount, 1)
+
+        let didStop = await manager.toggleAudioRecording()
+        XCTAssertTrue(didStop)
+        XCTAssertFalse(manager.isAudioRecording)
+        XCTAssertEqual(provider.stopAudioCount, 1)
+    }
+
     func testVisualCaptureFlowsThroughProviderBoundaryAndPublishesLatestCapture() async throws {
         let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
         let manager = GlassesManager(providers: [provider])
@@ -211,6 +259,8 @@ final class GlassesManagerTests: XCTestCase {
 private final class FakeGlassesProvider:
     GlassesProvider,
     GlassesPhotoCapturing,
+    GlassesVideoRecording,
+    GlassesAudioRecording,
     GlassesVisualCapturing,
     GlassesMediaTransferring,
     GlassesBatteryProviding,
@@ -223,6 +273,8 @@ private final class FakeGlassesProvider:
     let capabilities: Set<GlassesCapability> = [
         .bluetoothConnection,
         .photoCapture,
+        .videoRecording,
+        .audioRecording,
         .camera,
         .mediaTransfer
     ]
@@ -238,6 +290,8 @@ private final class FakeGlassesProvider:
     }
     var onConnectionStateChange: ((GlassesConnectionState) -> Void)?
     var onVisualCapture: ((GlassesVisualCapture) -> Void)?
+    var onVideoRecordingStateChange: ((Bool) -> Void)?
+    var onAudioRecordingStateChange: ((Bool) -> Void)?
     var onBatteryStatusChange: ((GlassesBatteryStatus?) -> Void)?
     var onDeviceInformationChange: ((GlassesDeviceInformation?) -> Void)?
     var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)?
@@ -249,6 +303,12 @@ private final class FakeGlassesProvider:
     var scanResult = [GlassesDevice]()
     private(set) var disconnectCount = 0
     private(set) var photoRequestCount = 0
+    private(set) var startVideoCount = 0
+    private(set) var stopVideoCount = 0
+    private(set) var isVideoRecording = false
+    private(set) var startAudioCount = 0
+    private(set) var stopAudioCount = 0
+    private(set) var isAudioRecording = false
     private(set) var visualCaptureRequestCount = 0
     private(set) var prepareMediaCount = 0
     private(set) var downloadMediaCount = 0
@@ -287,6 +347,30 @@ private final class FakeGlassesProvider:
         photoRequestCount += 1
     }
 
+    func startVideoRecording() async throws {
+        startVideoCount += 1
+        isVideoRecording = true
+        onVideoRecordingStateChange?(true)
+    }
+
+    func stopVideoRecording() async throws {
+        stopVideoCount += 1
+        isVideoRecording = false
+        onVideoRecordingStateChange?(false)
+    }
+
+    func startAudioRecording() async throws {
+        startAudioCount += 1
+        isAudioRecording = true
+        onAudioRecordingStateChange?(true)
+    }
+
+    func stopAudioRecording() async throws {
+        stopAudioCount += 1
+        isAudioRecording = false
+        onAudioRecordingStateChange?(false)
+    }
+
     func requestVisualCapture() async throws -> GlassesVisualCapture {
         visualCaptureRequestCount += 1
         let capture = GlassesVisualCapture(
@@ -308,6 +392,8 @@ private final class FakeGlassesProvider:
         mediaTransferState = .ready(itemCount: 1)
         return [item]
     }
+
+    func continueMediaTransferAfterManualNetworkJoin() {}
 
     func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {
         downloadMediaCount += 1

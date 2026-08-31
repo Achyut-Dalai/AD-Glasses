@@ -192,7 +192,7 @@ final class HeyCyanProtocolTests: XCTestCase {
         )
     }
 
-    func testMediaPreparationMatchesOnlyRequestedModeOrFailure() throws {
+    func testMediaPreparationCorrelatesDocumentedReturnedModeOrFailure() throws {
         let command = HeyCyanCommand.prepareMediaTransfer(mode: .accessPoint)
         let peerToPeer = try codec.decode(codec.encode(
             command: 0x41,
@@ -207,7 +207,7 @@ final class HeyCyanProtocolTests: XCTestCase {
             payload: Data([0x02, 0x01, 0x04, 0xFF, 0x04])
         ))
 
-        XCTAssertFalse(command.matchesResponse(peerToPeer))
+        XCTAssertTrue(command.matchesResponse(peerToPeer))
         XCTAssertTrue(command.matchesResponse(accessPoint))
         XCTAssertTrue(command.matchesResponse(rejected))
     }

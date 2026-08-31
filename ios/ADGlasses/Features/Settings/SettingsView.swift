@@ -192,7 +192,7 @@ struct SettingsView: View {
 private struct PhoneVoiceActivationSettingsView: View {
     @ObservedObject var controller: PhoneVoiceActivationController
     @State private var accessKey = ""
-    @State private var phrase = "Hey AD"
+    @State private var phrase = "AD"
     @State private var importsModel = false
     @State private var isTraining = false
 

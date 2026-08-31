@@ -6,6 +6,8 @@ final class HeyCyanGlassesProvider: NSObject,
     GlassesReconnecting,
     GlassesForgettable,
     GlassesPhotoCapturing,
+    GlassesVideoRecording,
+    GlassesAudioRecording,
     GlassesVisualCapturing,
     GlassesBatteryProviding,
     GlassesDeviceInformationProviding,
@@ -22,14 +24,14 @@ final class HeyCyanGlassesProvider: NSObject,
         var capabilities: Set<GlassesCapability> = [
             .bluetoothConnection,
             .photoCapture,
+            .videoRecording,
+            .audioRecording,
             .camera,
             .microphoneAudio,
             .deviceInformation,
             .volumeControl
         ]
-#if !AD_PERSONAL_TEAM_BUILD
         capabilities.insert(.mediaTransfer)
-#endif
         return capabilities
     }()
     let deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] = [
@@ -54,6 +56,8 @@ final class HeyCyanGlassesProvider: NSObject,
     var onGlassesVoiceWakeChange: ((Bool) -> Void)?
     var onAssistantAudioEvent: ((GlassesAssistantAudioEvent) -> Void)?
     var onVisualCapture: ((GlassesVisualCapture) -> Void)?
+    var onVideoRecordingStateChange: ((Bool) -> Void)?
+    var onAudioRecordingStateChange: ((Bool) -> Void)?
     var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)?
 
     private(set) var mediaTransferState: GlassesMediaTransferState = .idle {
@@ -95,6 +99,20 @@ final class HeyCyanGlassesProvider: NSObject,
         didSet {
             guard glassesVoiceWakeEnabled != oldValue else { return }
             onGlassesVoiceWakeChange?(glassesVoiceWakeEnabled)
+        }
+    }
+
+    private(set) var isVideoRecording = false {
+        didSet {
+            guard isVideoRecording != oldValue else { return }
+            onVideoRecordingStateChange?(isVideoRecording)
+        }
+    }
+
+    private(set) var isAudioRecording = false {
+        didSet {
+            guard isAudioRecording != oldValue else { return }
+            onAudioRecordingStateChange?(isAudioRecording)
         }
     }
 
@@ -317,6 +335,10 @@ final class HeyCyanGlassesProvider: NSObject,
         }
     }
 
+    func continueMediaTransferAfterManualNetworkJoin() {
+        mediaTransfer.continueAfterManualNetworkJoin()
+    }
+
     func downloadMediaItem(_ item: GlassesMediaItem, to destinationURL: URL) async throws {
         guard item.providerID == id,
               item.remoteIdentifier == item.fileName,
@@ -434,17 +456,32 @@ final class HeyCyanGlassesProvider: NSObject,
         defaults.set(enabled, forKey: desiredVoiceWakeKey)
     }
 
-    // Confirmed commands that still lack complete response/state semantics remain beneath the
-    // provider boundary. They are deliberately not advertised as completed product capabilities.
-    func requestVideoOperationForHardwareValidation() async throws {
+    func startVideoRecording() async throws {
         let frame = try await session.send(.startVideoRecording)
         _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x02)
+        isVideoRecording = true
     }
 
-    func requestAudioRecordingOperationForHardwareValidation() async throws {
+    func stopVideoRecording() async throws {
+        let frame = try await session.send(.stopVideoRecording)
+        _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x03)
+        isVideoRecording = false
+    }
+
+    func startAudioRecording() async throws {
         let frame = try await session.send(.startAudioRecording)
         _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x08)
+        isAudioRecording = true
     }
+
+    func stopAudioRecording() async throws {
+        let frame = try await session.send(.stopAudioRecording)
+        _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x0C)
+        isAudioRecording = false
+    }
+
+    // Confirmed commands that still lack complete response/state semantics remain beneath the
+    // provider boundary. They are deliberately not advertised as completed product capabilities.
 
     func requestAIPhotoForHardwareValidation(quality: HeyCyanAIPhotoQuality) async throws {
         let frame = try await session.send(.requestAIPhoto(quality: quality))
@@ -726,6 +763,8 @@ final class HeyCyanGlassesProvider: NSObject,
         deviceInformation = nil
         volumeProfile = nil
         glassesVoiceWakeEnabled = false
+        isVideoRecording = false
+        isAudioRecording = false
     }
 }
 
@@ -735,6 +774,11 @@ private extension HeyCyanMediaTransferState {
         case .idle: return .idle
         case .preparingBluetooth: return .preparing
         case .joiningNetwork: return .joiningNetwork
+        case .awaitingManualNetworkJoin(let credentials):
+            return .awaitingManualNetworkJoin(
+                ssid: credentials.ssid,
+                passphrase: credentials.passphrase
+            )
         case .verifyingMediaServer: return .checkingLibrary
         case .ready(let items): return .ready(itemCount: items.count)
         case .downloading(let fileName): return .downloading(fileName: fileName)

@@ -3,6 +3,8 @@ import Foundation
 enum GlassesCapability: String, Hashable, Sendable {
     case bluetoothConnection
     case photoCapture
+    case videoRecording
+    case audioRecording
     case microphoneAudio
     case camera
     case mediaTransfer
@@ -49,6 +51,7 @@ enum GlassesMediaTransferState: Equatable, Sendable {
     case idle
     case preparing
     case joiningNetwork
+    case awaitingManualNetworkJoin(ssid: String, passphrase: String)
     case checkingLibrary
     case ready(itemCount: Int)
     case downloading(fileName: String)
@@ -63,6 +66,8 @@ enum GlassesMediaTransferState: Equatable, Sendable {
             return "Preparing glasses"
         case .joiningNetwork:
             return "Joining glasses Wi-Fi"
+        case .awaitingManualNetworkJoin(let ssid, _):
+            return "Join \(ssid) in iPhone Wi-Fi settings"
         case .checkingLibrary:
             return "Checking media"
         case .ready(let itemCount):

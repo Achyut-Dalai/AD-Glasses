@@ -20,6 +20,8 @@ actor HeyCyanDiagnosticRecorder {
     }
 
     private static let capturePreferenceKey = "heycyan.diagnostics.packetCapture.v1"
+    private static let sanitizedLogVersionKey = "heycyan.diagnostics.sanitizedLogVersion"
+    private static let sanitizedLogVersion = 2
     private static let maximumLogBytes: UInt64 = 4 * 1_024 * 1_024
     private static let maximumPacketBytes = 4 * 1_024
 
@@ -45,6 +47,14 @@ actor HeyCyanDiagnosticRecorder {
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys]
+
+        // Version 1 traces could contain the 0x41/0x04 Wi-Fi credential response. Diagnostics
+        // are disposable validation data, so discard that legacy trace once rather than allowing
+        // a later Share action to export credentials captured by an older build.
+        if defaults.integer(forKey: Self.sanitizedLogVersionKey) < Self.sanitizedLogVersion {
+            try? fileManager.removeItem(at: logURL)
+            defaults.set(Self.sanitizedLogVersion, forKey: Self.sanitizedLogVersionKey)
+        }
     }
 
     func isPacketCaptureEnabled() -> Bool {
@@ -89,17 +99,51 @@ actor HeyCyanDiagnosticRecorder {
         data: Data
     ) {
         guard isPacketCaptureEnabled() else { return }
-        let captured = data.prefix(Self.maximumPacketBytes)
-        let hex = captured.map { String(format: "%02X", $0) }.joined(separator: " ")
+        let rendered = Self.sanitizedPacketHex(data, maximumBytes: Self.maximumPacketBytes)
         append(
             Record(
                 timestamp: Date(),
                 category: "packet",
                 message: "\(direction) \(channel.rawValue)",
                 byteCount: data.count,
-                hex: hex,
-                truncated: data.count > captured.count
+                hex: rendered.hex,
+                truncated: rendered.wasTruncated
             )
+        )
+    }
+
+    /// The 0x41/0x04 response carries the temporary SSID and passphrase in plaintext inside the
+    /// encrypted BLE link. Packet diagnostics must never turn those credentials back into an
+    /// exportable log or Xcode console string.
+    nonisolated static func sanitizedPacketHex(
+        _ data: Data,
+        maximumBytes: Int
+    ) -> (hex: String, wasTruncated: Bool) {
+        let bytes = [UInt8](data)
+        if bytes.count >= 14,
+           bytes[0] == 0xBC,
+           bytes[1] == 0x41,
+           bytes[8] == 0x04 {
+            let ssidLength = Int(UInt16(bytes[10]) | (UInt16(bytes[11]) << 8))
+            let passphraseLength = Int(UInt16(bytes[12]) | (UInt16(bytes[13]) << 8))
+            let credentialEnd = 14 + ssidLength + passphraseLength
+            if ssidLength > 0,
+               passphraseLength > 0,
+               credentialEnd <= bytes.count {
+                let prefix = bytes.prefix(14)
+                    .map { String(format: "%02X", $0) }
+                    .joined(separator: " ")
+                return (
+                    "\(prefix) <Wi-Fi credentials redacted>",
+                    data.count > maximumBytes
+                )
+            }
+        }
+
+        let captured = data.prefix(maximumBytes)
+        return (
+            captured.map { String(format: "%02X", $0) }.joined(separator: " "),
+            data.count > captured.count
         )
     }
 
@@ -191,6 +235,7 @@ final class HeyCyanPassiveBLEScanner: NSObject, @preconcurrency CBCentralManager
     private let diagnostics: HeyCyanDiagnosticRecorder
     private var central: CBCentralManager!
     private var isRunning = false
+    private var recordedPeripherals = Set<UUID>()
 
     init(diagnostics: HeyCyanDiagnosticRecorder) {
         self.diagnostics = diagnostics
@@ -201,6 +246,7 @@ final class HeyCyanPassiveBLEScanner: NSObject, @preconcurrency CBCentralManager
     func scan(duration: Duration) async throws {
         guard !isRunning else { throw ScanError.alreadyScanning }
         isRunning = true
+        recordedPeripherals.removeAll()
         defer {
             central.stopScan()
             isRunning = false
@@ -215,7 +261,7 @@ final class HeyCyanPassiveBLEScanner: NSObject, @preconcurrency CBCentralManager
 
         central.scanForPeripherals(
             withServices: nil,
-            options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
         try await Task.sleep(for: duration)
     }
@@ -229,6 +275,7 @@ final class HeyCyanPassiveBLEScanner: NSObject, @preconcurrency CBCentralManager
         rssi RSSI: NSNumber
     ) {
         guard isRunning else { return }
+        guard recordedPeripherals.insert(peripheral.identifier).inserted else { return }
         let services = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
         Task {
             await diagnostics.recordDiscovery(

@@ -11,7 +11,7 @@ enum PhoneWakeWordConfigurationState: Equatable, Sendable {
         switch self {
         case .ready: return "Ready"
         case .missingAccessKey: return "AccessKey required"
-        case .missingModel: return "Hey AD model required"
+        case .missingModel: return "AD model required"
         case .unavailable(let reason): return reason
         }
     }

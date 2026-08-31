@@ -1,12 +1,11 @@
 import Foundation
 import NetworkExtension
 
-struct HeyCyanAccessPoint: Equatable, Sendable {
+struct HeyCyanNetworkCredentials: Equatable, Sendable {
     let ssid: String
     let passphrase: String
-    let deviceIPv4Address: String
 
-    init(ssid: String, passphrase: String, deviceIPv4Address: String) throws {
+    init(ssid: String, passphrase: String) throws {
         let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedSSID.isEmpty, trimmedSSID.utf8.count <= 32 else {
             throw HeyCyanWiFiError.invalidSSID
@@ -14,13 +13,31 @@ struct HeyCyanAccessPoint: Equatable, Sendable {
         guard (8 ... 63).contains(passphrase.utf8.count) else {
             throw HeyCyanWiFiError.invalidPassphrase
         }
+        self.ssid = trimmedSSID
+        self.passphrase = passphrase
+    }
+}
+
+struct HeyCyanAccessPoint: Equatable, Sendable {
+    let ssid: String
+    let passphrase: String
+    let deviceIPv4Address: String
+
+    init(credentials: HeyCyanNetworkCredentials, deviceIPv4Address: String) throws {
         guard let normalizedAddress = Self.privateIPv4Address(deviceIPv4Address) else {
             throw HeyCyanWiFiError.invalidDeviceAddress
         }
 
-        self.ssid = trimmedSSID
-        self.passphrase = passphrase
+        ssid = credentials.ssid
+        passphrase = credentials.passphrase
         self.deviceIPv4Address = normalizedAddress
+    }
+
+    init(ssid: String, passphrase: String, deviceIPv4Address: String) throws {
+        try self.init(
+            credentials: HeyCyanNetworkCredentials(ssid: ssid, passphrase: passphrase),
+            deviceIPv4Address: deviceIPv4Address
+        )
     }
 
     private static func privateIPv4Address(_ value: String) -> String? {
@@ -48,7 +65,7 @@ struct HeyCyanAccessPoint: Equatable, Sendable {
 enum HeyCyanWiFiState: Equatable, Sendable {
     case idle
     case joining(ssid: String)
-    case joined(ssid: String, deviceIPv4Address: String)
+    case joined(ssid: String)
     case failed(reason: String)
 }
 
@@ -104,11 +121,11 @@ final class HeyCyanWiFiCoordinator {
         }
     }
 
-    func join(_ accessPoint: HeyCyanAccessPoint) async throws {
-        state = .joining(ssid: accessPoint.ssid)
+    func join(_ credentials: HeyCyanNetworkCredentials) async throws {
+        state = .joining(ssid: credentials.ssid)
         let configuration = NEHotspotConfiguration(
-            ssid: accessPoint.ssid,
-            passphrase: accessPoint.passphrase,
+            ssid: credentials.ssid,
+            passphrase: credentials.passphrase,
             isWEP: false
         )
         // A join-once configuration is removed by iOS when the device sleeps or after the app
@@ -118,12 +135,9 @@ final class HeyCyanWiFiCoordinator {
 
         do {
             try await apply(configuration)
-            activeSSID = accessPoint.ssid
-            defaults.set(accessPoint.ssid, forKey: temporarySSIDKey)
-            state = .joined(
-                ssid: accessPoint.ssid,
-                deviceIPv4Address: accessPoint.deviceIPv4Address
-            )
+            activeSSID = credentials.ssid
+            defaults.set(credentials.ssid, forKey: temporarySSIDKey)
+            state = .joined(ssid: credentials.ssid)
         } catch {
             state = .failed(reason: error.localizedDescription)
             throw error

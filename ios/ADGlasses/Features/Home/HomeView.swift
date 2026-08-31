@@ -1,4 +1,6 @@
+import AVKit
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
     @EnvironmentObject private var app: AppModel
@@ -119,9 +121,17 @@ private struct HomeScreen: View {
                             ForEach(ProductFeature.hardwareActions) { feature in
                                 FeatureTile(
                                     title: feature.title,
-                                    detail: feature.detail,
+                                    detail: feature == .video && glasses.isVideoRecording
+                                        ? "Recording · tap to stop"
+                                        : feature == .audio && glasses.isAudioRecording
+                                            ? "Recording · tap to stop"
+                                            : feature.detail,
                                     systemImage: feature.systemImage,
-                                    tint: feature.tint,
+                                    tint: feature == .video && glasses.isVideoRecording
+                                        ? .red
+                                        : feature == .audio && glasses.isAudioRecording
+                                            ? .red
+                                            : feature.tint,
                                     availability: availability(for: feature),
                                     action: { perform(feature) }
                                 )
@@ -186,6 +196,12 @@ private struct HomeScreen: View {
         if feature == .photo, glasses.supports(.photoCapture) {
             return .available
         }
+        if feature == .video, glasses.supports(.videoRecording) {
+            return .available
+        }
+        if feature == .audio, glasses.supports(.audioRecording) {
+            return .available
+        }
         if glasses.supports(capability) {
             return .notImplemented
         }
@@ -193,7 +209,8 @@ private struct HomeScreen: View {
     }
 
     private func unavailableMessage(for feature: ProductFeature) -> String {
-        if feature == .photo, let errorMessage = glasses.errorMessage {
+        if (feature == .photo || feature == .video || feature == .audio),
+           let errorMessage = glasses.errorMessage {
             return errorMessage
         }
         guard let capability = feature.capability else {
@@ -216,7 +233,7 @@ private struct HomeScreen: View {
             openSoundbite()
             return
         }
-        guard feature == .photo else {
+        guard feature == .photo || feature == .video || feature == .audio else {
             unavailableFeature = feature
             return
         }
@@ -226,8 +243,16 @@ private struct HomeScreen: View {
         }
 
         Task {
-            if await glasses.requestPhotoCapture() == false {
-                unavailableFeature = .photo
+            let succeeded: Bool
+            if feature == .photo {
+                succeeded = await glasses.requestPhotoCapture()
+            } else if feature == .video {
+                succeeded = await glasses.toggleVideoRecording()
+            } else {
+                succeeded = await glasses.toggleAudioRecording()
+            }
+            if !succeeded {
+                unavailableFeature = feature
             }
         }
     }
@@ -464,11 +489,79 @@ private struct MediaSyncSheet: View {
     @State private var errorMessage: String?
     @State private var completionMessage: String?
     @State private var syncTask: Task<Void, Never>?
+    @State private var didCopyNetworkPassword = false
+    @State private var revealsNetworkPassword = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if isPreparing {
+                if let manualJoin = manualNetworkJoin {
+                    VStack(spacing: 18) {
+                        Image(systemName: "wifi")
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundStyle(.blue)
+
+                        VStack(spacing: 8) {
+                            Text("Join the glasses Wi-Fi")
+                                .font(.title3.weight(.semibold))
+                            Text("Open iPhone Settings → Wi-Fi and select this temporary network. AD Glasses continues automatically when the glasses confirm the connection.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            LabeledContent("Network") {
+                                Text(manualJoin.ssid)
+                                    .font(.callout.monospaced())
+                                    .textSelection(.enabled)
+                            }
+                            LabeledContent("Password") {
+                                Text(
+                                    revealsNetworkPassword
+                                        ? manualJoin.passphrase
+                                        : String(repeating: "•", count: max(8, manualJoin.passphrase.count))
+                                )
+                                    .font(.callout.monospaced())
+                                    .textSelection(.enabled)
+                            }
+                        }
+                        .padding(14)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                        HStack(spacing: 18) {
+                            Button(revealsNetworkPassword ? "Hide password" : "Show password") {
+                                revealsNetworkPassword.toggle()
+                            }
+                            Button {
+                                UIPasteboard.general.setItems(
+                                    [[UIPasteboard.typeAutomatic: manualJoin.passphrase]],
+                                    options: [
+                                        .localOnly: true,
+                                        .expirationDate: Date().addingTimeInterval(120)
+                                    ]
+                                )
+                                didCopyNetworkPassword = true
+                            } label: {
+                                Label(
+                                    didCopyNetworkPassword ? "Copied" : "Copy password",
+                                    systemImage: didCopyNetworkPassword ? "checkmark" : "doc.on.doc"
+                                )
+                            }
+                        }
+
+                        Button("Check connection") {
+                            glasses.continueMediaTransferAfterManualNetworkJoin()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Text("iOS normally remembers the password after the first join. If it switches back to your internet Wi-Fi, select the glasses network again; sync will wait without restarting.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                } else if isPreparing {
                     ContentUnavailableView {
                         ProgressView()
                         Text("Preparing sync")
@@ -554,6 +647,13 @@ private struct MediaSyncSheet: View {
 
     private var unsyncedItems: [GlassesMediaItem] {
         items.filter { !isImported($0) }
+    }
+
+    private var manualNetworkJoin: (ssid: String, passphrase: String)? {
+        guard case .awaitingManualNetworkJoin(let ssid, let passphrase) = glasses.mediaTransferState else {
+            return nil
+        }
+        return (ssid, passphrase)
     }
 
     private var syncButtonTitle: String {
@@ -768,6 +868,9 @@ private struct LibraryItemDetailView: View {
     let item: LibraryItem
 
     @State private var transcript: String?
+    @State private var photo: UIImage?
+    @State private var player: AVPlayer?
+    @State private var isPlayingAudio = false
     @State private var loadError: String?
 
     var body: some View {
@@ -789,12 +892,45 @@ private struct LibraryItemDetailView: View {
                 } else {
                     ProgressView("Opening")
                 }
-            } else {
+            } else if let loadError {
                 ContentUnavailableView(
-                    item.title,
-                    systemImage: item.kind.systemImage,
-                    description: Text("Use Share to open this local file in a compatible app.")
+                    "Could not open \(item.kind.displayName.lowercased())",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(loadError)
                 )
+            } else if item.kind == .photo, let photo {
+                GeometryReader { proxy in
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                }
+                .background(.black)
+            } else if item.kind == .video, let player {
+                VideoPlayer(player: player)
+                    .background(.black)
+                    .onAppear { player.play() }
+            } else if item.kind == .audio, let player {
+                VStack(spacing: 24) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 72))
+                        .foregroundStyle(.purple)
+                    Button(isPlayingAudio ? "Pause" : "Play") {
+                        if isPlayingAudio {
+                            player.pause()
+                        } else {
+                            player.play()
+                        }
+                        isPlayingAudio.toggle()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else {
+                ProgressView("Opening")
             }
         }
         .navigationTitle(item.title)
@@ -805,23 +941,53 @@ private struct LibraryItemDetailView: View {
             }
         }
         .task {
-            guard item.kind == .transcript else { return }
             do {
                 let url = library.fileURL(for: item)
-                let data = try await Task.detached { try Data(contentsOf: url) }.value
-                guard data.count <= 1_048_576,
-                      let value = String(data: data, encoding: .utf8) else {
-                    throw LibraryStoreError.invalidSourceFile
+                switch item.kind {
+                case .transcript:
+                    let data = try await Task.detached { try Data(contentsOf: url) }.value
+                    guard data.count <= 1_048_576,
+                          let value = String(data: data, encoding: .utf8) else {
+                        throw LibraryStoreError.invalidSourceFile
+                    }
+                    transcript = value
+                case .photo:
+                    let data = try await Task.detached { try Data(contentsOf: url) }.value
+                    guard let value = UIImage(data: data) else {
+                        throw LibraryStoreError.invalidSourceFile
+                    }
+                    photo = value
+                case .video, .audio:
+                    player = AVPlayer(url: url)
                 }
-                transcript = value
             } catch {
                 loadError = error.localizedDescription
+            }
+        }
+        .onAppear {
+            if item.kind == .photo || item.kind == .video {
+                AppOrientationController.shared.allowMediaOrientation()
+            }
+        }
+        .onDisappear {
+            player?.pause()
+            if item.kind == .photo || item.kind == .video {
+                AppOrientationController.shared.usePortraitOnly()
             }
         }
     }
 }
 
 private extension LibraryItemKind {
+    var displayName: String {
+        switch self {
+        case .photo: return "Photo"
+        case .video: return "Video"
+        case .audio: return "Recording"
+        case .transcript: return "Transcript"
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .photo: return "photo"
@@ -1708,9 +1874,11 @@ private enum ProductFeature: String, Identifiable {
 
     var capability: GlassesCapability? {
         switch self {
-        case .lens, .video: return .camera
+        case .lens: return .camera
+        case .video: return .videoRecording
         case .photo: return .photoCapture
-        case .translate, .soundbites, .audio: return .microphoneAudio
+        case .audio: return .audioRecording
+        case .translate, .soundbites: return .microphoneAudio
         }
     }
 }
@@ -1720,6 +1888,8 @@ private extension GlassesCapability {
         switch self {
         case .bluetoothConnection: return "Bluetooth connection"
         case .photoCapture: return "Photo capture"
+        case .videoRecording: return "Video recording"
+        case .audioRecording: return "Audio recording"
         case .microphoneAudio: return "Glasses audio"
         case .camera: return "Camera"
         case .mediaTransfer: return "Media transfer"
@@ -1733,6 +1903,8 @@ private extension GlassesCapability {
         switch self {
         case .bluetoothConnection: return "antenna.radiowaves.left.and.right"
         case .photoCapture: return "camera"
+        case .videoRecording: return "video"
+        case .audioRecording: return "waveform.circle"
         case .microphoneAudio: return "waveform"
         case .camera: return "camera"
         case .mediaTransfer: return "arrow.triangle.2.circlepath"

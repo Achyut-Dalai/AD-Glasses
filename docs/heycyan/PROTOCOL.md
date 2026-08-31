@@ -207,6 +207,13 @@ all three values, and only then constructs the `NEHotspotConfiguration`. It does
 to pre-supply or hard-code credentials. AP-mode response behavior still needs a physical-iPhone
 capture before the sync UI is promoted.
 
+Physical iPhone testing on AM01CY firmware additionally proved that an AP-mode request
+(`02 01 04 02`) can return a valid credential payload whose reported mode is `01`. Response
+correlation therefore accepts either documented mode, preserves the device-selected mode, and
+validates the credential lengths instead of requiring the request byte to be echoed. The manual
+development flow exposes those credentials before waiting for the later `0x73/0x08` address event,
+because that event may depend on the phone first joining the advertised network.
+
 ### Connection initialization
 
 The captured official-app ready sequence now has native equivalents for:
@@ -246,6 +253,12 @@ These byte sequences are deterministic reconstructions of the official productio
 same frame format and representative command families are now validated in the physical-glasses
 capture. Each product operation must still wait for its matching work-type acknowledgement and use
 bounded timeout/cancellation/cleanup handling.
+
+On physical AM01 firmware `AM01CY_2.20.10_260411`, successful Photo (`0x01`) and AI Photo
+(`0x06`) actions can return `0xFF` in the control response's error/status position while the
+physical shutter executes. The official `GlassModelControlResponse` parser reads this byte as
+unsigned `255` and treats it as a terminal sentinel without reading `workTypeIng`; native clients
+must not sign-extend it to `-1` or report it as a rejected command.
 
 ---
 

@@ -1,7 +1,44 @@
 import SwiftUI
+import UIKit
+
+@MainActor
+final class AppOrientationController {
+    static let shared = AppOrientationController()
+
+    private(set) var supportedOrientations: UIInterfaceOrientationMask = .portrait
+
+    private init() {}
+
+    func usePortraitOnly() {
+        update(to: .portrait)
+    }
+
+    func allowMediaOrientation() {
+        update(to: .allButUpsideDown)
+    }
+
+    private func update(to orientations: UIInterfaceOrientationMask) {
+        supportedOrientations = orientations
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.requestGeometryUpdate(
+                .iOS(interfaceOrientations: orientations)
+            )
+        }
+    }
+}
+
+final class ADGlassesAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        AppOrientationController.shared.supportedOrientations
+    }
+}
 
 @main
 struct ADGlassesApp: App {
+    @UIApplicationDelegateAdaptor(ADGlassesAppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var appModel: AppModel

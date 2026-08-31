@@ -4,6 +4,7 @@ enum HeyCyanMediaTransferState: Equatable, Sendable {
     case idle
     case preparingBluetooth
     case joiningNetwork(ssid: String)
+    case awaitingManualNetworkJoin(credentials: HeyCyanNetworkCredentials)
     case verifyingMediaServer
     case ready(items: [HeyCyanMediaItem])
     case downloading(fileName: String)
@@ -62,6 +63,8 @@ final class HeyCyanMediaTransferCoordinator {
     private var addressWaitID: UUID?
     private var addressWaitContinuation: CheckedContinuation<String, Error>?
     private var addressTimeoutTask: Task<Void, Never>?
+    private var manualJoinWaitID: UUID?
+    private var manualJoinContinuation: CheckedContinuation<Void, Error>?
 
     convenience init(session: HeyCyanSession) {
         self.init(
@@ -96,19 +99,49 @@ final class HeyCyanMediaTransferCoordinator {
                 response,
                 expectedMode: .accessPoint
             )
-            let deviceAddress = try await waitForDeviceAddress(
+            let credentials = try HeyCyanNetworkCredentials(
+                ssid: preparation.ssid,
+                passphrase: preparation.passphrase
+            )
+
+            state = .joiningNetwork(ssid: credentials.ssid)
+            let deviceAddress: String
+#if AD_PERSONAL_TEAM_BUILD
+            // A Personal Team cannot provision Apple's Hotspot Configuration entitlement.
+            // Keep the verified BLE transfer session alive while the user selects the remembered
+            // glasses network. A mistimed Continue tap or an iOS auto-switch back to an internet
+            // network returns to this retryable state instead of cancelling transfer mode.
+            while true {
+                if let reportedDeviceIPv4Address {
+                    deviceAddress = reportedDeviceIPv4Address
+                    break
+                }
+                state = .awaitingManualNetworkJoin(credentials: credentials)
+                try await waitForManualNetworkJoin(operationID: operationID)
+                do {
+                    deviceAddress = try await waitForDeviceAddress(
+                        timeout: readinessTimeout,
+                        operationID: operationID
+                    )
+                    break
+                } catch HeyCyanMediaTransferError.networkAddressTimedOut {
+                    try ensureOperationIsActive(operationID)
+                    continue
+                }
+            }
+#else
+            try await wifi.join(credentials)
+            try ensureOperationIsActive(operationID)
+            deviceAddress = try await waitForDeviceAddress(
                 timeout: readinessTimeout,
                 operationID: operationID
             )
+#endif
+            try ensureOperationIsActive(operationID)
             let accessPoint = try HeyCyanAccessPoint(
-                ssid: preparation.ssid,
-                passphrase: preparation.passphrase,
+                credentials: credentials,
                 deviceIPv4Address: deviceAddress
             )
-
-            state = .joiningNetwork(ssid: accessPoint.ssid)
-            try await wifi.join(accessPoint)
-            try ensureOperationIsActive(operationID)
             activeAccessPoint = accessPoint
 
             state = .verifyingMediaServer
@@ -190,6 +223,7 @@ final class HeyCyanMediaTransferCoordinator {
     func abandonNetworkAssociation() {
         activeOperationID = nil
         finishAddressWait(with: .failure(CancellationError()))
+        finishManualNetworkJoin(with: .failure(CancellationError()))
         wifi.leave()
         activeAccessPoint = nil
         state = .idle
@@ -201,6 +235,7 @@ final class HeyCyanMediaTransferCoordinator {
     func cancel() {
         activeOperationID = nil
         finishAddressWait(with: .failure(CancellationError()))
+        finishManualNetworkJoin(with: .failure(CancellationError()))
         recoverTransferMode(sendBluetoothFinish: true)
         state = .idle
     }
@@ -209,6 +244,11 @@ final class HeyCyanMediaTransferCoordinator {
         switch event {
         case .wifiAddress(let address):
             reportedDeviceIPv4Address = address
+            if case .awaitingManualNetworkJoin = state {
+                // This is the protocol-confirmed success signal. It lets the free/manual flow
+                // continue automatically after the user returns from Settings.
+                finishManualNetworkJoin(with: .success(()))
+            }
             finishAddressWait(with: .success(address))
         case .wifiError(let code):
             reportedNetworkError = code
@@ -218,6 +258,14 @@ final class HeyCyanMediaTransferCoordinator {
         default:
             break
         }
+    }
+
+    /// Continues the entitlement-free development flow after the user has joined the temporary
+    /// glasses network in iOS Settings. The following HTTP probe verifies the association; this
+    /// signal alone is never treated as proof that the network is ready.
+    func continueAfterManualNetworkJoin() {
+        guard case .awaitingManualNetworkJoin = state else { return }
+        finishManualNetworkJoin(with: .success(()))
     }
 
     private func waitForMediaServer(
@@ -261,7 +309,7 @@ final class HeyCyanMediaTransferCoordinator {
 
         let waitID = UUID()
         return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
                 addressWaitID = waitID
                 addressWaitContinuation = continuation
                 addressTimeoutTask?.cancel()
@@ -294,6 +342,34 @@ final class HeyCyanMediaTransferCoordinator {
         continuation.resume(with: result)
     }
 
+    private func waitForManualNetworkJoin(operationID: UUID) async throws {
+        try ensureOperationIsActive(operationID)
+        let waitID = UUID()
+        manualJoinWaitID = waitID
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                guard activeOperationID == operationID else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                manualJoinContinuation = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                guard let self, manualJoinWaitID == waitID else { return }
+                finishManualNetworkJoin(with: .failure(CancellationError()))
+            }
+        }
+    }
+
+    private func finishManualNetworkJoin(with result: Result<Void, Error>) {
+        manualJoinWaitID = nil
+        guard let continuation = manualJoinContinuation else { return }
+        manualJoinContinuation = nil
+        continuation.resume(with: result)
+    }
+
     private func beginOperation() throws -> UUID {
         guard activeOperationID == nil else {
             throw HeyCyanMediaTransferError.operationInProgress
@@ -315,6 +391,7 @@ final class HeyCyanMediaTransferCoordinator {
 
     private func recoverTransferMode(sendBluetoothFinish: Bool) {
         finishAddressWait(with: .failure(CancellationError()))
+        finishManualNetworkJoin(with: .failure(CancellationError()))
         wifi.leave()
         activeAccessPoint = nil
 

@@ -60,23 +60,40 @@ final class HeyCyanResponseTests: XCTestCase {
         )
     }
 
-    func testControlAcknowledgementPreservesSignedErrorCode() throws {
+    func testControlAcknowledgementAcceptsOfficialFFTerminalSentinel() throws {
         let frame = try decodedFrame(
             command: 0x41,
-            payload: Data([0x02, 0x01, 0x04, 0xFF])
+            payload: Data([0x02, 0x01, 0x01, 0xFF])
+        )
+
+        XCTAssertEqual(
+            try decoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x01),
+            HeyCyanControlAcknowledgement(
+                responseCode: 0x02,
+                requestedWorkType: 0x01,
+                errorCode: 255,
+                activeWorkType: nil
+            )
+        )
+    }
+
+    func testControlAcknowledgementStillRejectsUnknownNonzeroStatus() throws {
+        let frame = try decodedFrame(
+            command: 0x41,
+            payload: Data([0x02, 0x01, 0x01, 0x02])
         )
 
         XCTAssertThrowsError(
-            try decoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x04)
+            try decoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x01)
         ) { error in
             XCTAssertEqual(
                 error as? HeyCyanResponseDecodingError,
-                .controlRejected(errorCode: -1)
+                .controlRejected(errorCode: 2)
             )
         }
     }
 
-    func testCapturedNetworkPreparationShapeDecodesCredentialLengthsAndStrings() throws {
+    func testCapturedNetworkPreparationPreservesDeviceSelectedModeAndCredentials() throws {
         // Same 22-byte SSID / 9-byte passphrase layout as the physical capture, using synthetic
         // values so a real accessory credential is never committed to source control.
         let ssid = "Test-Glasses-Network01"
@@ -88,7 +105,7 @@ final class HeyCyanResponseTests: XCTestCase {
         XCTAssertEqual(
             try decoder.decodeNetworkPreparation(
                 decodedFrame(command: 0x41, payload: payload),
-                expectedMode: .peerToPeer
+                expectedMode: .accessPoint
             ),
             HeyCyanNetworkPreparation(
                 responseCode: 0x02,
@@ -268,6 +285,29 @@ final class HeyCyanDiagnosticsTests: XCTestCase {
         await recorder.setPacketCaptureEnabled(true)
         await recorder.recordState("connected")
         XCTAssertGreaterThan(try Data(contentsOf: exportURL).count, 0)
+    }
+
+    func testNetworkCredentialsAreRedactedFromPacketRendering() throws {
+        let codec = HeyCyanFrameCodec.production
+        let ssid = "AD-Glasses-Secret"
+        let passphrase = "private-password"
+        var payload = Data([0x02, 0x01, 0x04, 0x01])
+        payload.append(UInt8(ssid.utf8.count & 0xFF))
+        payload.append(UInt8((ssid.utf8.count >> 8) & 0xFF))
+        payload.append(UInt8(passphrase.utf8.count & 0xFF))
+        payload.append(UInt8((passphrase.utf8.count >> 8) & 0xFF))
+        payload.append(contentsOf: ssid.utf8)
+        payload.append(contentsOf: passphrase.utf8)
+        let packet = try codec.encode(command: 0x41, payload: payload)
+
+        let rendered = HeyCyanDiagnosticRecorder.sanitizedPacketHex(
+            packet,
+            maximumBytes: 4_096
+        )
+
+        XCTAssertTrue(rendered.hex.contains("credentials redacted"))
+        XCTAssertFalse(rendered.hex.contains(ssid))
+        XCTAssertFalse(rendered.hex.contains(passphrase))
     }
 }
 
