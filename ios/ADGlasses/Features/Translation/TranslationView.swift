@@ -96,14 +96,22 @@ private struct NativeTranslationControls: View {
                     Text(language.name).tag(language.code)
                 }
             }
+            .onChange(of: targetLanguage) { _, _ in
+                result = nil
+                errorMessage = nil
+            }
 
             Button(translation.isTranslating ? "Translating…" : "Translate") {
                 Task {
+                    result = nil
+                    errorMessage = nil
                     do {
                         result = try await translation.translate(
                             sourceText,
                             to: Locale.Language(identifier: targetLanguage)
                         )
+                    } catch is CancellationError {
+                        return
                     } catch {
                         errorMessage = error.localizedDescription
                     }
@@ -113,6 +121,16 @@ private struct NativeTranslationControls: View {
                 translation.isTranslating ||
                     sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             )
+
+            if translation.isTranslating, let statusMessage = translation.statusMessage {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             if let result {
                 Text(result.translatedText)
