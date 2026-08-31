@@ -597,7 +597,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		E00000000000000000000001 /* Debug */ = {
+		E00000000000000000000001 /* Debug Personal */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -614,9 +614,9 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
-			name = Debug;
+			name = "Debug Personal";
 		};
-		E00000000000000000000002 /* Release */ = {
+		E00000000000000000000002 /* Release Personal */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -630,12 +630,29 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 			};
-			name = Release;
+			name = "Release Personal";
 		};
-		E00000000000000000000005 /* Debug */ = {
+		E00000000000000000000007 /* Release Entitled */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = "Release Entitled";
+		};
+		E00000000000000000000005 /* Debug Personal */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2DWLRWL9NV;
@@ -652,14 +669,41 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG AD_PERSONAL_TEAM_BUILD";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) AD_PERSONAL_TEAM_BUILD";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
-			name = Debug;
+			name = "Debug Personal";
 		};
-		E00000000000000000000006 /* Release */ = {
+		E00000000000000000000006 /* Release Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ADGlasses/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlasses;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) AD_PERSONAL_TEAM_BUILD";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = "Release Personal";
+		};
+		E00000000000000000000008 /* Release Entitled */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -683,9 +727,9 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
-			name = Release;
+			name = "Release Entitled";
 		};
-		E10000000000000000000001 /* Debug */ = {
+		E10000000000000000000001 /* Debug Personal */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -698,14 +742,34 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) AD_PERSONAL_TEAM_BUILD";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADGlasses.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADGlasses";
 			};
-			name = Debug;
+			name = "Debug Personal";
 		};
-		E10000000000000000000002 /* Release */ = {
+		E10000000000000000000002 /* Release Personal */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.achyutdalai.ADGlassesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) AD_PERSONAL_TEAM_BUILD";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADGlasses.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADGlasses";
+			};
+			name = "Release Personal";
+		};
+		E10000000000000000000004 /* Release Entitled */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -722,7 +786,7 @@
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ADGlasses.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ADGlasses";
 			};
-			name = Release;
+			name = "Release Entitled";
 		};
 /* End XCBuildConfiguration section */
 
@@ -730,29 +794,32 @@
 		E00000000000000000000003 /* Build configuration list for PBXNativeTarget "ADGlasses" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E00000000000000000000005 /* Debug */,
-				E00000000000000000000006 /* Release */,
+				E00000000000000000000005 /* Debug Personal */,
+				E00000000000000000000006 /* Release Personal */,
+				E00000000000000000000008 /* Release Entitled */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = "Release Personal";
 		};
 		E00000000000000000000004 /* Build configuration list for PBXProject "ADGlasses" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E00000000000000000000001 /* Debug */,
-				E00000000000000000000002 /* Release */,
+				E00000000000000000000001 /* Debug Personal */,
+				E00000000000000000000002 /* Release Personal */,
+				E00000000000000000000007 /* Release Entitled */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = "Release Personal";
 		};
 		E10000000000000000000003 /* Build configuration list for PBXNativeTarget "ADGlassesTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E10000000000000000000001 /* Debug */,
-				E10000000000000000000002 /* Release */,
+				E10000000000000000000001 /* Debug Personal */,
+				E10000000000000000000002 /* Release Personal */,
+				E10000000000000000000004 /* Release Entitled */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = "Release Personal";
 		};
 /* End XCConfigurationList section */
 

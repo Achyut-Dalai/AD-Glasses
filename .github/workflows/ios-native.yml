@@ -23,6 +23,6 @@ jobs:
             -project ios/ADGlasses.xcodeproj \
             -scheme ADGlasses \
             -sdk iphonesimulator \
-            -configuration Debug \
+            -configuration "Debug Personal" \
             CODE_SIGNING_ALLOWED=NO \
             build

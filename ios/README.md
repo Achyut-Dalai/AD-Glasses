@@ -65,7 +65,23 @@ See `MIGRATION_PLAN.md` for the Android product audit, architectural findings, a
 
 ## Installation and signing
 
-The repository does not ship a signed IPA or signing identity. Keep bundle/signing settings user-controlled so a development build can be signed and installed with a Personal Team or the user's preferred tooling, including SideStore-oriented workflows, without changing the app architecture.
+The repository does not ship a signed IPA or signing identity. Build optimization and signing
+capabilities are separate choices; **Release does not mean App Store**.
+
+The project provides these shared configurations:
+
+- `Debug Personal`: unoptimized, includes `DEBUG` and `AD_PERSONAL_TEAM_BUILD`, and has no Hotspot
+  Configuration entitlement.
+- `Release Personal`: optimized with normal Release settings, includes `AD_PERSONAL_TEAM_BUILD`,
+  and has no Hotspot Configuration entitlement. This is the normal daily-use configuration for a
+  free Apple Personal Team, direct Xcode installation, or later SideStore-oriented workflows.
+- `Release Entitled`: optimized, excludes `AD_PERSONAL_TEAM_BUILD`, and attaches
+  `ADGlasses.entitlements` for automatic `NEHotspotConfigurationManager` joining. Select it only
+  with a provisioning team/profile that supports Hotspot Configuration.
+
+Both Personal configurations use the existing manual media-transfer handoff: the app displays the
+glasses SSID/password, the user joins it in Settings, and BLE/device-IP plus HTTP verification resume
+the transfer. The entitled configuration preserves the automatic join implementation.
 
 The iOS target uses Swift Package Manager for LiveKit WakeWord and its ONNX Runtime dependency. These are build dependencies only; phone wake-word detection remains local and does not require a paid service account.
 
@@ -75,16 +91,20 @@ Avoid adding App Store-only assumptions to core app features.
 
 Open `ADGlasses.xcodeproj` in Xcode. The deployment target is iOS 17. Xcode resolves the Swift packages on first open.
 
-When the app reaches a validation checkpoint, the command-line build is:
+For an optimized Personal Team build, use:
 
 ```bash
 xcodebuild \
   -project ios/ADGlasses.xcodeproj \
-  -scheme ADGlasses \
+  -scheme "ADGlasses Release Personal" \
   -sdk iphonesimulator \
-  -configuration Debug \
+  -configuration "Release Personal" \
   CODE_SIGNING_ALLOWED=NO \
   build
 ```
+
+In Xcode, choose the `ADGlasses Release Personal` scheme and the connected iPhone, then Run. The
+default `ADGlasses` scheme remains the engineering scheme: it Runs/Tests with `Debug Personal` and
+Profiles/Archives with `Release Personal`. `ADGlasses Entitled` is the opt-in automatic Wi-Fi scheme.
 
 The current GitHub workflow for this target is `.github/workflows/ios-native.yml`. The old KMP/QCSDK workflow has been retired.

@@ -245,7 +245,7 @@ final class HeyCyanMediaTransferCoordinator {
         case .wifiAddress(let address):
             reportedDeviceIPv4Address = address
             if case .awaitingManualNetworkJoin = state {
-                // This is the protocol-confirmed success signal. It lets the free/manual flow
+                // This is the protocol-confirmed success signal. It lets the Personal/manual flow
                 // continue automatically after the user returns from Settings.
                 finishManualNetworkJoin(with: .success(()))
             }
@@ -260,7 +260,7 @@ final class HeyCyanMediaTransferCoordinator {
         }
     }
 
-    /// Continues the entitlement-free development flow after the user has joined the temporary
+    /// Continues the Personal Team flow after the user has joined the temporary
     /// glasses network in iOS Settings. The following HTTP probe verifies the association; this
     /// signal alone is never treated as proof that the network is ready.
     func continueAfterManualNetworkJoin() {

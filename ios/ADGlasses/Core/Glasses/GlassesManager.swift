@@ -374,7 +374,7 @@ final class GlassesManager: ObservableObject {
               supports(.mediaTransfer),
               let provider = providerInstances[activeProviderID] as? any GlassesMediaTransferring else {
             throw GlassesProviderError.notConfigured(
-                "Wi-Fi media sync is unavailable in this Personal Team development build."
+                "Wi-Fi media sync is unavailable for the connected glasses."
             )
         }
         do {

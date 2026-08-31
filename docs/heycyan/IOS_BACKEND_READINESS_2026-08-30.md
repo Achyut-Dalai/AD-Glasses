@@ -88,6 +88,9 @@ The exact SDK BCD/time-zone algorithm and the captured India vector are regressi
 - `NEHotspotConfiguration`, local-network permission, the Hotspot Configuration entitlement,
   deadline-based server readiness, non-cellular ephemeral HTTP, redirect rejection, safe file
   names and transactional cleanup are implemented.
+- Xcode optimization and Wi-Fi signing capability are independent: `Debug Personal` and
+  `Release Personal` both use the manual Settings handoff without the entitlement, while
+  `Release Entitled` preserves automatic `NEHotspotConfigurationManager` joining.
 - Library now invokes this transport through a provider-neutral media capability, displays explicit
   progress, imports only previously unsynced originals, retains the provider's remote identity for
   deduplication, and always exits transfer mode on completion, cancellation, error or disconnect.
