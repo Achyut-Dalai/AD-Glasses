@@ -1,0 +1,64 @@
+# AD Glasses phone wake word — LiveKit WakeWord
+# Display label: "Hey A D"
+# Spoken naturally: "hey ayy dee"
+#
+# LiveKit supports multiple target phrases as spelling/pronunciation variations.
+# We intentionally do NOT use "hey ad" as a positive because a TTS engine may
+# pronounce "ad" as the English word rather than the letters A-D.
+
+model_name: hey_a_d
+
+target_phrases:
+  - "hey a d"
+  - "hey ay dee"
+  - "hey ayy dee"
+
+# Production-scale synthetic positives/negatives. LiveKit recommends 20k+
+# samples for production models; tune down for quick local experiments.
+n_samples: 25000
+n_samples_val: 5000
+n_background_samples: 2000
+n_background_samples_val: 500
+
+# Hard negatives reduce accidental triggers from partial or similar phrases.
+custom_negative_phrases:
+  - "a d"
+  - "ay dee"
+  - "ayy dee"
+  - "ad"
+  - "hey ad"
+  - "hey a"
+  - "hey d"
+  - "hey tv"
+  - "hey jd"
+  - "hey ed"
+  - "hey eighty"
+  - "hey baby"
+  - "hey lady"
+
+# Speaking-rate and voice variation for synthetic positive data.
+noise_scales: [0.98]
+noise_scale_ws: [0.98]
+length_scales: [0.78, 0.9, 1.0, 1.1, 1.22]
+slerp_weights: [0.2, 0.35, 0.5, 0.65, 0.8]
+
+data_dir: ./data
+output_dir: ./output/hey_a_d
+
+augmentation:
+  clip_duration: 2.0
+  batch_size: 16
+  rounds: 3
+  background_paths: [./data/backgrounds]
+  rir_paths: [./data/rirs]
+
+model:
+  model_type: conv_attention
+  model_size: small
+
+steps: 100000
+learning_rate: 0.0001
+weight_decay: 0.01
+label_smoothing: 0.05
+
+target_fp_per_hour: 0.1
