@@ -123,13 +123,13 @@ final class NativeTranslationController: ObservableObject {
     }
 
     func supportedLanguages() async -> [Locale.Language] {
-        await LanguageAvailability().supportedLanguages
+        await languageAvailability().supportedLanguages
     }
 
     func supportedTargets(
         from sourceLanguage: Locale.Language
     ) async -> [Locale.Language] {
-        let availability = LanguageAvailability()
+        let availability = languageAvailability()
         let languages = await availability.supportedLanguages
         var targets = [Locale.Language]()
 
@@ -137,8 +137,13 @@ final class NativeTranslationController: ObservableObject {
             if Task.isCancelled { return [] }
             guard language.minimalIdentifier != sourceLanguage.minimalIdentifier else { continue }
             let status = await availability.status(from: sourceLanguage, to: language)
-            if status == .installed || status == .supported {
+            switch status {
+            case .installed, .supported:
                 targets.append(language)
+            case .unsupported:
+                break
+            @unknown default:
+                break
             }
         }
         return targets
@@ -148,7 +153,7 @@ final class NativeTranslationController: ObservableObject {
         from sourceLanguage: Locale.Language,
         to targetLanguage: Locale.Language
     ) async -> LanguageAvailability.Status {
-        await LanguageAvailability().status(from: sourceLanguage, to: targetLanguage)
+        await languageAvailability().status(from: sourceLanguage, to: targetLanguage)
     }
 
     private func preflight(
@@ -156,7 +161,7 @@ final class NativeTranslationController: ObservableObject {
         from sourceLanguage: Locale.Language?,
         to targetLanguage: Locale.Language
     ) async throws {
-        let availability = LanguageAvailability()
+        let availability = languageAvailability()
         let status: LanguageAvailability.Status
 
         if let sourceLanguage {
@@ -181,6 +186,13 @@ final class NativeTranslationController: ObservableObject {
         @unknown default:
             throw TextTranslationError.unsupportedLanguagePair
         }
+    }
+
+    private func languageAvailability() -> LanguageAvailability {
+        if #available(iOS 26.4, *) {
+            return LanguageAvailability(preferredStrategy: .lowLatency)
+        }
+        return LanguageAvailability()
     }
 
     private func finish(
