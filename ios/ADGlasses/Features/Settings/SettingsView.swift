@@ -191,10 +191,8 @@ struct SettingsView: View {
 
 private struct PhoneVoiceActivationSettingsView: View {
     @ObservedObject var controller: PhoneVoiceActivationController
-    @State private var accessKey = ""
     @State private var phrase = "AD"
     @State private var importsModel = false
-    @State private var isTraining = false
 
     var body: some View {
         List {
@@ -211,28 +209,23 @@ private struct PhoneVoiceActivationSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Picovoice") {
-                SecureField("AccessKey", text: $accessKey)
-                    .textContentType(.password)
-                Button("Save AccessKey") {
-                    controller.saveAccessKey(accessKey)
-                    accessKey = ""
+            Section("LiveKit WakeWord") {
+                LabeledContent("Engine", value: "LiveKit WakeWord")
+                TextField("Wake phrase label", text: $phrase)
+                    .textInputAutocapitalization(.words)
+
+                Button("Import .onnx wake-word model") {
+                    importsModel = true
                 }
 
-                TextField("Wake phrase", text: $phrase)
-                Button("Import iOS .ppn model") { importsModel = true }
-                Button(isTraining ? "Training…" : "Train wake phrase") {
-                    isTraining = true
-                    Task {
-                        await controller.trainModel(phrase: phrase)
-                        isTraining = false
-                    }
-                }
-                .disabled(isTraining)
-
-                Text("The AccessKey is stored in Keychain and is never bundled in the app. Custom phrases require a Picovoice-generated iOS .ppn model.")
+                Text("Wake-word detection runs locally on this iPhone with LiveKit WakeWord and CoreML-backed ONNX inference. No API key or hosted wake-word service is required. The imported classifier defines the actual phrase; the label above is stored with it for the AD Glasses UI.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                Link(
+                    "LiveKit custom wake-word training guide",
+                    destination: URL(string: "https://github.com/livekit/livekit-wakeword#training-a-custom-wake-word")!
+                )
             }
         }
         .navigationTitle("Phone voice activation")
