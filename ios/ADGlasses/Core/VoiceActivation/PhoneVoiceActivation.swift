@@ -55,6 +55,7 @@ final class PhoneVoiceActivationController: ObservableObject {
     private var applicationIsActive = false
     private var hasForegroundRecordingLease = false
     private var isHandlingWakeTurn = false
+    private var isExternallySuspended = false
     private var wakeTurnTimeoutTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -94,6 +95,14 @@ final class PhoneVoiceActivationController: ObservableObject {
 
     func setApplicationActive(_ active: Bool) {
         applicationIsActive = active
+        evaluate()
+    }
+
+    /// Temporarily yields the microphone/audio session to a foreground feature such as Live
+    /// Translation without changing the user's persisted wake-word preference.
+    func setExternalAudioSuspended(_ suspended: Bool) {
+        guard isExternallySuspended != suspended else { return }
+        isExternallySuspended = suspended
         evaluate()
     }
 
@@ -137,6 +146,14 @@ final class PhoneVoiceActivationController: ObservableObject {
             stopListening()
             return
         }
+
+        if isExternallySuspended {
+            cancelWakeTurn()
+            stopListening()
+            releaseForegroundRecordingLease(app: app)
+            return
+        }
+
         let shouldListen = isEnabled &&
             configurationState == .ready &&
             glasses.connectionState.isConnected &&
