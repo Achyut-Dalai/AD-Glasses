@@ -22,7 +22,7 @@ protocol PhoneWakeWordDetecting: AnyObject {
 
     func start(onDetection: @escaping @MainActor () -> Void) async throws
     func stop()
-    #if DEBUG
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     func importModel(from sourceURL: URL, phrase: String) throws
     #endif
 }
@@ -105,13 +105,16 @@ final class PhoneVoiceActivationController: ObservableObject {
         evaluate()
     }
 
-    #if DEBUG
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     func importModel(from sourceURL: URL, phrase: String) {
         stopListening()
         do {
             try service.importModel(from: sourceURL, phrase: phrase)
             errorMessage = nil
             refreshConfiguration()
+            if configurationState == .ready {
+                isEnabled = true
+            }
         } catch {
             errorMessage = error.localizedDescription
             refreshConfiguration()
