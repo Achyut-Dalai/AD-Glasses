@@ -65,10 +65,10 @@ private struct WelcomeView: View {
                 }
                 .frame(maxWidth: 620)
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 6)
                 .padding(.bottom, 22)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: UIScreen.main.bounds.height - 24)
+                .frame(minHeight: UIScreen.main.bounds.height - 24, alignment: .top)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -111,11 +111,16 @@ private struct WelcomeView: View {
     }
 
     private var headline: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("AD Glasses.\nYour AI. Your data.")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .tracking(-1)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Your glasses.")
+                Text("Your AI.")
+                    .foregroundStyle(.blue)
+                Text("Your data.")
+            }
+            .font(.system(.largeTitle, design: .rounded, weight: .bold))
+            .tracking(-1)
+            .fixedSize(horizontal: false, vertical: true)
 
             Text("See more, remember more, and keep the moments that matter.")
                 .font(.body)
