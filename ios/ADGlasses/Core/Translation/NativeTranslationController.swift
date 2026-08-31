@@ -13,6 +13,7 @@ final class NativeTranslationController: ObservableObject {
 
     @Published private(set) var configuration: TranslationSession.Configuration?
     @Published private(set) var isTranslating = false
+    @Published private(set) var statusMessage: String?
 
     private var pendingRequest: PendingRequest?
 
@@ -21,12 +22,26 @@ final class NativeTranslationController: ObservableObject {
         from sourceLanguage: Locale.Language? = nil,
         to targetLanguage: Locale.Language
     ) async throws -> TextTranslationResult {
-        guard pendingRequest == nil else {
+        guard pendingRequest == nil, !isTranslating else {
             throw TextTranslationError.operationInProgress
         }
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else {
             throw TranslationError.nothingToTranslate
+        }
+
+        isTranslating = true
+        statusMessage = "Checking language support…"
+        do {
+            try await preflight(value, from: sourceLanguage, to: targetLanguage)
+        } catch is CancellationError {
+            isTranslating = false
+            statusMessage = nil
+            throw CancellationError()
+        } catch {
+            isTranslating = false
+            statusMessage = nil
+            throw error
         }
 
         let requestID = UUID()
@@ -37,7 +52,6 @@ final class NativeTranslationController: ObservableObject {
                     text: value,
                     continuation: continuation
                 )
-                isTranslating = true
 
                 let nextConfiguration: TranslationSession.Configuration
                 if #available(iOS 26.4, *) {
@@ -71,8 +85,10 @@ final class NativeTranslationController: ObservableObject {
     func performPendingRequest(using session: TranslationSession) async {
         guard let pendingRequest else { return }
         do {
+            statusMessage = "Preparing Apple Translation…"
             try await session.prepareTranslation()
             try Task.checkCancellation()
+            statusMessage = "Translating…"
             let response = try await session.translate(pendingRequest.text)
             finish(
                 id: pendingRequest.id,
@@ -85,8 +101,15 @@ final class NativeTranslationController: ObservableObject {
                     )
                 )
             )
-        } catch {
+        } catch is CancellationError {
+            finish(id: pendingRequest.id, result: .failure(CancellationError()))
+        } catch let error as TextTranslationError {
             finish(id: pendingRequest.id, result: .failure(error))
+        } catch {
+            finish(
+                id: pendingRequest.id,
+                result: .failure(TextTranslationError.translationFailed(error.localizedDescription))
+            )
         }
     }
 
@@ -97,6 +120,38 @@ final class NativeTranslationController: ObservableObject {
         await LanguageAvailability().status(from: sourceLanguage, to: targetLanguage)
     }
 
+    private func preflight(
+        _ text: String,
+        from sourceLanguage: Locale.Language?,
+        to targetLanguage: Locale.Language
+    ) async throws {
+        let availability = LanguageAvailability()
+        let status: LanguageAvailability.Status
+
+        if let sourceLanguage {
+            status = await availability.status(from: sourceLanguage, to: targetLanguage)
+        } else {
+            do {
+                status = try await availability.status(for: text, to: targetLanguage)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                throw TextTranslationError.sourceLanguageUndetermined
+            }
+        }
+
+        switch status {
+        case .installed:
+            statusMessage = "Translating…"
+        case .supported:
+            statusMessage = "Preparing language download…"
+        case .unsupported:
+            throw TextTranslationError.unsupportedLanguagePair
+        @unknown default:
+            throw TextTranslationError.unsupportedLanguagePair
+        }
+    }
+
     private func finish(
         id: UUID,
         result: Result<TextTranslationResult, Error>
@@ -104,6 +159,7 @@ final class NativeTranslationController: ObservableObject {
         guard let request = pendingRequest, request.id == id else { return }
         pendingRequest = nil
         isTranslating = false
+        statusMessage = nil
         request.continuation.resume(with: result)
     }
 }
