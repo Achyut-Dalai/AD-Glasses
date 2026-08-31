@@ -36,7 +36,7 @@ private struct NativeTranslateExperience: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var phoneVoiceActivation: PhoneVoiceActivationController
 
-    @StateObject private var liveTranslation = LiveInterpreterController()
+    @StateObject private var liveTranslation = LiveTranslationController()
 
     @AppStorage("translation.sourceLanguage.v1") private var sourceLanguage = "hi"
     @AppStorage("translation.targetLanguage.v1") private var targetLanguage = "en"
