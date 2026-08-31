@@ -100,7 +100,7 @@ private struct NativeTranslateExperience: View {
                     )
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(translation.isTranslating)
+                .disabled(!liveTranslation.isRunning && translation.isTranslating)
 
                 HStack(spacing: 10) {
                     if liveTranslation.isRunning {
