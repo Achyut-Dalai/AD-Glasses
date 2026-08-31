@@ -33,6 +33,8 @@ enum LiveKitPhoneWakeWordError: LocalizedError {
 /// deactivating the microphone in the middle of that handoff.
 @MainActor
 final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
+    private static let defaultPhrase = "Hey A D"
+
     private let defaults: UserDefaults
     private let fileManager: FileManager
     private let phraseKey = "livekit.wakePhrase.v1"
@@ -43,13 +45,17 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
     init(defaults: UserDefaults = .standard, fileManager: FileManager = .default) {
         self.defaults = defaults
         self.fileManager = fileManager
-        if defaults.string(forKey: phraseKey) == nil {
-            defaults.set("AD", forKey: phraseKey)
+
+        let storedPhrase = defaults.string(forKey: phraseKey)
+        if storedPhrase == nil ||
+            (storedPhrase?.localizedCaseInsensitiveCompare("AD") == .orderedSame &&
+                !fileManager.fileExists(atPath: modelURL.path)) {
+            defaults.set(Self.defaultPhrase, forKey: phraseKey)
         }
     }
 
     var phrase: String {
-        defaults.string(forKey: phraseKey) ?? "AD"
+        defaults.string(forKey: phraseKey) ?? Self.defaultPhrase
     }
 
     var configurationState: PhoneWakeWordConfigurationState {
@@ -217,7 +223,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
 
     private func normalized(_ phrase: String) -> String {
         let trimmed = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "AD" : trimmed
+        return trimmed.isEmpty ? Self.defaultPhrase : trimmed
     }
 
     private func deactivateAudioSessionIfAllowed() {
