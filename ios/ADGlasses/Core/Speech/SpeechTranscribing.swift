@@ -2,10 +2,11 @@ import AVFoundation
 import Foundation
 import Speech
 
-/// Keeps the recording audio session alive across the short Porcupine → Speech → spoken-answer
-/// handoff. iOS permits an already-running recording session to continue after the app is
-/// backgrounded, but does not permit an ordinary app to create a new recording session there.
-/// The lease is therefore acquired only after wake-word capture starts successfully in foreground.
+/// Keeps the recording audio session alive across the short wake-word detector → Speech →
+/// spoken-answer handoff. iOS permits an already-running recording session to continue after the
+/// app is backgrounded, but does not permit an ordinary app to create a new recording session
+/// there. The lease is therefore acquired only after wake-word capture starts successfully in
+/// foreground.
 @MainActor
 final class VoiceAudioSessionContinuity {
     static let shared = VoiceAudioSessionContinuity()
@@ -113,7 +114,6 @@ enum SpeechPermissions {
             throw SpeechTranscriptionError.speechPermissionDenied
         }
     }
-
 
     static func requestRecognition() async throws {
         guard await requestSpeechRecognition() else {
