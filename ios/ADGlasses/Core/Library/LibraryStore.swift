@@ -4,6 +4,7 @@ actor LibraryStore {
     private let fileManager: FileManager
     private let rootURL: URL
     private nonisolated let filesURL: URL
+    private nonisolated let enhancedPhotosURL: URL
     private let indexURL: URL
 
     init(fileManager: FileManager = .default, rootURL: URL? = nil) {
@@ -15,6 +16,7 @@ actor LibraryStore {
             .appendingPathComponent("ADGlasses/Library", isDirectory: true)
         self.rootURL = base
         filesURL = base.appendingPathComponent("Files", isDirectory: true)
+        enhancedPhotosURL = base.appendingPathComponent("EnhancedPhotos", isDirectory: true)
         indexURL = base.appendingPathComponent("library.json", isDirectory: false)
     }
 
@@ -112,17 +114,46 @@ actor LibraryStore {
         return items
     }
 
+    func existingEnhancedPhotoURL(for item: LibraryItem) -> URL? {
+        guard item.kind == .photo else { return nil }
+        let url = enhancedPhotoURL(for: item)
+        return fileManager.fileExists(atPath: url.path) ? url : nil
+    }
+
+    func saveEnhancedPhoto(_ data: Data, for item: LibraryItem) throws -> URL {
+        guard item.kind == .photo, !data.isEmpty else {
+            throw LibraryStoreError.invalidSourceFile
+        }
+        try ensureDirectories()
+        let destination = enhancedPhotoURL(for: item)
+        try data.write(
+            to: destination,
+            options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+        )
+        return destination
+    }
+
     nonisolated func fileURL(for item: LibraryItem) -> URL {
         filesURL.appendingPathComponent(item.relativeFileName, isDirectory: false)
     }
 
+    nonisolated func enhancedPhotoURL(for item: LibraryItem) -> URL {
+        enhancedPhotosURL.appendingPathComponent("\(item.id.uuidString).jpg", isDirectory: false)
+    }
+
     private func ensureDirectories() throws {
+        let attributes: [FileAttributeKey: Any] = [
+            .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+        ]
         try fileManager.createDirectory(
             at: filesURL,
             withIntermediateDirectories: true,
-            attributes: [
-                .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
-            ]
+            attributes: attributes
+        )
+        try fileManager.createDirectory(
+            at: enhancedPhotosURL,
+            withIntermediateDirectories: true,
+            attributes: attributes
         )
     }
 
