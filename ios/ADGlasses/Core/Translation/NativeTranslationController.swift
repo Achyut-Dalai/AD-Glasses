@@ -178,7 +178,7 @@ final class NativeTranslationController: ObservableObject {
 
 @available(iOS 18.0, *)
 @MainActor
-final class LiveInterpreterController: ObservableObject {
+final class LiveTranslationController: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var statusMessage = "Not running"
     @Published private(set) var currentTranscript = ""
@@ -213,7 +213,7 @@ final class LiveInterpreterController: ObservableObject {
         inputRouteName = nil
 
         guard languageBase(sourceLanguageCode) != languageBase(targetLanguageCode) else {
-            errorMessage = "Choose two different languages for Live Interpreter."
+            errorMessage = "Choose two different languages for Live Translation."
             return false
         }
         guard !translation.isTranslating else {
@@ -325,7 +325,6 @@ final class LiveInterpreterController: ObservableObject {
             return
         }
 
-        lastSourceText = sourceText
         if !isLikelySourceLanguage(sourceText) {
             statusMessage = "Heard a different language — ignored"
             do {
@@ -337,6 +336,7 @@ final class LiveInterpreterController: ObservableObject {
             return
         }
 
+        lastSourceText = sourceText
         statusMessage = "Translating \(languageName(sourceLanguageCode)) → \(languageName(targetLanguageCode))…"
         do {
             let result = try await translation.translate(
