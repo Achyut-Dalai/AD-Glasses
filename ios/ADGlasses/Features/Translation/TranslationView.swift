@@ -1,5 +1,6 @@
 import SwiftUI
 import Translation
+import UIKit
 
 struct TranslationView: View {
     @Environment(\.dismiss) private var dismiss
@@ -31,6 +32,25 @@ struct TranslationView: View {
 }
 
 @available(iOS 18.0, *)
+private struct TranslationLanguageOption: Identifiable, Hashable {
+    let language: Locale.Language
+    let code: String
+    let name: String
+
+    var id: String { code }
+
+    init(_ language: Locale.Language) {
+        self.language = language
+        code = language.minimalIdentifier
+        name = Locale.current.localizedString(forIdentifier: language.minimalIdentifier)
+            ?? Locale.current.localizedString(
+                forLanguageCode: language.languageCode?.identifier ?? language.minimalIdentifier
+            )
+            ?? language.minimalIdentifier
+    }
+}
+
+@available(iOS 18.0, *)
 private struct NativeTranslateExperience: View {
     @EnvironmentObject private var translation: NativeTranslationController
     @EnvironmentObject private var app: AppModel
@@ -41,50 +61,142 @@ private struct NativeTranslateExperience: View {
     @AppStorage("translation.sourceLanguage.v1") private var sourceLanguage = "hi"
     @AppStorage("translation.targetLanguage.v1") private var targetLanguage = "en"
 
+    @State private var allLanguages = [TranslationLanguageOption]()
+    @State private var targetLanguages = [TranslationLanguageOption]()
+    @State private var isLoadingLanguages = true
+    @State private var isLoadingTargets = false
+    @State private var languageError: String?
+
     @State private var phrase = ""
     @State private var phraseResult: TextTranslationResult?
     @State private var phraseError: String?
 
-    private let languages: [(code: String, name: String)] = [
-        ("en", "English"),
-        ("hi", "Hindi"),
-        ("bn", "Bengali"),
-        ("es", "Spanish"),
-        ("fr", "French"),
-        ("de", "German"),
-        ("it", "Italian"),
-        ("pt", "Portuguese"),
-        ("ja", "Japanese"),
-        ("ko", "Korean"),
-        ("zh-Hans", "Chinese (Simplified)")
-    ]
-
     var body: some View {
-        Form {
-            Section("Languages") {
-                Picker("From", selection: $sourceLanguage) {
-                    ForEach(languages, id: \.code) { language in
-                        Text(language.name).tag(language.code)
-                    }
-                }
-                .disabled(liveTranslation.isRunning)
-
-                Picker("To", selection: $targetLanguage) {
-                    ForEach(languages, id: \.code) { language in
-                        Text(language.name).tag(language.code)
-                    }
-                }
-                .disabled(liveTranslation.isRunning)
-
-                Button("Swap languages", systemImage: "arrow.up.arrow.down") {
-                    let previousSource = sourceLanguage
-                    sourceLanguage = targetLanguage
-                    targetLanguage = previousSource
-                }
-                .disabled(liveTranslation.isRunning)
+        ScrollView {
+            VStack(spacing: 16) {
+                languageCard
+                liveTranslationCard
+                phraseCard
             }
+            .frame(maxWidth: 680)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .task { await loadLanguages() }
+        .onChange(of: sourceLanguage) { _, _ in
+            resetPhraseResult()
+            Task { await refreshTargets() }
+        }
+        .onChange(of: targetLanguage) { _, _ in
+            resetPhraseResult()
+        }
+        .onChange(of: app.isGlassesAssistantAudioActive) { _, isActive in
+            guard isActive, liveTranslation.isRunning else { return }
+            Task { await stopLiveTranslation() }
+        }
+        .onDisappear {
+            Task { await stopLiveTranslation() }
+        }
+    }
 
-            Section {
+    private var languageCard: some View {
+        TranslateCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Languages")
+                            .font(.headline)
+                        Text("Choose exactly what AD Glasses should listen for and speak back.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if isLoadingLanguages || isLoadingTargets {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+
+                if let languageError {
+                    Label(languageError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                } else if allLanguages.isEmpty {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Loading Apple Translation languages…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        languageMenu(
+                            title: "From",
+                            selectionName: sourceLanguageName,
+                            options: allLanguages,
+                            selection: sourceLanguage
+                        ) { option in
+                            sourceLanguage = option.code
+                        }
+
+                        Button {
+                            swapLanguages()
+                        } label: {
+                            Image(systemName: "arrow.left.arrow.right")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(width: 42, height: 42)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.circle)
+                        .disabled(
+                            liveTranslation.isRunning ||
+                                isLoadingTargets ||
+                                targetLanguages.isEmpty
+                        )
+                        .accessibilityLabel("Swap languages")
+
+                        languageMenu(
+                            title: "To",
+                            selectionName: targetLanguageName,
+                            options: targetLanguages,
+                            selection: targetLanguage
+                        ) { option in
+                            targetLanguage = option.code
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var liveTranslationCard: some View {
+        TranslateCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "waveform.and.mic")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.blue)
+                        .frame(width: 36, height: 36)
+                        .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Live Translation")
+                            .font(.headline)
+                        Text("\(sourceLanguageName) → \(targetLanguageName)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+
+                Text("Only speech identified as \(sourceLanguageName) is translated. Speech in other languages is ignored, so your \(targetLanguageName) reply is not translated back.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Button {
                     Task {
                         if liveTranslation.isRunning {
@@ -94,18 +206,32 @@ private struct NativeTranslateExperience: View {
                         }
                     }
                 } label: {
-                    Label(
-                        liveTranslation.isRunning ? "Stop Live Translation" : "Start Live Translation",
-                        systemImage: liveTranslation.isRunning ? "stop.circle.fill" : "waveform.and.mic"
-                    )
+                    HStack(spacing: 9) {
+                        Image(systemName: liveTranslation.isRunning ? "stop.circle.fill" : "waveform.and.mic")
+                        Text(liveTranslation.isRunning ? "Stop Live Translation" : "Start Live Translation")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 3)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!liveTranslation.isRunning && translation.isTranslating)
+                .controlSize(.large)
+                .disabled(
+                    !liveTranslation.isRunning && (
+                        translation.isTranslating ||
+                            isLoadingLanguages ||
+                            isLoadingTargets ||
+                            targetLanguages.isEmpty
+                    )
+                )
 
-                HStack(spacing: 10) {
+                HStack(spacing: 9) {
                     if liveTranslation.isRunning {
                         ProgressView()
                             .controlSize(.small)
+                    } else {
+                        Image(systemName: "checkmark.circle")
+                            .foregroundStyle(.secondary)
                     }
                     Text(liveTranslation.statusMessage)
                         .font(.footnote.weight(.medium))
@@ -114,68 +240,107 @@ private struct NativeTranslateExperience: View {
 
                 if let inputRouteName = liveTranslation.inputRouteName,
                    liveTranslation.isRunning {
-                    LabeledContent("Listening through", value: inputRouteName)
-                        .font(.footnote)
+                    HStack(spacing: 8) {
+                        Image(systemName: "mic")
+                            .foregroundStyle(.secondary)
+                        Text("Listening through \(inputRouteName)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if !liveTranslation.currentTranscript.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Hearing")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(liveTranslation.currentTranscript)
-                    }
+                    transcriptBlock(
+                        label: "Hearing",
+                        text: liveTranslation.currentTranscript,
+                        emphasized: false
+                    )
                 }
 
                 if !liveTranslation.lastSourceText.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(sourceLanguageName)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(liveTranslation.lastSourceText)
-                    }
+                    transcriptBlock(
+                        label: sourceLanguageName,
+                        text: liveTranslation.lastSourceText,
+                        emphasized: false
+                    )
                 }
 
                 if !liveTranslation.lastTranslation.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(targetLanguageName)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(liveTranslation.lastTranslation)
-                            .font(.title3)
-                            .textSelection(.enabled)
-                    }
+                    transcriptBlock(
+                        label: targetLanguageName,
+                        text: liveTranslation.lastTranslation,
+                        emphasized: true
+                    )
                 }
 
                 if let error = liveTranslation.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
                         .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } header: {
-                Text("Live Translation")
-            } footer: {
-                Text("Speech identified as \(sourceLanguageName) is translated to \(targetLanguageName). Other languages are ignored. AD Glasses uses the active iPhone audio route, so a connected Bluetooth microphone can be used when iOS selects it.")
             }
+        }
+    }
 
-            Section {
-                TextField("Type or paste a phrase", text: $phrase, axis: .vertical)
-                    .lineLimit(2 ... 6)
-                    .disabled(liveTranslation.isRunning)
-
-                Button(translation.isTranslating ? "Translating…" : "Translate phrase") {
-                    Task { await translatePhrase() }
+    private var phraseCard: some View {
+        TranslateCard {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Translate a phrase")
+                        .font(.headline)
+                    Text("For typed or pasted text without starting the microphone.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
+
+                TextField(
+                    "Type \(sourceLanguageName) text",
+                    text: $phrase,
+                    axis: .vertical
+                )
+                .lineLimit(3 ... 7)
+                .padding(12)
+                .background(
+                    Color(uiColor: .secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .disabled(liveTranslation.isRunning)
+
+                Text("Enter text in \(sourceLanguageName), then tap Translate to \(targetLanguageName).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    Task { await translatePhrase() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if translation.isTranslating && !liveTranslation.isRunning {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "translate")
+                        }
+                        Text(translation.isTranslating ? "Translating…" : "Translate to \(targetLanguageName)")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 2)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
                 .disabled(
                     liveTranslation.isRunning ||
-                    translation.isTranslating ||
-                    phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        translation.isTranslating ||
+                        isLoadingTargets ||
+                        phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                        targetLanguages.isEmpty
                 )
 
                 if translation.isTranslating,
                    !liveTranslation.isRunning,
                    let statusMessage = translation.statusMessage {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 9) {
                         ProgressView()
                             .controlSize(.small)
                         Text(statusMessage)
@@ -184,53 +349,207 @@ private struct NativeTranslateExperience: View {
                     }
                 }
 
-                if let phraseResult {
-                    Text(phraseResult.translatedText)
-                        .font(.title3)
-                        .textSelection(.enabled)
-
-                    Button("Read aloud", systemImage: "speaker.wave.2") {
-                        do {
-                            try app.speechOutput.speak(
-                                phraseResult.translatedText,
-                                languageCode: phraseResult.targetLanguage
-                            )
-                        } catch {
-                            phraseError = error.localizedDescription
-                        }
-                    }
+                if let phraseError {
+                    Label(phraseError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            } header: {
-                Text("Translate a phrase")
-            } footer: {
-                Text("Use this for a quick typed or pasted translation without starting continuous listening.")
+
+                if let phraseResult {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(targetLanguageName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(phraseResult.translatedText)
+                            .font(.title3)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Button("Read aloud", systemImage: "speaker.wave.2") {
+                            do {
+                                try app.speechOutput.speak(
+                                    phraseResult.translatedText,
+                                    languageCode: phraseResult.targetLanguage
+                                )
+                            } catch {
+                                phraseError = error.localizedDescription
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(12)
+                    .background(
+                        .thinMaterial,
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                }
             }
         }
-        .onChange(of: sourceLanguage) { _, _ in resetPhraseResult() }
-        .onChange(of: targetLanguage) { _, _ in resetPhraseResult() }
-        .onChange(of: app.isGlassesAssistantAudioActive) { _, isActive in
-            guard isActive, liveTranslation.isRunning else { return }
-            Task { await stopLiveTranslation() }
+    }
+
+    private func languageMenu(
+        title: String,
+        selectionName: String,
+        options: [TranslationLanguageOption],
+        selection: String,
+        onSelect: @escaping (TranslationLanguageOption) -> Void
+    ) -> some View {
+        Menu {
+            ForEach(options) { option in
+                Button {
+                    onSelect(option)
+                } label: {
+                    if option.code == selection {
+                        Label(option.name, systemImage: "checkmark")
+                    } else {
+                        Text(option.name)
+                    }
+                }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 5) {
+                    Text(selectionName)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 2)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
         }
-        .onDisappear {
-            Task { await stopLiveTranslation() }
+        .buttonStyle(.plain)
+        .disabled(liveTranslation.isRunning || options.isEmpty)
+    }
+
+    private func transcriptBlock(
+        label: String,
+        text: String,
+        emphasized: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(text)
+                .font(emphasized ? .title3 : .body)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .alert("Translation", isPresented: Binding(
-            get: { phraseError != nil },
-            set: { if !$0 { phraseError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(phraseError ?? "")
-        }
+        .padding(12)
+        .background(
+            Color(uiColor: .secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
     }
 
     private var sourceLanguageName: String {
-        languages.first(where: { $0.code == sourceLanguage })?.name ?? sourceLanguage
+        allLanguages.first(where: { $0.code == sourceLanguage })?.name
+            ?? Locale.current.localizedString(forIdentifier: sourceLanguage)
+            ?? sourceLanguage
     }
 
     private var targetLanguageName: String {
-        languages.first(where: { $0.code == targetLanguage })?.name ?? targetLanguage
+        targetLanguages.first(where: { $0.code == targetLanguage })?.name
+            ?? allLanguages.first(where: { $0.code == targetLanguage })?.name
+            ?? Locale.current.localizedString(forIdentifier: targetLanguage)
+            ?? targetLanguage
+    }
+
+    private func loadLanguages() async {
+        isLoadingLanguages = true
+        languageError = nil
+
+        let supported = await translation.supportedLanguages()
+        guard !Task.isCancelled else { return }
+        let options = makeOptions(from: supported)
+        guard !options.isEmpty else {
+            allLanguages = []
+            targetLanguages = []
+            languageError = "Apple Translation did not report any supported languages on this iPhone."
+            isLoadingLanguages = false
+            return
+        }
+
+        allLanguages = options
+        if !options.contains(where: { $0.code == sourceLanguage }) {
+            sourceLanguage = preferredOption(code: "hi", in: options)?.code
+                ?? preferredOption(code: "en", in: options)?.code
+                ?? options[0].code
+        }
+
+        await refreshTargets()
+        isLoadingLanguages = false
+    }
+
+    private func refreshTargets() async {
+        guard !allLanguages.isEmpty else { return }
+        let requestedSource = sourceLanguage
+        isLoadingTargets = true
+        defer {
+            if sourceLanguage == requestedSource {
+                isLoadingTargets = false
+            }
+        }
+
+        let targets = await translation.supportedTargets(
+            from: Locale.Language(identifier: requestedSource)
+        )
+        guard !Task.isCancelled, sourceLanguage == requestedSource else { return }
+
+        let options = makeOptions(from: targets)
+        targetLanguages = options
+        guard !options.isEmpty else {
+            languageError = "Apple Translation did not report a valid target language for \(sourceLanguageName)."
+            return
+        }
+
+        languageError = nil
+        if !options.contains(where: { $0.code == targetLanguage }) {
+            targetLanguage = preferredOption(code: "en", in: options)?.code
+                ?? preferredOption(code: "hi", in: options)?.code
+                ?? options[0].code
+        }
+    }
+
+    private func makeOptions(
+        from languages: [Locale.Language]
+    ) -> [TranslationLanguageOption] {
+        var seen = Set<String>()
+        return languages
+            .map(TranslationLanguageOption.init)
+            .filter { seen.insert($0.code).inserted }
+            .sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
+    private func preferredOption(
+        code: String,
+        in options: [TranslationLanguageOption]
+    ) -> TranslationLanguageOption? {
+        options.first { option in
+            option.code.lowercased() == code.lowercased() ||
+                option.code.lowercased().split(separator: "-").first == code.lowercased()[...]
+        }
+    }
+
+    private func swapLanguages() {
+        guard !liveTranslation.isRunning, !targetLanguage.isEmpty else { return }
+        let previousSource = sourceLanguage
+        sourceLanguage = targetLanguage
+        targetLanguage = previousSource
     }
 
     private func startLiveTranslation() async {
@@ -297,6 +616,24 @@ private struct NativeTranslateExperience: View {
     }
 }
 
+private struct TranslateCard<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                Color(uiColor: .systemBackground),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+            }
+    }
+}
+
 @available(iOS 17.4, *)
 private struct LegacyTranslateExperience: View {
     @State private var text = ""
@@ -314,7 +651,7 @@ private struct LegacyTranslateExperience: View {
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .translationPresentation(isPresented: $isPresented, text: text)
             } footer: {
-                Text("Live Translation requires iOS 18 or later.")
+                Text("Native in-app translation requires iOS 18 or later.")
             }
         }
     }
