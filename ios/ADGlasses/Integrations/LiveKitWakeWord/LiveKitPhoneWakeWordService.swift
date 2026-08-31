@@ -14,7 +14,7 @@ enum LiveKitPhoneWakeWordError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelMissing:
-            return "The Hey A D voice-activation model is not included in this build."
+            return "The Hey A D voice-activation model is not installed. Import a LiveKit .onnx model in Settings, or use a build that bundles one."
         case .calibrationMissing:
             return "The Hey A D voice-activation model has not been calibrated yet."
         case .invalidManifest:
@@ -53,7 +53,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
     private var cachedModelKey: WakeWordModelCacheKey?
     private var lifecycleID = UUID()
 
-    #if DEBUG
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     private let debugPhraseKey = "livekit.wakePhrase.v1"
     private let debugThresholdKey = "livekit.wakeThreshold.v1"
     #endif
@@ -69,7 +69,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
     }
 
     var phrase: String {
-        #if DEBUG
+        #if DEBUG || AD_PERSONAL_TEAM_BUILD
         if hasDebugOverride {
             return normalized(defaults.string(forKey: debugPhraseKey) ?? Self.defaultPhrase)
         }
@@ -200,7 +200,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
         deactivateAudioSessionIfAllowed()
     }
 
-    #if DEBUG
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     func importModel(from sourceURL: URL, phrase: String) throws {
         guard sourceURL.pathExtension.lowercased() == "onnx" else {
             throw LiveKitPhoneWakeWordError.invalidModel
@@ -257,7 +257,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
     }
 
     private func classifierConfiguration() throws -> WakeWordClassifierConfiguration {
-        #if DEBUG
+        #if DEBUG || AD_PERSONAL_TEAM_BUILD
         if hasDebugOverride {
             let threshold = defaults.object(forKey: debugThresholdKey) as? NSNumber
             return try makeConfiguration(
@@ -365,7 +365,7 @@ final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
         )
     }
 
-    #if DEBUG
+    #if DEBUG || AD_PERSONAL_TEAM_BUILD
     private var hasDebugOverride: Bool {
         fileManager.fileExists(atPath: debugModelURL.path)
     }
