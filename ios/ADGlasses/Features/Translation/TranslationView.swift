@@ -539,9 +539,11 @@ private struct NativeTranslateExperience: View {
         code: String,
         in options: [TranslationLanguageOption]
     ) -> TranslationLanguageOption? {
-        options.first { option in
-            option.code.lowercased() == code.lowercased() ||
-                option.code.lowercased().split(separator: "-").first == code.lowercased()[...]
+        let requested = code.lowercased()
+        let requestedBase = requested.split(separator: "-").first
+        return options.first { option in
+            let candidate = option.code.lowercased()
+            return candidate == requested || candidate.split(separator: "-").first == requestedBase
         }
     }
 
@@ -617,7 +619,11 @@ private struct NativeTranslateExperience: View {
 }
 
 private struct TranslateCard<Content: View>: View {
-    @ViewBuilder let content: Content
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
 
     var body: some View {
         content
