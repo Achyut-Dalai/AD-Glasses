@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 enum HeyCyanMediaTransferState: Equatable, Sendable {
     case idle
@@ -107,27 +108,20 @@ final class HeyCyanMediaTransferCoordinator {
             state = .joiningNetwork(ssid: credentials.ssid)
             let deviceAddress: String
 #if AD_PERSONAL_TEAM_BUILD
-            // A Personal Team cannot provision Apple's Hotspot Configuration entitlement.
-            // Keep the verified BLE transfer session alive while the user selects the remembered
-            // glasses network. A mistimed Continue tap or an iOS auto-switch back to an internet
-            // network returns to this retryable state instead of cancelling transfer mode.
-            while true {
-                if let reportedDeviceIPv4Address {
-                    deviceAddress = reportedDeviceIPv4Address
-                    break
-                }
+            // Personal Team builds cannot provision Hotspot Configuration. Launch Wi-Fi Settings
+            // once, keep this BLE transfer session alive while the user joins the glasses AP, then
+            // perform one bounded verification when the app becomes active again. Do not loop
+            // forever if the network was not joined or the glasses fail to report an address.
+            if let reportedDeviceIPv4Address {
+                deviceAddress = reportedDeviceIPv4Address
+            } else {
                 state = .awaitingManualNetworkJoin(credentials: credentials)
+                openWiFiSettings()
                 try await waitForManualNetworkJoin(operationID: operationID)
-                do {
-                    deviceAddress = try await waitForDeviceAddress(
-                        timeout: readinessTimeout,
-                        operationID: operationID
-                    )
-                    break
-                } catch HeyCyanMediaTransferError.networkAddressTimedOut {
-                    try ensureOperationIsActive(operationID)
-                    continue
-                }
+                deviceAddress = try await waitForDeviceAddress(
+                    timeout: readinessTimeout,
+                    operationID: operationID
+                )
             }
 #else
             try await wifi.join(credentials)
@@ -246,7 +240,7 @@ final class HeyCyanMediaTransferCoordinator {
             reportedDeviceIPv4Address = address
             if case .awaitingManualNetworkJoin = state {
                 // This is the protocol-confirmed success signal. It lets the Personal/manual flow
-                // continue automatically after the user returns from Settings.
+                // continue automatically even if the address arrives while Settings is visible.
                 finishManualNetworkJoin(with: .success(()))
             }
             finishAddressWait(with: .success(address))
@@ -261,8 +255,8 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
     /// Continues the Personal Team flow after the user has joined the temporary
-    /// glasses network in iOS Settings. The following HTTP probe verifies the association; this
-    /// signal alone is never treated as proof that the network is ready.
+    /// glasses network in iOS Settings. The following BLE/IP and HTTP checks verify the association;
+    /// this signal alone is never treated as proof that the network is ready.
     func continueAfterManualNetworkJoin() {
         guard case .awaitingManualNetworkJoin = state else { return }
         finishManualNetworkJoin(with: .success(()))
@@ -283,6 +277,15 @@ final class HeyCyanMediaTransferCoordinator {
             guard session.state.isReady else { throw HeyCyanSessionError.notReady }
             do {
                 return try await media.mediaList(on: accessPoint)
+            } catch let error as HeyCyanMediaError {
+                // A real HTTP 4xx proves we reached the glasses server and the request itself was
+                // rejected. Repeating the same bad request dozens of times only looks like an
+                // endless sync, so surface deterministic client/protocol errors immediately.
+                if case .httpStatus(let status) = error,
+                   (400 ..< 500).contains(status) {
+                    throw error
+                }
+                lastError = error
             } catch {
                 lastError = error
             }
@@ -369,6 +372,30 @@ final class HeyCyanMediaTransferCoordinator {
         manualJoinContinuation = nil
         continuation.resume(with: result)
     }
+
+#if AD_PERSONAL_TEAM_BUILD
+    /// iOS exposes no public API that deep-links directly to the Wi-Fi pane. Personal/sideloaded
+    /// builds use the long-standing Settings URL as a best-effort convenience; if iOS rejects it,
+    /// the existing on-screen SSID/password remains available and the user can open Settings
+    /// manually. We deliberately keep this out of entitlement-enabled/App-Store-oriented builds.
+    private func openWiFiSettings() {
+        openSettingsURLCandidates([
+            "App-Prefs:root=WIFI",
+            "prefs:root=WIFI"
+        ])
+    }
+
+    private func openSettingsURLCandidates(_ candidates: [String]) {
+        guard let first = candidates.first,
+              let url = URL(string: first) else { return }
+        UIApplication.shared.open(url, options: [:]) { [weak self] opened in
+            guard !opened, candidates.count > 1 else { return }
+            Task { @MainActor [weak self] in
+                self?.openSettingsURLCandidates(Array(candidates.dropFirst()))
+            }
+        }
+    }
+#endif
 
     private func beginOperation() throws -> UUID {
         guard activeOperationID == nil else {
