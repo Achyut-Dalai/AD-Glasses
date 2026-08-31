@@ -40,6 +40,9 @@ enum HeyCyanMediaError: LocalizedError, Sendable {
 /// which contract it supports.
 actor HeyCyanMediaClient {
     private static let maximumManifestBytes = 1_048_576
+    // Captured official HeyCyan traffic sends this User-Agent. The glasses HTTP server is known to
+    // reject otherwise-correct `/files/media.config` requests when the header is absent.
+    private static let vendorCompatibleUserAgent = "okhttp/4.9.2"
 
     private let session: URLSession
     private let redirectDelegate: HeyCyanNoRedirectDelegate?
@@ -72,7 +75,7 @@ actor HeyCyanMediaClient {
             deviceIPv4Address: accessPoint.deviceIPv4Address,
             pathComponents: ["files", "media.config"]
         )
-        let (data, response) = try await session.data(from: url)
+        let (data, response) = try await session.data(for: request(for: url))
         try validate(response, expectedHost: accessPoint.deviceIPv4Address)
         guard data.count <= Self.maximumManifestBytes else {
             throw HeyCyanMediaError.manifestTooLarge
@@ -105,9 +108,16 @@ actor HeyCyanMediaClient {
             deviceIPv4Address: accessPoint.deviceIPv4Address,
             pathComponents: ["files", item.fileName]
         )
-        let (temporaryURL, response) = try await session.download(from: sourceURL)
+        let (temporaryURL, response) = try await session.download(for: request(for: sourceURL))
         try validate(response, expectedHost: accessPoint.deviceIPv4Address)
         try FileManager.default.moveItem(at: temporaryURL, to: destinationURL)
+    }
+
+    private func request(for url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.setValue(Self.vendorCompatibleUserAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("keep-alive", forHTTPHeaderField: "Connection")
+        return request
     }
 
     private func validate(_ response: URLResponse, expectedHost: String) throws {
