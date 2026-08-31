@@ -96,19 +96,12 @@ private struct WelcomeView: View {
     }
 
     private var brand: some View {
-        HStack(spacing: 10) {
-            Image("BrandIcon")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .accessibilityHidden(true)
-
-            Text("AD GLASSES")
-                .font(.subheadline.weight(.bold))
-                .tracking(1.5)
-        }
-        .accessibilityElement(children: .combine)
+        Image("BrandIcon")
+            .resizable()
+            .scaledToFill()
+            .frame(width: 36, height: 36)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .accessibilityLabel("AD Glasses")
     }
 
     private var headline: some View {
