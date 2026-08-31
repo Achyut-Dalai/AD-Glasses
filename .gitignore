@@ -35,6 +35,7 @@ captures/
 *.swu
 *.json
 !package.json
+!ios/ADGlasses/Resources/WakeWords/manifest.json
 firmware_dump/
 
 # iOS

@@ -1,17 +1,19 @@
 # AD Glasses phone wake word — LiveKit WakeWord
 # Display label: "Hey A D"
-# Spoken naturally: "hey ayy dee"
+# Spoken naturally: "hey A-dee"
 #
-# LiveKit supports multiple target phrases as spelling/pronunciation variations.
-# We intentionally do NOT use "hey ad" as a positive because a TTS engine may
-# pronounce "ad" as the English word rather than the letters A-D.
+# LiveKit's Piper backend normalizes these strings to lowercase before passing
+# them to espeak-ng. On espeak-ng 1.52, all three variants below resolve to the
+# intended continuous /heɪ eɪ diː/ pronunciation. Do not replace them with
+# "hey a d" (which resolves to /heɪ ɐ diː/) or "hey ay dee" (which resolves
+# to /heɪ aɪ diː/).
 
 model_name: hey_a_d
 
 target_phrases:
-  - "hey a d"
-  - "hey ay dee"
-  - "hey ayy dee"
+  - "hey A-D"
+  - "hey A.D."
+  - "hey a-dee"
 
 # Production-scale synthetic positives/negatives. LiveKit recommends 20k+
 # samples for production models; tune down for quick local experiments.
@@ -19,6 +21,7 @@ n_samples: 25000
 n_samples_val: 5000
 n_background_samples: 2000
 n_background_samples_val: 500
+tts_batch_size: 50
 
 # Hard negatives reduce accidental triggers from partial or similar phrases.
 custom_negative_phrases:
@@ -26,24 +29,34 @@ custom_negative_phrases:
   - "ay dee"
   - "ayy dee"
   - "ad"
+  - "add"
+  - "aid"
+  - "aide"
   - "hey ad"
+  - "hey add"
+  - "hey aid"
+  - "hey aide"
   - "hey a"
   - "hey d"
   - "hey tv"
   - "hey jd"
   - "hey ed"
+  - "hey edie"
+  - "hey katie"
   - "hey eighty"
   - "hey baby"
   - "hey lady"
+  - "hey maybe"
+  - "hey shady"
 
 # Speaking-rate and voice variation for synthetic positive data.
 noise_scales: [0.98]
 noise_scale_ws: [0.98]
-length_scales: [0.78, 0.9, 1.0, 1.1, 1.22]
+length_scales: [0.75, 1.0, 1.25]
 slerp_weights: [0.2, 0.35, 0.5, 0.65, 0.8]
 
 data_dir: ./data
-output_dir: ./output/hey_a_d
+output_dir: ./output
 
 augmentation:
   clip_duration: 2.0
@@ -54,11 +67,18 @@ augmentation:
 
 model:
   model_type: conv_attention
-  model_size: small
+  model_size: medium
 
 steps: 100000
 learning_rate: 0.0001
 weight_decay: 0.01
 label_smoothing: 0.05
+max_negative_weight: 3000
 
 target_fp_per_hour: 0.1
+
+batch_n_per_class:
+  positive: 50
+  adversarial_negative: 50
+  ACAV100M_sample: 1024
+  background_noise: 50

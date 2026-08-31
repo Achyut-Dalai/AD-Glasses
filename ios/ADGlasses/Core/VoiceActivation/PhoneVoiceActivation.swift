@@ -22,7 +22,9 @@ protocol PhoneWakeWordDetecting: AnyObject {
 
     func start(onDetection: @escaping @MainActor () -> Void) async throws
     func stop()
+    #if DEBUG
     func importModel(from sourceURL: URL, phrase: String) throws
+    #endif
 }
 
 /// Owns product policy for phone wake-word listening. The engine itself remains replaceable.
@@ -103,6 +105,7 @@ final class PhoneVoiceActivationController: ObservableObject {
         evaluate()
     }
 
+    #if DEBUG
     func importModel(from sourceURL: URL, phrase: String) {
         stopListening()
         do {
@@ -114,6 +117,7 @@ final class PhoneVoiceActivationController: ObservableObject {
             refreshConfiguration()
         }
     }
+    #endif
 
     func refreshConfiguration() {
         configurationState = service.configurationState

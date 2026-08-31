@@ -131,7 +131,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(app.conversation.last?.text, "What can I see?")
     }
 
-    func testPhoneWakeListeningContinuesWhenAppMovesToBackground() throws {
+    func testPhoneWakeListeningContinuesWhenAppMovesToBackground() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         defaults.set(true, forKey: "phoneVoiceActivation.enabled.v1")
         let service = FakePhoneWakeWordService()
@@ -150,16 +150,18 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         )
 
         controller.setApplicationActive(true)
+        await Task.yield()
         XCTAssertTrue(controller.isListening)
         XCTAssertEqual(service.startCount, 1)
 
+        let stopCountBeforeBackgrounding = service.stopCount
         controller.setApplicationActive(false)
         XCTAssertTrue(controller.isListening)
-        XCTAssertEqual(service.stopCount, 0)
+        XCTAssertEqual(service.stopCount, stopCountBeforeBackgrounding)
 
         controller.isEnabled = false
         XCTAssertFalse(controller.isListening)
-        XCTAssertEqual(service.stopCount, 1)
+        XCTAssertEqual(service.stopCount, stopCountBeforeBackgrounding + 1)
     }
 }
 
@@ -170,7 +172,7 @@ private final class FakePhoneWakeWordService: PhoneWakeWordDetecting {
     private(set) var startCount = 0
     private(set) var stopCount = 0
 
-    func start(onDetection: @escaping @MainActor () -> Void) throws {
+    func start(onDetection: @escaping @MainActor () -> Void) async throws {
         startCount += 1
     }
 
@@ -178,9 +180,9 @@ private final class FakePhoneWakeWordService: PhoneWakeWordDetecting {
         stopCount += 1
     }
 
-    func saveAccessKey(_ value: String) throws {}
+    #if DEBUG
     func importModel(from sourceURL: URL, phrase: String) throws {}
-    func trainModel(phrase: String, language: String) async throws {}
+    #endif
 }
 
 @MainActor

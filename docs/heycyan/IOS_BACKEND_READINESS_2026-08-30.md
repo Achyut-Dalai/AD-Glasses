@@ -34,12 +34,12 @@ Forget separate: Disconnect does not erase the remembered CoreBluetooth peripher
 - CoreBluetooth state restoration can relaunch the provider for accessory events and rebuild its
   verified GATT session. If the user force-quits the app, iOS will not relaunch it for Bluetooth;
   the user must open AD Glasses once again. The same first-open requirement applies after reboot.
-- Phone `Hey AD` listening must first start while the app is active. Once its recording session is
+- Phone `Hey A D` listening must first start while the app is active. Once its recording session is
   established, it is designed to continue while another app is used or the phone is locked. It
   stops immediately on glasses disconnect/feature disable and pauses for Speech/TTS.
 - Wake models, conversations, imported media and Library indexes use after-first-unlock file
   protection. They remain device-only but can be read and written after a subsequently locked
-  screen. AI and Porcupine credentials use matching device-only Keychain accessibility.
+  screen. AI credentials use matching device-only Keychain accessibility.
 - A spoken Assistant request receives a finite iOS background-task lease to finish its network
   answer and local persistence; spoken output then uses background audio. This is bounded work,
   not a claim of unrestricted background execution.
@@ -158,7 +158,7 @@ capture contains no phrase model or phrase text. Safe alternatives before firmwa
 
 - keep the physical Assistant button as the dependable no-wake-word entry;
 - use the implemented family `0x44` glasses wake-listening toggle, which defaults Off for AD;
-- use the implemented phone-owned `Hey AD` Porcupine service as a separate microphone feature. It
+- use the implemented phone-owned `Hey A D` LiveKit WakeWord service as a separate microphone feature. It
   starts only while the app is active, glasses are connected and the feature is enabled; the
   established audio session is intended to remain alive across app switching/lock and suspends
   detection while Speech or spoken output owns the turn;
@@ -171,7 +171,7 @@ part of the normal backend integration.
 
 The reverse-engineering author additionally reports that wake-word, shutter-sound and LED paths are
 encrypted/vendor-controlled. Treat that as a practical firmware boundary unless a signed firmware
-artifact and a reversible recovery route are obtained. An app-owned `Hey AD` detector can be built
+artifact and a reversible recovery route are obtained. An app-owned `Hey A D` detector can be built
 without touching those paths, but it listens to the iPhone microphone; HeyCyan does not provide a
 continuous glasses-microphone stream before its own wake/button event.
 
@@ -179,10 +179,10 @@ continuous glasses-microphone stream before its own wake/button event.
 
 1. Connect/disconnect/forget/relaunch/Bluetooth-off-on and confirm one reconnect attempt per delay.
 2. Verify `0x40`, `0x42`, `0x43`, `0x51`, and `0x49` request/response vectors and real UI state.
-3. With glasses-side voice wake still Off, test the physical Assistant button and phone `Hey AD`
+3. With glasses-side voice wake still Off, test the physical Assistant button and phone `Hey A D`
    in foreground, another app, and locked-screen states. Verify two consecutive locked-screen turns
    so wake listening must resume after Speech/TTS.
-4. Say “Hey AD, click a photo” and verify the local photo executor, acknowledgement, and physical
+4. Say “Hey A D, click a photo” and verify the local photo executor, acknowledgement, and physical
    media count. Then run one Lens capture and verify the `0x73` → sequential `0xFD` JPEG path.
 5. Exercise AP media preparation once without downloading; verify returned mode, credential
    lengths, `0x73/08` address, association result and cleanup.
@@ -197,7 +197,7 @@ continuous glasses-microphone stream before its own wake/button event.
 | Workflow | Code state | Remaining physical proof |
 | --- | --- | --- |
 | BLE connect, restore, reconnect, disconnect, forget | Implemented | iPhone pairing and restoration callbacks |
-| Phone `Hey AD` → Speech → AI → spoken answer | Implemented/configuration-gated | locked-screen audio transition and battery use |
+| Phone `Hey A D` → Speech → AI → spoken answer | Implemented/configuration-gated | locked-screen audio transition and battery use |
 | Glasses button audio → Opus → Apple Speech → answer | Implemented from captured packets | physical routing, packet continuity, recognition |
 | “Click a photo” voice tool | Implemented locally | command acknowledgement and saved media on this pair |
 | Lens glasses JPEG intake | Implemented from captured `0x73`/`0xFD` flow | first iPhone capture; general cloud vision still absent |

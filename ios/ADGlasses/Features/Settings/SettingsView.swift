@@ -191,8 +191,10 @@ struct SettingsView: View {
 
 private struct PhoneVoiceActivationSettingsView: View {
     @ObservedObject var controller: PhoneVoiceActivationController
-    @State private var phrase = "AD"
+    #if DEBUG
+    @State private var phrase = "Hey A D"
     @State private var importsModel = false
+    #endif
 
     var body: some View {
         List {
@@ -204,6 +206,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                     "Listening",
                     value: controller.isListening ? "On" : "Off"
                 )
+                LabeledContent("Status", value: controller.configurationState.label)
                 Text("Starts while AD Glasses is connected and the app is open, then stays available when you switch apps or lock your iPhone. It pauses for transcription and spoken responses; AI and Apple Speech do not start until the wake phrase is detected. It stops after a disconnect, when disabled, or if you force-quit the app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -211,25 +214,27 @@ private struct PhoneVoiceActivationSettingsView: View {
 
             Section("LiveKit WakeWord") {
                 LabeledContent("Engine", value: "LiveKit WakeWord")
-                TextField("Wake phrase label", text: $phrase)
-                    .textInputAutocapitalization(.words)
-
-                Button("Import .onnx wake-word model") {
-                    importsModel = true
-                }
-
-                Text("Wake-word detection runs locally on this iPhone with LiveKit WakeWord and CoreML-backed ONNX inference. No API key or hosted wake-word service is required. The imported classifier defines the actual phrase; the label above is stored with it for the AD Glasses UI.")
+                Text("Wake-word detection runs locally on this iPhone. No account, API key, or hosted wake-word service is used.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                Link(
-                    "LiveKit custom wake-word training guide",
-                    destination: URL(string: "https://github.com/livekit/livekit-wakeword#training-a-custom-wake-word")!
-                )
+                #if DEBUG
+                TextField("Wake phrase label", text: $phrase)
+                    .textInputAutocapitalization(.words)
+
+                Button("Import development .onnx model") {
+                    importsModel = true
+                }
+
+                Text("Development override only. Release builds use the evaluated classifier bundled with AD Glasses.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                #endif
             }
         }
         .navigationTitle("Phone voice activation")
         .navigationBarTitleDisplayMode(.inline)
+        #if DEBUG
         .onAppear { phrase = controller.phrase }
         .fileImporter(
             isPresented: $importsModel,
@@ -245,6 +250,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                 controller.errorMessage = error.localizedDescription
             }
         }
+        #endif
         .alert("Phone voice activation", isPresented: Binding(
             get: { controller.errorMessage != nil },
             set: { if !$0 { controller.errorMessage = nil } }
