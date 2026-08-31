@@ -89,9 +89,6 @@ final class NativeTranslationController: ObservableObject {
     func performPendingRequest(using session: TranslationSession) async {
         guard let pendingRequest else { return }
         do {
-            // `prepareTranslation()` requires a concrete source language. When the source is
-            // automatic (`nil`), `translate(_:)` must receive the sample text first so Apple's
-            // Translation framework can identify the language and request any required assets.
             if pendingRequest.shouldPrepareTranslation {
                 statusMessage = "Preparing Apple Translation…"
                 try await session.prepareTranslation()
@@ -123,6 +120,28 @@ final class NativeTranslationController: ObservableObject {
                 result: .failure(TextTranslationError.translationFailed(error.localizedDescription))
             )
         }
+    }
+
+    func supportedLanguages() async -> [Locale.Language] {
+        await LanguageAvailability().supportedLanguages
+    }
+
+    func supportedTargets(
+        from sourceLanguage: Locale.Language
+    ) async -> [Locale.Language] {
+        let availability = LanguageAvailability()
+        let languages = await availability.supportedLanguages
+        var targets = [Locale.Language]()
+
+        for language in languages {
+            if Task.isCancelled { return [] }
+            guard language.minimalIdentifier != sourceLanguage.minimalIdentifier else { continue }
+            let status = await availability.status(from: sourceLanguage, to: language)
+            if status == .installed || status == .supported {
+                targets.append(language)
+            }
+        }
+        return targets
     }
 
     func availability(
@@ -180,7 +199,7 @@ final class NativeTranslationController: ObservableObject {
 @MainActor
 final class LiveTranslationController: ObservableObject {
     @Published private(set) var isRunning = false
-    @Published private(set) var statusMessage = "Not running"
+    @Published private(set) var statusMessage = "Ready"
     @Published private(set) var currentTranscript = ""
     @Published private(set) var lastSourceText = ""
     @Published private(set) var lastTranslation = ""
@@ -194,6 +213,7 @@ final class LiveTranslationController: ObservableObject {
     private var targetLanguageCode = ""
     private var finalizeTask: Task<Void, Never>?
     private var isProcessingTurn = false
+    private var sessionID: UUID?
 
     private let endOfUtteranceDelay: Duration = .milliseconds(1400)
 
@@ -236,14 +256,40 @@ final class LiveTranslationController: ObservableObject {
             return false
         }
 
-        let transcriber = AppleSpeechTranscriber.make(
+#if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            return await startSpeechAnalyzer(
+                sourceLanguageCode: sourceLanguageCode,
+                targetLanguageCode: targetLanguageCode,
+                translation: translation,
+                speechOutput: speechOutput
+            )
+        }
+#endif
+
+        errorMessage = "Live Translation requires iOS 26 or later because it uses Apple SpeechAnalyzer."
+        return false
+    }
+
+#if compiler(>=6.2)
+    @available(iOS 26.0, *)
+    private func startSpeechAnalyzer(
+        sourceLanguageCode: String,
+        targetLanguageCode: String,
+        translation: NativeTranslationController,
+        speechOutput: SpeechOutputController
+    ) async -> Bool {
+        let id = UUID()
+        sessionID = id
+
+        let transcriber = SpeechAnalyzerTranscriber(
             locale: Locale(identifier: sourceLanguageCode)
         )
         transcriber.onUpdate = { [weak self] snapshot in
             self?.handleSpeechUpdate(snapshot)
         }
         transcriber.onError = { [weak self] error in
-            guard let self, isRunning else { return }
+            guard let self, isRunning, sessionID == id else { return }
             errorMessage = error.localizedDescription
         }
 
@@ -252,29 +298,49 @@ final class LiveTranslationController: ObservableObject {
         self.speechOutput = speechOutput
         self.sourceLanguageCode = sourceLanguageCode
         self.targetLanguageCode = targetLanguageCode
-        statusMessage = "Starting \(languageName(sourceLanguageCode)) listening…"
+        statusMessage = "Preparing \(languageName(sourceLanguageCode)) speech…"
         isRunning = true
 
         do {
+            _ = try await transcriber.prepareAssets { [weak self] message in
+                guard let self, sessionID == id, isRunning else { return }
+                statusMessage = message
+            }
+            guard sessionID == id, isRunning else {
+                await transcriber.stop()
+                return false
+            }
+
+            statusMessage = "Opening microphone…"
             try await transcriber.start()
+            guard sessionID == id, isRunning else {
+                await transcriber.stop()
+                return false
+            }
+
             updateInputRoute()
             statusMessage = listeningStatus
             return true
         } catch is CancellationError {
             await transcriber.stop()
-            resetSessionState()
+            if sessionID == id {
+                resetSessionState()
+            }
             return false
         } catch {
             await transcriber.stop()
+            guard sessionID == id else { return false }
             errorMessage = error.localizedDescription
             resetSessionState(keepError: true)
             return false
         }
     }
+#endif
 
     func stop() async {
         finalizeTask?.cancel()
         finalizeTask = nil
+        sessionID = nil
         isRunning = false
         isProcessingTurn = false
         speechOutput?.stop()
@@ -284,7 +350,7 @@ final class LiveTranslationController: ObservableObject {
             await transcriber.stop()
         }
         resetSessionState(keepError: true)
-        statusMessage = "Not running"
+        statusMessage = "Ready"
     }
 
     private func handleSpeechUpdate(_ snapshot: SpeechTranscriptionSnapshot) {
@@ -326,7 +392,7 @@ final class LiveTranslationController: ObservableObject {
         }
 
         if !isLikelySourceLanguage(sourceText) {
-            statusMessage = "Heard a different language — ignored"
+            statusMessage = "Different language heard — ignored"
             do {
                 try await Task.sleep(for: .milliseconds(350))
             } catch {
@@ -381,6 +447,7 @@ final class LiveTranslationController: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             isRunning = false
+            sessionID = nil
             transcriber.onUpdate = nil
             transcriber.onError = nil
             await transcriber.stop()
@@ -388,9 +455,8 @@ final class LiveTranslationController: ObservableObject {
         }
     }
 
-    /// The speech recognizer itself is fixed to the selected source locale. NaturalLanguage is a
-    /// second, conservative guard: it rejects only when another language is strongly identified,
-    /// so short or ambiguous source-language phrases are not thrown away unnecessarily.
+    /// SpeechAnalyzer is configured for the selected source locale. NaturalLanguage is a second,
+    /// conservative guard so the user's reply in the target language is not translated back.
     private func isLikelySourceLanguage(_ text: String) -> Bool {
         guard text.count >= 6 else { return true }
 
@@ -414,7 +480,7 @@ final class LiveTranslationController: ObservableObject {
     }
 
     private var listeningStatus: String {
-        "Listening for \(languageName(sourceLanguageCode))…"
+        "Listening for \(languageName(sourceLanguageCode))"
     }
 
     private func updateInputRoute() {
@@ -423,8 +489,9 @@ final class LiveTranslationController: ObservableObject {
     }
 
     private func languageName(_ code: String) -> String {
-        let base = languageBase(code)
-        return Locale.current.localizedString(forLanguageCode: base)?.capitalized ?? code
+        Locale.current.localizedString(forIdentifier: code)
+            ?? Locale.current.localizedString(forLanguageCode: languageBase(code))?.capitalized
+            ?? code
     }
 
     private func languageBase(_ code: String) -> String {
@@ -434,6 +501,7 @@ final class LiveTranslationController: ObservableObject {
     private func resetSessionState(keepError: Bool = false) {
         finalizeTask?.cancel()
         finalizeTask = nil
+        sessionID = nil
         transcriber = nil
         translation = nil
         speechOutput = nil
