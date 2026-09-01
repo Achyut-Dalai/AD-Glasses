@@ -14,9 +14,9 @@ enum LiveKitPhoneWakeWordError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelMissing:
-            return "The Hey A D voice-activation model is not installed. Import a LiveKit .onnx model in Settings, or use a build that bundles one."
+            return "The voice-activation model is not installed. Import a LiveKit .onnx model in Settings, or use a build that bundles one."
         case .calibrationMissing:
-            return "The Hey A D voice-activation model has not been calibrated yet."
+            return "The voice-activation model has not been calibrated yet."
         case .invalidManifest:
             return "The bundled voice-activation configuration is invalid."
         case .invalidModel:
@@ -39,7 +39,7 @@ enum LiveKitPhoneWakeWordError: LocalizedError {
 /// deactivate the shared `AVAudioSession` between stages.
 @MainActor
 final class LiveKitPhoneWakeWordService: PhoneWakeWordDetecting {
-    private static let defaultPhrase = "Hey A D"
+    private static let defaultPhrase = "Jarvis"
     private static let manifestName = "manifest"
     private static let resourceDirectory = "WakeWords"
 
