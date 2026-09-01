@@ -66,6 +66,7 @@ private struct NativeTranslateExperience: View {
     @State private var isLoadingLanguages = true
     @State private var isLoadingTargets = false
     @State private var languageError: String?
+    @State private var liveStartError: String?
 
     @State private var phrase = ""
     @State private var phraseResult: TextTranslationResult?
@@ -153,6 +154,7 @@ private struct NativeTranslateExperience: View {
                         .buttonBorderShape(.circle)
                         .disabled(
                             liveTranslation.isRunning ||
+                                translation.isTranslating ||
                                 isLoadingTargets ||
                                 targetLanguages.isEmpty
                         )
@@ -273,6 +275,13 @@ private struct NativeTranslateExperience: View {
                     )
                 }
 
+                if let liveStartError {
+                    Label(liveStartError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 if let error = liveTranslation.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
@@ -305,7 +314,7 @@ private struct NativeTranslateExperience: View {
                     Color(uiColor: .secondarySystemGroupedBackground),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
-                .disabled(liveTranslation.isRunning)
+                .disabled(liveTranslation.isRunning || translation.isTranslating)
 
                 Text("Enter text in \(sourceLanguageName), then tap Translate to \(targetLanguageName).")
                     .font(.caption)
@@ -377,6 +386,14 @@ private struct NativeTranslateExperience: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        .disabled(
+                            app.isGenerating ||
+                                app.isTranscribing ||
+                                app.isStoppingTranscription ||
+                                app.isGlassesAssistantAudioActive ||
+                                app.speechOutput.isSpeaking ||
+                                liveTranslation.isRunning
+                        )
                     }
                     .padding(12)
                     .background(
@@ -430,7 +447,7 @@ private struct NativeTranslateExperience: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(liveTranslation.isRunning || options.isEmpty)
+        .disabled(liveTranslation.isRunning || translation.isTranslating || options.isEmpty)
     }
 
     private func transcriptBlock(
@@ -548,19 +565,22 @@ private struct NativeTranslateExperience: View {
     }
 
     private func swapLanguages() {
-        guard !liveTranslation.isRunning, !targetLanguage.isEmpty else { return }
+        guard !liveTranslation.isRunning,
+              !translation.isTranslating,
+              !targetLanguage.isEmpty else { return }
         let previousSource = sourceLanguage
         sourceLanguage = targetLanguage
         targetLanguage = previousSource
     }
 
     private func startLiveTranslation() async {
+        liveStartError = nil
         guard sourceLanguage != targetLanguage else {
-            phraseError = "Choose two different languages."
+            liveStartError = "Choose two different languages."
             return
         }
         guard !app.isGlassesAssistantAudioActive else {
-            phraseError = "Finish the current glasses Assistant audio turn before starting Live Translation."
+            liveStartError = "Finish the current glasses voice turn before starting Live Translation."
             return
         }
 
@@ -597,17 +617,24 @@ private struct NativeTranslateExperience: View {
             return
         }
 
+        let requestedSource = sourceLanguage
+        let requestedTarget = targetLanguage
         phraseResult = nil
         phraseError = nil
         do {
-            phraseResult = try await translation.translate(
+            let result = try await translation.translate(
                 value,
-                from: Locale.Language(identifier: sourceLanguage),
-                to: Locale.Language(identifier: targetLanguage)
+                from: Locale.Language(identifier: requestedSource),
+                to: Locale.Language(identifier: requestedTarget)
             )
+            guard sourceLanguage == requestedSource,
+                  targetLanguage == requestedTarget else { return }
+            phraseResult = result
         } catch is CancellationError {
             return
         } catch {
+            guard sourceLanguage == requestedSource,
+                  targetLanguage == requestedTarget else { return }
             phraseError = error.localizedDescription
         }
     }
