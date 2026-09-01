@@ -87,6 +87,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         }
         recognitionRequest?.endAudio()
         recognitionTask?.finish()
+        await waitForExternalRecognitionToFinish()
         clearRecognition()
         inputSource = nil
         snapshot.isRunning = false
