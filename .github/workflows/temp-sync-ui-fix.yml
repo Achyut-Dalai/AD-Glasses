@@ -1,0 +1,52 @@
+name: One-shot sync UI patch
+
+on:
+  push:
+    branches:
+      - feature/ios-design-polish-v2
+    paths:
+      - .github/workflows/temp-sync-ui-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/ios-design-polish-v2
+          fetch-depth: 0
+
+      - name: Patch sync UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('ios/ADGlasses/Features/Home/HomeView.swift')
+          text = path.read_text()
+
+          old_empty = '"You’re up to date",'
+          new_empty = '"Nothing to sync",'
+          if text.count(old_empty) != 1:
+              raise SystemExit(f'Expected one empty-state title, found {text.count(old_empty)}')
+          text = text.replace(old_empty, new_empty, 1)
+
+          old_label = 'Label(state.label, systemImage: stageSymbol)'
+          new_label = 'Text(state.label)'
+          if text.count(old_label) != 1:
+              raise SystemExit(f'Expected one sync stage label, found {text.count(old_label)}')
+          text = text.replace(old_label, new_label, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ios/ADGlasses/Features/Home/HomeView.swift
+          git diff --cached --check
+          git commit -m "fix: simplify sync progress UI"
+          git push origin HEAD:feature/ios-design-polish-v2
