@@ -7,6 +7,7 @@ import UIKit
 final class AppModel: ObservableObject {
     @Published private(set) var transcript = ""
     @Published private(set) var isTranscribing = false
+    @Published private(set) var isManualTranscription = false
     @Published private(set) var isStoppingTranscription = false
     @Published private(set) var speechEngineName = "Apple Speech"
     @Published var speechError: String?
@@ -80,21 +81,40 @@ final class AppModel: ObservableObject {
     }
 
     func startTranscription() async {
-        guard !isStoppingTranscription, !transcriber.snapshot.isRunning else { return }
+        guard !isStoppingTranscription,
+              !transcriber.snapshot.isRunning,
+              generationTask == nil,
+              !isGlassesAssistantAudioActive else { return }
         speechError = nil
+        speechOutput.stop()
         do {
             try await transcriber.start()
+            isManualTranscription = true
         } catch {
+            isManualTranscription = false
             speechError = error.localizedDescription
         }
     }
 
     func stopTranscription() async {
-        guard transcriber.snapshot.isRunning, !isStoppingTranscription else { return }
+        guard !isStoppingTranscription else { return }
+        guard transcriber.snapshot.isRunning else {
+            isManualTranscription = false
+            return
+        }
         speechError = nil
         isStoppingTranscription = true
-        defer { isStoppingTranscription = false }
+        defer {
+            isStoppingTranscription = false
+            isManualTranscription = false
+        }
         await transcriber.stop()
+    }
+
+    func finishManualTranscriptionAsDraft() async {
+        guard isManualTranscription else { return }
+        await stopTranscription()
+        useTranscriptAsDraft()
     }
 
     func toggleTranscription() async {
@@ -108,6 +128,7 @@ final class AppModel: ObservableObject {
     @discardableResult
     func startPhoneVoiceTranscriptionFromWakeWord() async -> Bool {
         guard !isStoppingTranscription, !transcriber.snapshot.isRunning else { return false }
+        isManualTranscription = false
         cancelResponse()
         speechOutput.stop()
         clearTranscript()
@@ -129,8 +150,10 @@ final class AppModel: ObservableObject {
             speechError = "I didn’t hear a question. Try the wake phrase again."
             return
         }
+        let preservedDraft = chatDraft
         chatDraft = text
         sendChatMessage(source: .phoneVoice, speakResponse: true)
+        chatDraft = preservedDraft
     }
 
     func clearTranscript() {
@@ -199,7 +222,7 @@ final class AppModel: ObservableObject {
         isGenerating = false
         endVoiceResponseBackgroundTask()
         if hadActiveResponse {
-            conversationNotice = "Response stopped. Your message remains saved locally."
+            conversationNotice = "Response stopped."
         }
     }
 
@@ -384,6 +407,7 @@ final class AppModel: ObservableObject {
             return
         }
 
+        isManualTranscription = false
         cancelResponse()
         speechOutput.stop()
         speechError = nil
@@ -462,8 +486,10 @@ final class AppModel: ObservableObject {
             speechError = "I didn’t hear a question from the glasses. Try again."
             return
         }
+        let preservedDraft = chatDraft
         chatDraft = text
         sendChatMessage(source: .glassesVoice, speakResponse: true)
+        chatDraft = preservedDraft
     }
 
     private func cancelGlassesAssistantSession() async {
