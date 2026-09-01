@@ -350,6 +350,7 @@ final class LiveTranslationController: ObservableObject {
 #endif
 
     func stop() async {
+        let wasProcessingTurn = isProcessingTurn
         finalizeTask?.cancel()
         finalizeTask = nil
         sessionID = nil
@@ -359,7 +360,9 @@ final class LiveTranslationController: ObservableObject {
         if let transcriber {
             transcriber.onUpdate = nil
             transcriber.onError = nil
-            await transcriber.stop()
+            if !wasProcessingTurn {
+                await transcriber.stop()
+            }
         }
         resetSessionState(keepError: true)
         statusMessage = "Ready"
