@@ -577,11 +577,11 @@ private struct MediaSyncSheet: View {
                         systemImage: "exclamationmark.triangle",
                         description: Text(errorMessage)
                     )
-                } else if items.isEmpty {
+                } else if unsyncedItems.isEmpty {
                     ContentUnavailableView(
                         "Nothing to sync",
                         systemImage: "checkmark.circle",
-                        description: Text("No photos, videos, or recordings are currently reported by AD Glasses.")
+                        description: Text(nothingToSyncDescription)
                     )
                 } else {
                     List {
@@ -668,6 +668,12 @@ private struct MediaSyncSheet: View {
         return count == 1 ? "Sync 1 new item" : "Sync \(count) new items"
     }
 
+    private var nothingToSyncDescription: String {
+        items.isEmpty
+            ? "No photos, videos, or recordings are currently reported by AD Glasses."
+            : "Everything currently reported by AD Glasses is already saved in your Library."
+    }
+
     private func isImported(_ item: GlassesMediaItem) -> Bool {
         library.contains(
             sourceProviderID: item.providerID,
@@ -679,6 +685,14 @@ private struct MediaSyncSheet: View {
         transferNeedsCleanup = true
         do {
             items = try await glasses.prepareMediaTransfer()
+            if unsyncedItems.isEmpty {
+                // A successful empty/already-imported manifest is a completed check, not an open
+                // transfer session. Exit immediately so the glasses leave transfer mode and the
+                // sheet cannot appear to sync forever while there is nothing to download.
+                glasses.cancelMediaTransfer()
+                transferNeedsCleanup = false
+                didFinishTransfer = true
+            }
         } catch is CancellationError {
             glasses.cancelMediaTransfer()
             transferNeedsCleanup = false

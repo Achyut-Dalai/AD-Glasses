@@ -270,6 +270,7 @@ final class HeyCyanMediaTransferCoordinator {
         let clock = ContinuousClock()
         let deadline = clock.now.advanced(by: timeout)
         var lastError: Error?
+        var consecutiveMissingManifestResponses = 0
 
         repeat {
             try Task.checkCancellation()
@@ -278,15 +279,26 @@ final class HeyCyanMediaTransferCoordinator {
             do {
                 return try await media.mediaList(on: accessPoint)
             } catch let error as HeyCyanMediaError {
-                // A real HTTP 4xx proves we reached the glasses server and the request itself was
-                // rejected. Repeating the same bad request dozens of times only looks like an
-                // endless sync, so surface deterministic client/protocol errors immediately.
-                if case .httpStatus(let status) = error,
-                   (400 ..< 500).contains(status) {
-                    throw error
+                if case .httpStatus(404) = error {
+                    // Some firmware does not create media.config when storage has no supported
+                    // media. Allow a short server-startup grace period, then treat a stable 404 as
+                    // an empty library instead of leaving the UI in a retry loop.
+                    consecutiveMissingManifestResponses += 1
+                    if consecutiveMissingManifestResponses >= 6 {
+                        return []
+                    }
+                } else {
+                    consecutiveMissingManifestResponses = 0
+                    // A different HTTP 4xx proves we reached the glasses server and the request
+                    // itself was rejected. Repeating that deterministic failure is not useful.
+                    if case .httpStatus(let status) = error,
+                       (400 ..< 500).contains(status) {
+                        throw error
+                    }
                 }
                 lastError = error
             } catch {
+                consecutiveMissingManifestResponses = 0
                 lastError = error
             }
             if clock.now >= deadline { break }

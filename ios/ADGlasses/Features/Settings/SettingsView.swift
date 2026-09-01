@@ -198,8 +198,8 @@ private struct PhoneVoiceActivationSettingsView: View {
     var body: some View {
         List {
             Section("Voice activation") {
-                Toggle("Phone Voice Activation", isOn: $controller.isEnabled)
-                    .disabled(controller.configurationState != .ready)
+                Toggle("Phone Voice Activation", isOn: voiceActivationBinding)
+                    .disabled(voiceActivationControlIsDisabled)
                 LabeledContent("Wake phrase", value: controller.phrase)
                 LabeledContent(
                     "Listening",
@@ -260,6 +260,36 @@ private struct PhoneVoiceActivationSettingsView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(controller.errorMessage ?? "")
+        }
+    }
+
+    private var voiceActivationBinding: Binding<Bool> {
+        Binding(
+            get: { controller.isEnabled },
+            set: { requestedValue in
+                #if DEBUG || AD_PERSONAL_TEAM_BUILD
+                if requestedValue, controller.configurationState == .missingModel {
+                    importsModel = true
+                    return
+                }
+                #endif
+                controller.isEnabled = requestedValue
+            }
+        )
+    }
+
+    private var voiceActivationControlIsDisabled: Bool {
+        switch controller.configurationState {
+        case .ready:
+            return false
+        case .missingModel:
+            #if DEBUG || AD_PERSONAL_TEAM_BUILD
+            return false
+            #else
+            return true
+            #endif
+        case .unavailable:
+            return true
         }
     }
 }
