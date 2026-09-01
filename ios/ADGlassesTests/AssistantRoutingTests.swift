@@ -63,6 +63,69 @@ final class AssistantRoutingTests: XCTestCase {
     }
 }
 
+final class GroundingPolicyTests: XCTestCase {
+    private let router = GroundingIntentRouter()
+
+    func testExplicitFreshnessRequestsUseWebGrounding() {
+        XCTAssertEqual(router.route("Search the web for the latest OpenAI update").intent, .search)
+        XCTAssertEqual(router.route("What is the current score right now?").intent, .search)
+        XCTAssertEqual(router.route("What's the weather today?").intent, .search)
+    }
+
+    func testSpatialRequestsRequireHighConfidenceLanguage() {
+        let nearby = router.route("Find a pharmacy near me")
+        XCTAssertEqual(nearby.intent, .spatial)
+        XCTAssertEqual(nearby.spatialAction, .nearby)
+        XCTAssertEqual(nearby.poiCategory, "pharmacy")
+        XCTAssertTrue(nearby.useCurrentLocation)
+
+        let route = router.route("Directions to Connaught Place")
+        XCTAssertEqual(route.intent, .spatial)
+        XCTAssertEqual(route.spatialAction, .route)
+        XCTAssertEqual(route.routeDestination, "connaught place")
+        XCTAssertTrue(route.useCurrentLocation)
+    }
+
+    func testTechnicalLanguageDoesNotAccidentallyOpenGroundingServices() {
+        XCTAssertEqual(router.route("How does an HTTP route work in Swift?").intent, .direct)
+        XCTAssertEqual(router.route("What is the current variable value in this code?").intent, .direct)
+        XCTAssertEqual(router.route("Find the nearest node in this graph algorithm").intent, .direct)
+    }
+
+    func testOrdinaryConversationStaysDirect() {
+        XCTAssertEqual(router.route("Explain photosynthesis simply").intent, .direct)
+        XCTAssertEqual(router.route("Help me rewrite this sentence").intent, .direct)
+    }
+
+    func testGeminiModelIdentifiersAreNormalized() {
+        XCTAssertEqual(
+            AIProfileStore.normalizedModel("models/gemini-3.7-flash:generateContent", provider: .google),
+            "gemini-3.7-flash"
+        )
+        XCTAssertEqual(
+            AIProfileStore.normalizedModel(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-pro",
+                provider: .google
+            ),
+            "gemini-3.7-pro"
+        )
+    }
+
+    func testCloudTokenPolicyIsBoundedAndRequiresExplicitDeepIntent() {
+        XCTAssertEqual(
+            CloudModelPolicy.outputTokenLimit(CloudModelPolicy.mode(for: "What's ahead of me?")),
+            CloudModelPolicy.conciseOutputTokens
+        )
+        XCTAssertEqual(
+            CloudModelPolicy.outputTokenLimit(
+                CloudModelPolicy.mode(for: "Research thoroughly and compare the evidence")
+            ),
+            CloudModelPolicy.reasonedOutputTokens
+        )
+        XCTAssertLessThan(CloudModelPolicy.conciseOutputTokens, CloudModelPolicy.reasonedOutputTokens)
+    }
+}
+
 @MainActor
 final class GlassesAssistantPipelineTests: XCTestCase {
     func testSpokenPhotoCommandExecutesLocalGlassesActionWithoutCloudProfile() async throws {
