@@ -412,6 +412,18 @@ final class LiveTranslationController: ObservableObject {
             return
         }
 
+        // The wake-word engine is intentionally suspended while Live Translation owns the
+        // microphone. Let this microphone-local loop recognize only a tiny explicit stop command
+        // so the user can end the session without running two competing audio engines.
+        if isLocalStopCommand(sourceText) {
+            speechOutput.stop()
+            transcriber.onUpdate = nil
+            transcriber.onError = nil
+            resetSessionState(keepError: true)
+            statusMessage = "Ready"
+            return
+        }
+
         if !isLikelySourceLanguage(sourceText) {
             statusMessage = "Different language heard — ignored"
             do {
@@ -474,6 +486,25 @@ final class LiveTranslationController: ObservableObject {
             await transcriber.stop()
             resetSessionState(keepError: true)
         }
+    }
+
+    private func isLocalStopCommand(_ text: String) -> Bool {
+        var normalized = text.lowercased()
+            .replacingOccurrences(of: "’", with: "'")
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+            .trimmingCharacters(in: CharacterSet(charactersIn: " .,!?:;\""))
+        if normalized.hasPrefix("jarvis ") {
+            normalized = String(normalized.dropFirst("jarvis ".count))
+        }
+        return [
+            "stop translation",
+            "stop live translation",
+            "end translation",
+            "end live translation",
+            "stop translating",
+            "exit translation"
+        ].contains(normalized)
     }
 
     /// SpeechAnalyzer is configured for the selected source locale. NaturalLanguage is a second,
