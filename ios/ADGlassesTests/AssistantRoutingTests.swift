@@ -212,6 +212,41 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(app.conversation.last?.text, "Question from glasses")
     }
 
+    func testGlassesVoiceSessionResetsWhenConnectionDropsWithoutEndedEvent() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "Partial glasses speech")
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: transcriber,
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.attach(to: manager)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
+
+        provider.emit(.started(format: format))
+        for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
+            await Task.yield()
+        }
+        XCTAssertTrue(app.isGlassesAssistantAudioActive)
+
+        await manager.disconnect()
+        for _ in 0 ..< 200 where app.isGlassesAssistantAudioActive {
+            await Task.yield()
+        }
+
+        XCTAssertFalse(app.isGlassesAssistantAudioActive)
+        XCTAssertFalse(app.isTranscribing)
+        XCTAssertEqual(transcriber.externalFinishCount, 1)
+        XCTAssertTrue(app.conversation.isEmpty)
+    }
+
     func testManualJarvisDictationSuspendsPhoneWakeListeningBeforeOpeningMicrophone() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         defaults.set(true, forKey: "phoneVoiceActivation.enabled.v1")
@@ -410,7 +445,10 @@ private final class FakeAssistantAudioProvider:
 
     func scan() async throws -> [GlassesDevice] { [] }
     func connect(to device: GlassesDevice) async throws {}
-    func disconnect() async { connectionState = .disconnected }
+    func disconnect() async {
+        connectionState = .disconnected
+        onConnectionStateChange?(.disconnected)
+    }
     func requestPhotoCapture() async throws { photoRequestCount += 1 }
 
     func emit(_ event: GlassesAssistantAudioEvent) {
