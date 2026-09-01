@@ -87,6 +87,10 @@ final class PhoneVoiceActivationController: ObservableObject {
             .sink { [weak self] _, _, _ in self?.evaluate() }
             .store(in: &cancellables)
 
+        app.$isManualTranscription
+            .sink { [weak self] _ in self?.evaluate() }
+            .store(in: &cancellables)
+
         app.$transcript
             .sink { [weak self] transcript in self?.transcriptDidChange(transcript) }
             .store(in: &cancellables)
@@ -141,9 +145,14 @@ final class PhoneVoiceActivationController: ObservableObject {
             return
         }
 
+        if app.isGlassesAssistantAudioActive, isHandlingWakeTurn {
+            cancelWakeTurn()
+        }
+
         let shouldListen = isEnabled &&
             configurationState == .ready &&
             glasses.connectionState.isConnected &&
+            !app.isManualTranscription &&
             !app.isTranscribing &&
             !app.isGlassesAssistantAudioActive &&
             !app.speechOutput.isSpeaking
