@@ -108,15 +108,16 @@ final class HeyCyanMediaTransferCoordinator {
             state = .joiningNetwork(ssid: credentials.ssid)
             let deviceAddress: String
 #if AD_PERSONAL_TEAM_BUILD
-            // Personal Team builds cannot provision Hotspot Configuration. Keep this BLE transfer
-            // session alive while the user selects the glasses AP from Control Center, then perform
-            // one bounded verification. Do not loop forever if the network was not joined or the
-            // glasses fail to report an address.
+            // Personal Team builds cannot provision Hotspot Configuration. Open Settings as a
+            // convenience, keep this BLE transfer session alive while the user joins the glasses
+            // AP, then perform one bounded verification. Current iOS versions may land on the Apps
+            // page instead of Wi-Fi; opening Settings still removes one manual step.
             if let reportedDeviceIPv4Address {
                 deviceAddress = reportedDeviceIPv4Address
             } else {
                 state = .awaitingManualNetworkJoin(credentials: credentials)
                 copyNetworkPassword(credentials.passphrase)
+                openSettingsForManualWiFiJoin()
                 try await waitForManualNetworkJoin(operationID: operationID)
                 deviceAddress = try await waitForDeviceAddress(
                     timeout: readinessTimeout,
@@ -397,6 +398,14 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
+    /// iOS exposes no supported URL that opens the Settings root or Wi-Fi pane. This legacy Wi-Fi
+    /// URL is retained only as a sideloaded Personal-build convenience. On current iOS releases it
+    /// may open Settings at Apps instead, from which the user can navigate back to Wi-Fi.
+    private func openSettingsForManualWiFiJoin() {
+        guard let url = URL(string: "prefs:root=WIFI") else { return }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
     /// Keep the verified glasses passphrase available if iOS asks for it during the handoff.
     /// Normally iOS reuses the saved network and does not prompt. The value remains on this
     /// iPhone only and expires shortly after the handoff.

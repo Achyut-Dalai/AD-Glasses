@@ -503,9 +503,9 @@ private struct MediaSyncSheet: View {
                             .foregroundStyle(.blue)
 
                         VStack(spacing: 8) {
-                            Text("Choose the glasses Wi-Fi")
+                            Text("Switch to the glasses Wi-Fi")
                                 .font(.title3.weight(.semibold))
-                            Text("Swipe down from the top-right, touch and hold the connectivity panel, touch and hold Wi-Fi, then select the network below. Dismiss Control Center to return here.")
+                            Text("Settings opens automatically. If it lands on Apps, go back to the main Settings page, choose Wi-Fi, and select the network below. Then return to AD Glasses.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -554,7 +554,7 @@ private struct MediaSyncSheet: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Waiting for the glasses Wi-Fi")
+                            Text("Waiting for you to return from Settings")
                                 .font(.footnote.weight(.medium))
                         }
 
