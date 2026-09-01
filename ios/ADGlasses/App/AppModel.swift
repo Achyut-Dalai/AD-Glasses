@@ -41,6 +41,7 @@ final class AppModel: ObservableObject {
     private var applicationIsActive = true
     private let maximumPendingGlassesPackets = 100
     private weak var glassesManager: GlassesManager?
+    private var glassesConnectionCancellable: AnyCancellable?
 
     init(
         transcriber: (any SpeechTranscribing)? = nil,
@@ -78,6 +79,7 @@ final class AppModel: ObservableObject {
         generationTask?.cancel()
         conversationLoadTask?.cancel()
         glassesSpeechStartTask?.cancel()
+        glassesConnectionCancellable?.cancel()
     }
 
     func startTranscription() async {
@@ -218,6 +220,20 @@ final class AppModel: ObservableObject {
         glassesManager.onAssistantAudioEvent = { [weak self] event in
             self?.consume(event)
         }
+
+        glassesConnectionCancellable?.cancel()
+        glassesConnectionCancellable = glassesManager.$activeProviderID
+            .combineLatest(glassesManager.$providers)
+            .sink { [weak self, weak glassesManager] _, _ in
+                guard let self, let glassesManager,
+                      isGlassesAssistantAudioActive,
+                      !glassesManager.connectionState.isConnected else {
+                    return
+                }
+                Task { [weak self] in
+                    await self?.cancelGlassesAssistantSession()
+                }
+            }
     }
 
     func setApplicationActive(_ active: Bool) {
