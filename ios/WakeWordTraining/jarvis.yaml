@@ -22,6 +22,8 @@ tts_batch_size: 50
 
 # Seed hard negatives for words/names that may sound close to Jarvis. LiveKit's
 # adversarial generation will add more; refine this list after listening/testing.
+# Do not put phrases containing the actual target word here: users will often
+# continue speaking immediately after the wake word and those should still fire.
 custom_negative_phrases:
   - "jar"
   - "jars"
@@ -33,8 +35,6 @@ custom_negative_phrases:
   - "service"
   - "nervous"
   - "jasmine"
-  - "hey jarvis"
-  - "jarvis please"
 
 # Speaking-rate and voice variation for synthetic positive data.
 noise_scales: [0.98]
