@@ -80,6 +80,7 @@ struct AssistantView: View {
                         Image(systemName: "clock.arrow.circlepath")
                     }
                     .accessibilityLabel("Conversation history")
+                    .disabled(app.isTranscribing || app.isStoppingTranscription)
                 }
 
                 ToolbarItemGroup(placement: .topBarTrailing) {
@@ -94,6 +95,7 @@ struct AssistantView: View {
                         Image(systemName: "square.and.pencil")
                     }
                     .accessibilityLabel("New conversation")
+                    .disabled(app.isTranscribing || app.isStoppingTranscription)
 
                     Button(action: openSettings) {
                         Image(systemName: "gearshape")
@@ -122,7 +124,7 @@ struct AssistantView: View {
                 Text("The current conversation is saved locally and will remain in History.")
             }
             .onChange(of: app.transcript) { _, transcript in
-                if app.isTranscribing, !transcript.isEmpty {
+                if (app.isTranscribing || app.isStoppingTranscription), !transcript.isEmpty {
                     app.useTranscriptAsDraft()
                 }
             }
@@ -397,21 +399,27 @@ private struct AssistantComposer: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if app.isTranscribing {
+            if app.isTranscribing || app.isStoppingTranscription {
                 HStack(spacing: 8) {
-                    Image(systemName: "waveform")
-                        .foregroundStyle(.red)
-                        .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
-                    Text("Listening")
+                    if app.isStoppingTranscription {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "waveform")
+                            .foregroundStyle(.red)
+                            .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
+                    }
+                    Text(app.isStoppingTranscription ? "Finishing transcription…" : "Listening")
                         .font(.caption.weight(.semibold))
                     Spacer()
-                    Button("Stop") {
+                    Button(app.isStoppingTranscription ? "Stopping…" : "Stop") {
                         Task {
-                            await app.toggleTranscription()
+                            await app.stopTranscription()
                             app.useTranscriptAsDraft()
                         }
                     }
                     .font(.caption.weight(.semibold))
+                    .disabled(app.isStoppingTranscription)
                 }
                 .padding(.horizontal, 4)
             }
@@ -442,6 +450,7 @@ private struct AssistantComposer: View {
                         Color(uiColor: .tertiarySystemFill),
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
+                    .disabled(app.isTranscribing || app.isStoppingTranscription)
 
                 if app.isGenerating {
                     Button(action: app.cancelResponse) {
@@ -451,24 +460,33 @@ private struct AssistantComposer: View {
                             .foregroundStyle(.red)
                     }
                     .accessibilityLabel("Stop response")
+                } else if app.isTranscribing || app.isStoppingTranscription {
+                    Button {
+                        Task {
+                            await app.stopTranscription()
+                            app.useTranscriptAsDraft()
+                        }
+                    } label: {
+                        Image(systemName: app.isStoppingTranscription ? "hourglass" : "stop.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 38, height: 38)
+                            .foregroundStyle(.red)
+                    }
+                    .disabled(app.isStoppingTranscription)
+                    .accessibilityLabel(app.isStoppingTranscription ? "Stopping voice input" : "Stop listening")
                 } else if app.chatDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Button {
                         Task {
-                            if !app.isTranscribing {
-                                app.clearTranscript()
-                            }
-                            await app.toggleTranscription()
-                            if !app.isTranscribing {
-                                app.useTranscriptAsDraft()
-                            }
+                            app.clearTranscript()
+                            await app.startTranscription()
                         }
                     } label: {
-                        Image(systemName: app.isTranscribing ? "stop.fill" : "mic.fill")
+                        Image(systemName: "mic.fill")
                             .font(.body.weight(.semibold))
                             .frame(width: 38, height: 38)
-                            .foregroundStyle(app.isTranscribing ? .red : .primary)
+                            .foregroundStyle(.primary)
                     }
-                    .accessibilityLabel(app.isTranscribing ? "Stop listening" : "Start voice input")
+                    .accessibilityLabel("Start voice input")
                 } else {
                     Button {
                         app.sendChatMessage()
