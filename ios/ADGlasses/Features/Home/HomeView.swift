@@ -587,7 +587,7 @@ private struct MediaSyncSheet: View {
                     )
                 } else if unsyncedItems.isEmpty {
                     ContentUnavailableView(
-                        "You’re up to date",
+                        "Nothing to sync",
                         systemImage: "checkmark.circle",
                         description: Text(nothingToSyncDescription)
                     )
@@ -794,7 +794,7 @@ private struct SyncProgressView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Label(state.label, systemImage: stageSymbol)
+            Text(state.label)
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 14)
