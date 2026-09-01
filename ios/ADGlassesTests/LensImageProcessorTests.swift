@@ -200,7 +200,7 @@ private final class VisualRequestRecorder: @unchecked Sendable {
             let count = stream.read(&buffer, maxLength: buffer.count)
             if count < 0 { return nil }
             if count == 0 { break }
-            data.append(buffer, count: count)
+            data.append(contentsOf: buffer[0..<count])
         }
         return data.isEmpty ? nil : data
     }
