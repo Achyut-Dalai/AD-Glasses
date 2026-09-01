@@ -265,8 +265,12 @@ struct LensView: View {
     @State private var lastLoadedVisualCaptureID: UUID?
     @State private var preservedJarvisDraftForVoiceQuestion: String?
 
+    private var ownsLensVoiceQuestion: Bool {
+        preservedJarvisDraftForVoiceQuestion != nil
+    }
+
     private var isRecordingLensVoiceQuestion: Bool {
-        preservedJarvisDraftForVoiceQuestion != nil && app.isManualTranscription && app.isTranscribing
+        ownsLensVoiceQuestion && app.isManualTranscription && app.isTranscribing
     }
 
     var body: some View {
@@ -317,10 +321,10 @@ struct LensView: View {
                             .lineLimit(2 ... 4)
                             .disabled(isAskingVisualAI)
 
-                        Button(isRecordingLensVoiceQuestion ? "Stop listening" : "Ask by voice", systemImage: isRecordingLensVoiceQuestion ? "stop.circle.fill" : "mic.fill") {
+                        Button(isRecordingLensVoiceQuestion ? "Stop listening" : ownsLensVoiceQuestion ? "Finish voice question" : "Ask by voice", systemImage: isRecordingLensVoiceQuestion ? "stop.circle.fill" : "mic.fill") {
                             Task { await toggleLensVoiceQuestion() }
                         }
-                        .disabled(isAskingVisualAI || (app.isTranscribing && !isRecordingLensVoiceQuestion))
+                        .disabled(isAskingVisualAI || (app.isTranscribing && !isRecordingLensVoiceQuestion && !ownsLensVoiceQuestion))
 
                         Button { Task { await performQuestion() } } label: {
                             if isAskingVisualAI {
@@ -378,9 +382,6 @@ struct LensView: View {
                 guard let capture = glasses.latestVisualCapture else { return }
                 loadVisualCapture(capture)
             }
-            .onChange(of: app.isTranscribing) { _, running in
-                if !running { commitLensVoiceQuestionIfNeeded() }
-            }
             .onDisappear {
                 Task { await finishLensVoiceQuestionIfNeeded() }
             }
@@ -435,11 +436,20 @@ struct LensView: View {
     }
 
     private func toggleLensVoiceQuestion() async {
-        if isRecordingLensVoiceQuestion {
-            await app.stopTranscription()
-            commitLensVoiceQuestionIfNeeded()
+        if let preserved = preservedJarvisDraftForVoiceQuestion {
+            if app.isManualTranscription {
+                await app.stopTranscription()
+                let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty { question = value }
+            } else if !app.isTranscribing {
+                let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty { question = value }
+            }
+            app.chatDraft = preserved
+            preservedJarvisDraftForVoiceQuestion = nil
             return
         }
+
         guard !app.isTranscribing else { return }
         preservedJarvisDraftForVoiceQuestion = app.chatDraft
         await app.startTranscription()
@@ -448,20 +458,15 @@ struct LensView: View {
         }
     }
 
-    private func commitLensVoiceQuestionIfNeeded() {
+    private func finishLensVoiceQuestionIfNeeded() async {
         guard let preserved = preservedJarvisDraftForVoiceQuestion else { return }
-        let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !value.isEmpty { question = value }
+        if app.isManualTranscription {
+            await app.stopTranscription()
+            let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty { question = value }
+        }
         app.chatDraft = preserved
         preservedJarvisDraftForVoiceQuestion = nil
-    }
-
-    private func finishLensVoiceQuestionIfNeeded() async {
-        guard preservedJarvisDraftForVoiceQuestion != nil else { return }
-        if app.isManualTranscription || app.isTranscribing {
-            await app.stopTranscription()
-        }
-        commitLensVoiceQuestionIfNeeded()
     }
 
     private func performQuestion() async {
