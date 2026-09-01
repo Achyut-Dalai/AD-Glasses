@@ -266,7 +266,8 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         )
         app.chatDraft = "Unsent typed message"
 
-        XCTAssertTrue(await app.startPhoneVoiceTranscriptionFromWakeWord())
+        let didStart = await app.startPhoneVoiceTranscriptionFromWakeWord()
+        XCTAssertTrue(didStart)
         await app.finishPhoneVoiceTranscriptionFromWakeWord()
         for _ in 0 ..< 200 where app.conversation.isEmpty || app.isGenerating {
             await Task.yield()
