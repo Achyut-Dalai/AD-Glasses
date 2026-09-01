@@ -398,11 +398,12 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
-    /// iOS exposes no supported URL that opens the Settings root or Wi-Fi pane. This legacy Wi-Fi
-    /// URL is retained only as a sideloaded Personal-build convenience. On current iOS releases it
-    /// may open Settings at Apps instead, from which the user can navigate back to Wi-Fi.
+    /// iOS exposes no supported URL that opens the Settings root or Wi-Fi pane. This legacy root
+    /// route is retained only as a sideloaded Personal-build convenience and requires physical-
+    /// device validation after iOS updates. The open callback cannot reveal which pane appeared,
+    /// so do not chain another route based on its success value.
     private func openSettingsForManualWiFiJoin() {
-        guard let url = URL(string: "prefs:root=WIFI") else { return }
+        guard let url = URL(string: "prefs:root=ROOT") else { return }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 

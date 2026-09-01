@@ -505,7 +505,7 @@ private struct MediaSyncSheet: View {
                         VStack(spacing: 8) {
                             Text("Switch to the glasses Wi-Fi")
                                 .font(.title3.weight(.semibold))
-                            Text("Settings opens automatically. If it lands on Apps, go back to the main Settings page, choose Wi-Fi, and select the network below. Then return to AD Glasses.")
+                            Text("Settings opens automatically. Choose Wi-Fi, select the network below, then return to AD Glasses. If iOS restores another Settings page, return to the main Settings page first.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
