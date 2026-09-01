@@ -24,7 +24,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Assistant") {
+                Section("Jarvis") {
                     NavigationLink {
                         CloudAISettingsView(store: app.aiProfiles)
                     } label: {
@@ -319,7 +319,7 @@ private struct SpeechVoiceSettingsView: View {
                         controller.stop()
                     } else {
                         do {
-                            try controller.speak("AD Glasses is ready when you need it.")
+                            try controller.speak("Jarvis is ready when you need it.")
                         } catch {
                             errorMessage = error.localizedDescription
                         }
@@ -406,7 +406,7 @@ private struct CloudAISettingsView: View {
             }
 
             Section {
-                Text("API keys are stored in the iOS Keychain. They are sent only to the selected profile endpoint when you ask AD Assistant for a response.")
+                Text("API keys are stored in the iOS Keychain. They are sent only to the selected profile endpoint when you ask Jarvis for a response.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -494,7 +494,7 @@ private struct AIProfileEditorView: View {
                 }
                 .disabled(isTesting)
             } footer: {
-                Text("Saves this profile, then sends a short request through the same connection Assistant uses.")
+                Text("Saves this profile, then sends a short request through the same connection Jarvis uses.")
             }
         }
         .navigationTitle(store.profiles.contains(where: { $0.id == profile.id }) ? "Edit profile" : "New profile")
@@ -586,7 +586,7 @@ private struct PrivacySettingsView: View {
         List {
             Section("On this iPhone") {
                 LabeledContent("Conversations", value: "\(app.conversations.count)")
-                Text("Conversation text is stored locally so Assistant history survives app restarts.")
+                Text("Conversation text is stored locally so Jarvis history survives app restarts.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
