@@ -113,7 +113,7 @@ final class AppModel: ObservableObject {
             await transcriber.stop()
         }
         guard !text.isEmpty else {
-            speechError = "I didn’t hear a question. Try saying AD again."
+            speechError = "I didn’t hear a question. Try the wake phrase again."
             return
         }
         chatDraft = text
