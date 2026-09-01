@@ -208,7 +208,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                 LabeledContent("Status", value: controller.configurationState.label)
 
                 if controller.configurationState == .missingModel {
-                    Text("Install the Hey A D wake-word model below. Voice activation becomes available as soon as the classifier is installed.")
+                    Text("Install the \(controller.phrase) wake-word model below. Voice activation becomes available as soon as the classifier is installed.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -225,11 +225,11 @@ private struct PhoneVoiceActivationSettingsView: View {
                     .foregroundStyle(.secondary)
 
                 #if DEBUG || AD_PERSONAL_TEAM_BUILD
-                Button("Choose trained Hey A D model…") {
+                Button("Choose trained \(controller.phrase) model…") {
                     importsModel = true
                 }
 
-                Text("This build does not contain a trained Hey A D classifier yet. Personal builds can import an evaluated .onnx model directly; once that model is bundled with AD Glasses, this step disappears.")
+                Text("This build does not contain a trained \(controller.phrase) classifier yet. Personal builds can import an evaluated .onnx model directly; once that model is bundled with AD Glasses, this step disappears.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 #endif
@@ -246,7 +246,7 @@ private struct PhoneVoiceActivationSettingsView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    controller.importModel(from: url, phrase: "Hey A D")
+                    controller.importModel(from: url, phrase: controller.phrase)
                 }
             case .failure(let error):
                 controller.errorMessage = error.localizedDescription
