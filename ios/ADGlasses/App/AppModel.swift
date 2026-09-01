@@ -114,6 +114,7 @@ final class AppModel: ObservableObject {
             isManualTranscription = false
             return
         }
+        let shouldPreserveManualDraft = isManualTranscription
         speechError = nil
         isStoppingTranscription = true
         defer {
@@ -121,12 +122,14 @@ final class AppModel: ObservableObject {
             isManualTranscription = false
         }
         await transcriber.stop()
+        if shouldPreserveManualDraft {
+            useTranscriptAsDraft()
+        }
     }
 
     func finishManualTranscriptionAsDraft() async {
         guard isManualTranscription else { return }
         await stopTranscription()
-        useTranscriptAsDraft()
     }
 
     func toggleTranscription() async {
