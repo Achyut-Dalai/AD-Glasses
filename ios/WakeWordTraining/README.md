@@ -52,22 +52,45 @@ If this is a fresh checkout or required assets are missing:
 
 The TTS batch size is **25**, not LiveKit's upstream production suggestion of 50. This is deliberate: this project previously encountered resource/stability trouble at 50, and the lower value is safer for an unattended overnight run. It changes throughput, not the intended dataset size.
 
-## Recommended overnight run
+## Recommended controlled overnight workflow
 
-From `ios/WakeWordTraining`:
+The pinned LiveKit CLI's `run` command executes the full pipeline, including export and eval. To keep the same controlled boundary as the previous model, run the phrase-specific stages explicitly and stop after training:
+
+```sh
+.venv/bin/livekit-wakeword generate jarvis.yaml
+.venv/bin/livekit-wakeword augment jarvis.yaml
+.venv/bin/livekit-wakeword train jarvis.yaml
+```
+
+On macOS, if you are leaving it unattended, prevent system sleep while the three commands run:
+
+```sh
+caffeinate -dimsu sh -c '\
+.venv/bin/livekit-wakeword generate jarvis.yaml && \
+.venv/bin/livekit-wakeword augment jarvis.yaml && \
+.venv/bin/livekit-wakeword train jarvis.yaml'
+```
+
+The commands are chained with `&&`, so augmentation will not start if generation fails, and training will not start if augmentation fails.
+
+If you prefer LiveKit to perform all six stages automatically, this is also valid:
 
 ```sh
 .venv/bin/livekit-wakeword run jarvis.yaml
 ```
 
-`run` performs generation, augmentation/feature extraction, and the three-phase training pipeline. The final PyTorch classifier is written under `output/jarvis/`.
+In that case export and eval are already performed by `run`; you do not need to repeat them unless you specifically want to rerun those stages.
 
-After training succeeds, export and evaluate explicitly:
+## Post-training export and evaluation
+
+If you used the controlled three-stage workflow above, run:
 
 ```sh
 .venv/bin/livekit-wakeword export jarvis.yaml
 .venv/bin/livekit-wakeword eval jarvis.yaml
 ```
+
+The pinned evaluator writes `output/jarvis/jarvis_eval.json` with both fixed-threshold metrics and the calibrated `optimal_threshold`, `optimal_recall`, and `optimal_fpph` values used by the production bundler.
 
 Then bundle only the evaluated classifier:
 
@@ -77,8 +100,8 @@ python3.11 bundle_evaluated_model.py
 
 The bundler refuses to ship unless LiveKit reports all of the following:
 
-- at least 90% held-out recall
-- no more than 0.10 false positives/hour
+- at least 90% held-out recall at the optimal threshold
+- no more than 0.10 false positives/hour at the optimal threshold
 - at least 5,000 held-out positive evaluation samples
 - a valid calibrated threshold between 0 and 1
 
