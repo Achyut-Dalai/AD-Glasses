@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "phrase": "Hey A D",
-  "spokenAs": "hey A-dee",
-  "modelFile": "hey_a_d.onnx",
-  "modelName": "hey_a_d",
+  "phrase": "Jarvis",
+  "spokenAs": "JAR-vis",
+  "modelFile": "jarvis.onnx",
+  "modelName": "jarvis",
   "threshold": null,
   "debounceSeconds": 2.0,
   "modelSHA256": null,
