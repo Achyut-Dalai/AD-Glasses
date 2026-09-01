@@ -66,7 +66,7 @@ final class LensSessionController: ObservableObject {
 
 /// Provider-aware image understanding used by both Lens and wake-word visual questions.
 /// Images are sent only for an explicit Lens/visual request and are never persisted by this client.
-struct JarvisVisualAIClient {
+struct JarvisVisualAIClient: Sendable {
     private let session: URLSession
     private static let maximumJPEGBytes = 8 * 1_024 * 1_024
     private static let outputTokenLimit = 700
@@ -89,13 +89,22 @@ struct JarvisVisualAIClient {
             throw AIConfigurationError.requestFailed("The prepared Lens image is too large to send safely.")
         }
 
-        switch profile.provider {
-        case .openAI:
-            return try await openAI(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
-        case .google:
-            return try await gemini(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
-        case .deepSeek, .openRouter, .groq, .custom:
-            return try await compatible(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
+        do {
+            switch profile.provider {
+            case .openAI:
+                return try await openAI(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
+            case .google:
+                return try await gemini(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
+            case .deepSeek, .openRouter, .groq, .custom:
+                return try await compatible(prompt: prompt, imageJPEGData: imageJPEGData, profile: profile, credential: credential)
+            }
+        } catch let error as AIConfigurationError {
+            if case .requestFailed(let message) = error, Self.looksLikeUnsupportedImageError(message) {
+                throw AIConfigurationError.requestFailed(
+                    "The selected model \(profile.model) does not appear to support image input. Choose a vision-capable model in Cloud AI settings."
+                )
+            }
+            throw error
         }
     }
 
@@ -169,28 +178,19 @@ struct JarvisVisualAIClient {
         if profile.provider == .groq { payload["max_completion_tokens"] = Self.outputTokenLimit }
         else { payload["max_tokens"] = Self.outputTokenLimit }
 
-        do {
-            let root = try await post(url: url, bearer: credential, headers: [:], payload: payload, label: "\(profile.provider.displayName) visual understanding")
-            guard let choices = root["choices"] as? [[String: Any]],
-                  let message = choices.first?["message"] as? [String: Any] else {
-                throw AIConfigurationError.invalidResponse
-            }
-            if let text = (message["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
-                return text
-            }
-            if let parts = message["content"] as? [[String: Any]] {
-                let text = parts.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
-                if !text.isEmpty { return text }
-            }
+        let root = try await post(url: url, bearer: credential, headers: [:], payload: payload, label: "\(profile.provider.displayName) visual understanding")
+        guard let choices = root["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any] else {
             throw AIConfigurationError.invalidResponse
-        } catch let error as AIConfigurationError {
-            if case .requestFailed(let message) = error, Self.looksLikeUnsupportedImageError(message) {
-                throw AIConfigurationError.requestFailed(
-                    "The selected model \(profile.model) does not appear to support image input. Choose a vision-capable model in Cloud AI settings."
-                )
-            }
-            throw error
         }
+        if let text = (message["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
+            return text
+        }
+        if let parts = message["content"] as? [[String: Any]] {
+            let text = parts.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty { return text }
+        }
+        throw AIConfigurationError.invalidResponse
     }
 
     private func endpoint(base: String, suffix: String) throws -> URL {
@@ -263,6 +263,11 @@ struct LensView: View {
     @State private var isCapturingFromGlasses = false
     @State private var isAskingVisualAI = false
     @State private var lastLoadedVisualCaptureID: UUID?
+    @State private var preservedJarvisDraftForVoiceQuestion: String?
+
+    private var isRecordingLensVoiceQuestion: Bool {
+        preservedJarvisDraftForVoiceQuestion != nil && app.isManualTranscription && app.isTranscribing
+    }
 
     var body: some View {
         let photoPickerTitle = lens.image == nil ? "Choose a photo" : "Choose another photo"
@@ -312,13 +317,10 @@ struct LensView: View {
                             .lineLimit(2 ... 4)
                             .disabled(isAskingVisualAI)
 
-                        Button(app.isTranscribing ? "Stop listening" : "Ask by voice", systemImage: app.isTranscribing ? "stop.circle.fill" : "mic.fill") {
-                            Task {
-                                await app.toggleTranscription()
-                                if !app.isTranscribing, !app.transcript.isEmpty { question = app.transcript }
-                            }
+                        Button(isRecordingLensVoiceQuestion ? "Stop listening" : "Ask by voice", systemImage: isRecordingLensVoiceQuestion ? "stop.circle.fill" : "mic.fill") {
+                            Task { await toggleLensVoiceQuestion() }
                         }
-                        .disabled(isAskingVisualAI)
+                        .disabled(isAskingVisualAI || (app.isTranscribing && !isRecordingLensVoiceQuestion))
 
                         Button { Task { await performQuestion() } } label: {
                             if isAskingVisualAI {
@@ -376,7 +378,12 @@ struct LensView: View {
                 guard let capture = glasses.latestVisualCapture else { return }
                 loadVisualCapture(capture)
             }
-            .onDisappear { Task { await app.stopTranscription() } }
+            .onChange(of: app.isTranscribing) { _, running in
+                if !running { commitLensVoiceQuestionIfNeeded() }
+            }
+            .onDisappear {
+                Task { await finishLensVoiceQuestionIfNeeded() }
+            }
             .alert("Lens", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
@@ -425,6 +432,36 @@ struct LensView: View {
         if #available(iOS 18.0, *) { NativeLensTranslationControls(text: lens.recognizedText) }
         else if #available(iOS 17.4, *) { SystemLensTranslationButton(text: lens.recognizedText) }
         else { Text("Native translation requires iOS 17.4 or later.").foregroundStyle(.secondary) }
+    }
+
+    private func toggleLensVoiceQuestion() async {
+        if isRecordingLensVoiceQuestion {
+            await app.stopTranscription()
+            commitLensVoiceQuestionIfNeeded()
+            return
+        }
+        guard !app.isTranscribing else { return }
+        preservedJarvisDraftForVoiceQuestion = app.chatDraft
+        await app.startTranscription()
+        if !app.isManualTranscription {
+            preservedJarvisDraftForVoiceQuestion = nil
+        }
+    }
+
+    private func commitLensVoiceQuestionIfNeeded() {
+        guard let preserved = preservedJarvisDraftForVoiceQuestion else { return }
+        let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !value.isEmpty { question = value }
+        app.chatDraft = preserved
+        preservedJarvisDraftForVoiceQuestion = nil
+    }
+
+    private func finishLensVoiceQuestionIfNeeded() async {
+        guard preservedJarvisDraftForVoiceQuestion != nil else { return }
+        if app.isManualTranscription || app.isTranscribing {
+            await app.stopTranscription()
+        }
+        commitLensVoiceQuestionIfNeeded()
     }
 
     private func performQuestion() async {
