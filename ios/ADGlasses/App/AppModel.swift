@@ -7,6 +7,7 @@ import UIKit
 final class AppModel: ObservableObject {
     @Published private(set) var transcript = ""
     @Published private(set) var isTranscribing = false
+    @Published private(set) var isStoppingTranscription = false
     @Published private(set) var speechEngineName = "Apple Speech"
     @Published var speechError: String?
     @Published var chatDraft = ""
@@ -78,13 +79,9 @@ final class AppModel: ObservableObject {
         glassesSpeechStartTask?.cancel()
     }
 
-    func toggleTranscription() async {
+    func startTranscription() async {
+        guard !isStoppingTranscription, !transcriber.snapshot.isRunning else { return }
         speechError = nil
-        if transcriber.snapshot.isRunning {
-            await transcriber.stop()
-            return
-        }
-
         do {
             try await transcriber.start()
         } catch {
@@ -92,9 +89,25 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func stopTranscription() async {
+        guard transcriber.snapshot.isRunning, !isStoppingTranscription else { return }
+        speechError = nil
+        isStoppingTranscription = true
+        defer { isStoppingTranscription = false }
+        await transcriber.stop()
+    }
+
+    func toggleTranscription() async {
+        if transcriber.snapshot.isRunning {
+            await stopTranscription()
+        } else {
+            await startTranscription()
+        }
+    }
+
     @discardableResult
     func startPhoneVoiceTranscriptionFromWakeWord() async -> Bool {
-        guard !transcriber.snapshot.isRunning else { return false }
+        guard !isStoppingTranscription, !transcriber.snapshot.isRunning else { return false }
         cancelResponse()
         speechOutput.stop()
         clearTranscript()
@@ -108,21 +121,16 @@ final class AppModel: ObservableObject {
     }
 
     func finishPhoneVoiceTranscriptionFromWakeWord() async {
-        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         if transcriber.snapshot.isRunning {
-            await transcriber.stop()
+            await stopTranscription()
         }
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
             speechError = "I didn’t hear a question. Try the wake phrase again."
             return
         }
         chatDraft = text
         sendChatMessage(source: .phoneVoice, speakResponse: true)
-    }
-
-    func stopTranscription() async {
-        guard transcriber.snapshot.isRunning else { return }
-        await transcriber.stop()
     }
 
     func clearTranscript() {
@@ -184,11 +192,15 @@ final class AppModel: ObservableObject {
     }
 
     func cancelResponse() {
+        let hadActiveResponse = generationTask != nil
         generationTask?.cancel()
         generationTask = nil
         generationID = nil
         isGenerating = false
         endVoiceResponseBackgroundTask()
+        if hadActiveResponse {
+            conversationNotice = "Response stopped. Your message remains saved locally."
+        }
     }
 
     func startNewConversation() {
@@ -283,8 +295,10 @@ final class AppModel: ObservableObject {
                 }
             }
         } catch is CancellationError {
+            guard self.generationID == generationID else { return }
             conversationNotice = "Response stopped. Your message remains saved locally."
         } catch {
+            guard self.generationID == generationID else { return }
             conversationNotice = error.localizedDescription
         }
     }
