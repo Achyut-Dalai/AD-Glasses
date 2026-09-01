@@ -108,16 +108,15 @@ final class HeyCyanMediaTransferCoordinator {
             state = .joiningNetwork(ssid: credentials.ssid)
             let deviceAddress: String
 #if AD_PERSONAL_TEAM_BUILD
-            // Personal Team builds cannot provision Hotspot Configuration. Launch Wi-Fi Settings
-            // once, keep this BLE transfer session alive while the user joins the glasses AP, then
-            // perform one bounded verification when the app becomes active again. Do not loop
-            // forever if the network was not joined or the glasses fail to report an address.
+            // Personal Team builds cannot provision Hotspot Configuration. Keep this BLE transfer
+            // session alive while the user selects the glasses AP from Control Center, then perform
+            // one bounded verification. Do not loop forever if the network was not joined or the
+            // glasses fail to report an address.
             if let reportedDeviceIPv4Address {
                 deviceAddress = reportedDeviceIPv4Address
             } else {
                 state = .awaitingManualNetworkJoin(credentials: credentials)
                 copyNetworkPassword(credentials.passphrase)
-                openWiFiSettings()
                 try await waitForManualNetworkJoin(operationID: operationID)
                 deviceAddress = try await waitForDeviceAddress(
                     timeout: readinessTimeout,
@@ -398,17 +397,6 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
-    /// iOS exposes no public API that deep-links directly to the Wi-Fi pane. Personal/sideloaded
-    /// builds use the long-standing Settings URL as a best-effort convenience; if iOS rejects it,
-    /// the existing on-screen SSID/password remains available and the user can open Settings
-    /// manually. We deliberately keep this out of entitlement-enabled/App-Store-oriented builds.
-    private func openWiFiSettings() {
-        openSettingsURLCandidates([
-            "prefs:root=WIFI",
-            "App-Prefs:root=WIFI"
-        ])
-    }
-
     /// Keep the verified glasses passphrase available if iOS asks for it during the handoff.
     /// Normally iOS reuses the saved network and does not prompt. The value remains on this
     /// iPhone only and expires shortly after the handoff.
@@ -422,16 +410,6 @@ final class HeyCyanMediaTransferCoordinator {
         )
     }
 
-    private func openSettingsURLCandidates(_ candidates: [String]) {
-        guard let first = candidates.first,
-              let url = URL(string: first) else { return }
-        UIApplication.shared.open(url, options: [:]) { [weak self] opened in
-            guard !opened, candidates.count > 1 else { return }
-            Task { @MainActor [weak self] in
-                self?.openSettingsURLCandidates(Array(candidates.dropFirst()))
-            }
-        }
-    }
 #endif
 
     private func beginOperation() throws -> UUID {

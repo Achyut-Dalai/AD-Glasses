@@ -503,9 +503,9 @@ private struct MediaSyncSheet: View {
                             .foregroundStyle(.blue)
 
                         VStack(spacing: 8) {
-                            Text("Switch to the glasses Wi-Fi")
+                            Text("Choose the glasses Wi-Fi")
                                 .font(.title3.weight(.semibold))
-                            Text("Open iPhone Settings → Wi-Fi, tap the network below, then return to AD Glasses. Sync checks the connection automatically when you come back.")
+                            Text("Swipe down from the top-right, touch and hold the connectivity panel, touch and hold Wi-Fi, then select the network below. Dismiss Control Center to return here.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -554,11 +554,11 @@ private struct MediaSyncSheet: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Waiting for you to return from Wi-Fi Settings")
+                            Text("Waiting for the glasses Wi-Fi")
                                 .font(.footnote.weight(.medium))
                         }
 
-                        Text("The current password has been copied for you. If iPhone reports an incorrect password, forget the saved glasses network, select it again, and paste this freshly copied password. This sync session stays open while you do it.")
+                        Text("The password is copied in case iPhone asks for it. Once the glasses report their network address, sync continues automatically.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
