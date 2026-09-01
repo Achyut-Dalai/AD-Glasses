@@ -1,0 +1,71 @@
+# AD Glasses phone wake word — LiveKit WakeWord
+# Assistant name / wake phrase: "Jarvis"
+# Pronounced naturally as two syllables: "JAR-vis".
+#
+# Keep this config separate from hey_a_d.yaml so the in-progress Hey A D
+# production run can finish export/eval without changing its inputs or outputs.
+# Before launching a full production run, listen to generated positive clips and
+# verify Piper/espeak-ng pronounce "Jarvis" naturally in your current toolchain.
+
+model_name: jarvis
+
+target_phrases:
+  - "jarvis"
+
+# Production-scale synthetic positives/negatives. Match the evaluated Hey A D
+# production run so results are comparable across wake words.
+n_samples: 25000
+n_samples_val: 5000
+n_background_samples: 2000
+n_background_samples_val: 500
+tts_batch_size: 50
+
+# Seed hard negatives for words/names that may sound close to Jarvis. LiveKit's
+# adversarial generation will add more; refine this list after listening/testing.
+custom_negative_phrases:
+  - "jar"
+  - "jars"
+  - "jarred"
+  - "jervis"
+  - "travis"
+  - "harvest"
+  - "marvis"
+  - "service"
+  - "nervous"
+  - "jasmine"
+  - "hey jarvis"
+  - "jarvis please"
+
+# Speaking-rate and voice variation for synthetic positive data.
+noise_scales: [0.98]
+noise_scale_ws: [0.98]
+length_scales: [0.75, 1.0, 1.25]
+slerp_weights: [0.2, 0.35, 0.5, 0.65, 0.8]
+
+data_dir: ./data
+output_dir: ./output
+
+augmentation:
+  clip_duration: 2.0
+  batch_size: 16
+  rounds: 3
+  background_paths: [./data/backgrounds]
+  rir_paths: [./data/rirs]
+
+model:
+  model_type: conv_attention
+  model_size: medium
+
+steps: 100000
+learning_rate: 0.0001
+weight_decay: 0.01
+label_smoothing: 0.05
+max_negative_weight: 3000
+
+target_fp_per_hour: 0.1
+
+batch_n_per_class:
+  positive: 50
+  adversarial_negative: 50
+  ACAV100M_sample: 1024
+  background_noise: 50
