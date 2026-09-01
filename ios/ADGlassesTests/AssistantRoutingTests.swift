@@ -147,8 +147,17 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         )
         app.attach(to: manager)
         app.chatDraft = "Keep this unsent draft"
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
 
-        provider.emit(.started(format: nil))
+        provider.emit(.started(format: format))
+        for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
+            await Task.yield()
+        }
         provider.emit(.ended)
 
         for _ in 0 ..< 200 where app.conversation.isEmpty || app.isGenerating {
@@ -178,12 +187,18 @@ final class GlassesAssistantPipelineTests: XCTestCase {
             conversationStore: ConversationStore(fileURL: storeURL)
         )
         app.attach(to: manager)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
 
         app.clearTranscript()
         await app.startTranscription()
         XCTAssertTrue(app.isManualTranscription)
 
-        provider.emit(.started(format: nil))
+        provider.emit(.started(format: format))
         for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
             await Task.yield()
         }
