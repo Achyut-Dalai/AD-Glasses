@@ -360,6 +360,7 @@ enum HeyCyanCommand: Equatable, Sendable {
     case startAudioRecording
     case stopAudioRecording
     case requestAIPhoto(quality: HeyCyanAIPhotoQuality)
+    case readMediaCounts
     case prepareMediaTransfer(mode: HeyCyanNetworkMode)
     case finishMediaTransfer
     case resetPeerToPeerState
@@ -409,6 +410,8 @@ enum HeyCyanCommand: Equatable, Sendable {
             return Data([0x02, 0x01, 0x0C])
         case .requestAIPhoto(let quality):
             return Data([0x02, 0x01, 0x06, quality.rawValue, quality.rawValue])
+        case .readMediaCounts:
+            return Data([0x02, 0x04])
         case .prepareMediaTransfer(let mode):
             return Data([0x02, 0x01, 0x04, mode.rawValue])
         case .finishMediaTransfer:
@@ -473,6 +476,8 @@ enum HeyCyanCommand: Equatable, Sendable {
             return frame.matchesNetworkPreparation(mode: mode)
         case .requestAIPhoto:
             return frame.matchesControlAcknowledgement(workType: 0x06)
+        case .readMediaCounts:
+            return frame.payload.count >= 8 && frame.payload[frame.payload.startIndex + 1] == 0x04
         case .startAudioRecording:
             return frame.matchesControlAcknowledgement(workType: 0x08)
         case .finishMediaTransfer:

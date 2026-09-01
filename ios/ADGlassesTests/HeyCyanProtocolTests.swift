@@ -190,6 +190,22 @@ final class HeyCyanProtocolTests: XCTestCase {
             HeyCyanCommand.prepareMediaTransfer(mode: .accessPoint).payload,
             Data([0x02, 0x01, 0x04, 0x02])
         )
+        XCTAssertEqual(HeyCyanCommand.readMediaCounts.payload, Data([0x02, 0x04]))
+    }
+
+    func testMediaCountCommandMatchesOnlyDataTypeFour() throws {
+        let command = HeyCyanCommand.readMediaCounts
+        let counts = try codec.decode(codec.encode(
+            command: 0x41,
+            payload: Data([0x02, 0x04, 0x03, 0x00, 0x02, 0x00, 0x01, 0x00])
+        ))
+        let acknowledgement = try codec.decode(codec.encode(
+            command: 0x41,
+            payload: Data([0x02, 0x01, 0x04, 0x00])
+        ))
+
+        XCTAssertTrue(command.matchesResponse(counts))
+        XCTAssertFalse(command.matchesResponse(acknowledgement))
     }
 
     func testMediaPreparationCorrelatesDocumentedReturnedModeOrFailure() throws {

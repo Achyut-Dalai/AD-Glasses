@@ -22,6 +22,14 @@ struct HeyCyanControlAcknowledgement: Equatable, Sendable {
     let activeWorkType: UInt8?
 }
 
+struct HeyCyanMediaCounts: Equatable, Sendable {
+    let photos: Int
+    let videos: Int
+    let recordings: Int
+
+    var total: Int { photos + videos + recordings }
+}
+
 struct HeyCyanNetworkPreparation: Equatable, Sendable {
     let responseCode: UInt8
     let mode: HeyCyanNetworkMode
@@ -205,6 +213,34 @@ struct HeyCyanResponseDecoder: Sendable {
             requestedWorkType: bytes[2],
             errorCode: errorCode,
             activeWorkType: errorCode == 0 && bytes.count > 4 ? bytes[4] : nil
+        )
+    }
+
+    func decodeMediaCounts(_ frame: HeyCyanFrame) throws -> HeyCyanMediaCounts {
+        guard frame.command == HeyCyanCommand.readMediaCounts.family else {
+            throw HeyCyanResponseDecodingError.unexpectedCommand(
+                expected: HeyCyanCommand.readMediaCounts.family,
+                actual: frame.command
+            )
+        }
+        // GlassModelControlResponse reads data type at full-frame offset 7, followed by three
+        // unsigned little-endian UInt16 values at offsets 8...13. Removing the six-byte frame
+        // header yields payload offsets 1 and 2...7 respectively.
+        guard frame.payload.count >= 8 else {
+            throw HeyCyanResponseDecodingError.payloadTooShort(
+                expectedAtLeast: 8,
+                actual: frame.payload.count
+            )
+        }
+        let bytes = [UInt8](frame.payload)
+        guard bytes[1] == 0x04 else {
+            throw HeyCyanResponseDecodingError.unexpectedControlDataType(bytes[1])
+        }
+
+        return HeyCyanMediaCounts(
+            photos: Int(UInt16(bytes[2]) | (UInt16(bytes[3]) << 8)),
+            videos: Int(UInt16(bytes[4]) | (UInt16(bytes[5]) << 8)),
+            recordings: Int(UInt16(bytes[6]) | (UInt16(bytes[7]) << 8))
         )
     }
 

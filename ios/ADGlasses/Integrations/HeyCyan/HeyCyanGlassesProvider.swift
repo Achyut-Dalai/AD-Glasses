@@ -772,6 +772,7 @@ private extension HeyCyanMediaTransferState {
     var glassesState: GlassesMediaTransferState {
         switch self {
         case .idle: return .idle
+        case .checkingMediaCounts: return .checkingLibrary
         case .preparingBluetooth: return .preparing
         case .joiningNetwork: return .joiningNetwork
         case .awaitingManualNetworkJoin(let credentials):

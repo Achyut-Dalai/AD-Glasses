@@ -570,12 +570,9 @@ private struct MediaSyncSheet: View {
                         didCopyNetworkPassword = true
                     }
                 } else if isPreparing {
-                    ContentUnavailableView {
-                        ProgressView()
-                        Text("Preparing sync")
-                    } description: {
-                        Text(glasses.mediaTransferState.label)
-                    }
+                    SyncProgressView(state: glasses.mediaTransferState)
+                } else if isSyncing {
+                    SyncProgressView(state: glasses.mediaTransferState)
                 } else if let errorMessage {
                     ContentUnavailableView(
                         "Sync couldn’t start",
@@ -590,7 +587,7 @@ private struct MediaSyncSheet: View {
                     )
                 } else if unsyncedItems.isEmpty {
                     ContentUnavailableView(
-                        "Nothing to sync",
+                        "You’re up to date",
                         systemImage: "checkmark.circle",
                         description: Text(nothingToSyncDescription)
                     )
@@ -674,7 +671,7 @@ private struct MediaSyncSheet: View {
 
     private var nothingToSyncDescription: String {
         items.isEmpty
-            ? "No photos, videos, or recordings are currently reported by AD Glasses."
+            ? "AD Glasses has no new photos, videos, or recordings to sync."
             : "Everything currently reported by AD Glasses is already saved in your Library."
     }
 
@@ -693,7 +690,9 @@ private struct MediaSyncSheet: View {
                 // A successful empty/already-imported manifest is a completed check, not an open
                 // transfer session. Exit immediately so the glasses leave transfer mode and the
                 // sheet cannot appear to sync forever while there is nothing to download.
-                glasses.cancelMediaTransfer()
+                if !items.isEmpty {
+                    glasses.cancelMediaTransfer()
+                }
                 transferNeedsCleanup = false
                 didFinishTransfer = true
             }
@@ -766,6 +765,88 @@ private struct MediaSyncSheet: View {
             await glasses.finishMediaTransfer()
             transferNeedsCleanup = false
             dismiss()
+        }
+    }
+}
+
+private struct SyncProgressView: View {
+    let state: GlassesMediaTransferState
+
+    var body: some View {
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .fill(.thinMaterial)
+                    .frame(width: 88, height: 88)
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.primary)
+            }
+            .accessibilityHidden(true)
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.title2.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Label(state.label, systemImage: stageSymbol)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(.thinMaterial, in: Capsule())
+        }
+        .padding(32)
+        .frame(maxWidth: 420)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(state.label)")
+    }
+
+    private var title: String {
+        switch state {
+        case .checkingLibrary:
+            return "Checking your glasses"
+        case .preparing:
+            return "Preparing a secure sync"
+        case .joiningNetwork:
+            return "Connecting to your glasses"
+        case .downloading:
+            return "Syncing your media"
+        case .finishing:
+            return "Finishing safely"
+        default:
+            return "Preparing sync"
+        }
+    }
+
+    private var description: String {
+        switch state {
+        case .checkingLibrary:
+            return "Looking for new photos, videos, and recordings."
+        case .preparing, .joiningNetwork:
+            return "Keep AD Glasses nearby. This usually takes only a few seconds."
+        case .downloading:
+            return "Saving the original file securely to your Library."
+        case .finishing:
+            return "Closing the temporary transfer connection."
+        default:
+            return "Getting everything ready."
+        }
+    }
+
+    private var stageSymbol: String {
+        switch state {
+        case .checkingLibrary: return "checklist"
+        case .joiningNetwork: return "wifi"
+        case .downloading: return "arrow.down.circle"
+        case .finishing: return "checkmark.shield"
+        default: return "eyeglasses"
         }
     }
 }

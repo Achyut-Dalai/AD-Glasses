@@ -3,6 +3,7 @@ import UIKit
 
 enum HeyCyanMediaTransferState: Equatable, Sendable {
     case idle
+    case checkingMediaCounts
     case preparingBluetooth
     case joiningNetwork(ssid: String)
     case awaitingManualNetworkJoin(credentials: HeyCyanNetworkCredentials)
@@ -93,6 +94,17 @@ final class HeyCyanMediaTransferCoordinator {
         do {
             reportedDeviceIPv4Address = nil
             reportedNetworkError = nil
+
+            // The supplied SDK and official app expose this read-only inventory request. Avoid
+            // waking the Wi-Fi chip or sending the user to Settings when every count is zero.
+            state = .checkingMediaCounts
+            let countsResponse = try await session.send(.readMediaCounts)
+            let counts = try responseDecoder.decodeMediaCounts(countsResponse)
+            if counts.total == 0 {
+                state = .ready(items: [])
+                return []
+            }
+
             state = .preparingBluetooth
             didIssueBluetoothPrepare = true
             let response = try await session.send(.prepareMediaTransfer(mode: .accessPoint))
@@ -110,8 +122,8 @@ final class HeyCyanMediaTransferCoordinator {
 #if AD_PERSONAL_TEAM_BUILD
             // Personal Team builds cannot provision Hotspot Configuration. Open Settings as a
             // convenience, keep this BLE transfer session alive while the user joins the glasses
-            // AP, then perform one bounded verification. Current iOS versions may land on the Apps
-            // page instead of Wi-Fi; opening Settings still removes one manual step.
+            // AP, then perform one bounded verification. The validated Personal-build route opens
+            // the Settings root; iOS intentionally provides no supported Wi-Fi deep link.
             if let reportedDeviceIPv4Address {
                 deviceAddress = reportedDeviceIPv4Address
             } else {
@@ -145,6 +157,11 @@ final class HeyCyanMediaTransferCoordinator {
                 timeout: readinessTimeout,
                 operationID: operationID
             )
+            if items.isEmpty {
+                // A successfully read empty manifest still needs to leave transfer mode, but it
+                // is a completed empty check rather than an error for the UI.
+                recoverTransferMode(sendBluetoothFinish: true)
+            }
             state = .ready(items: items)
             return items
         } catch {
@@ -277,6 +294,9 @@ final class HeyCyanMediaTransferCoordinator {
             try Task.checkCancellation()
             try ensureOperationIsActive(operationID)
             guard session.state.isReady else { throw HeyCyanSessionError.notReady }
+            if let reportedNetworkError {
+                throw HeyCyanMediaTransferError.networkPreparationFailed(reportedNetworkError)
+            }
             do {
                 return try await media.mediaList(on: accessPoint)
             } catch let error as HeyCyanMediaError {
@@ -403,7 +423,7 @@ final class HeyCyanMediaTransferCoordinator {
     /// device validation after iOS updates. The open callback cannot reveal which pane appeared,
     /// so do not chain another route based on its success value.
     private func openSettingsForManualWiFiJoin() {
-        guard let url = URL(string: "prefs:root=ROOT") else { return }
+        guard let url = URL(string: "App-Prefs:") else { return }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 

@@ -93,6 +93,28 @@ final class HeyCyanResponseTests: XCTestCase {
         }
     }
 
+    func testMediaCountsUseSuppliedSDKOffsetsAndLittleEndianValues() throws {
+        let frame = try decodedFrame(
+            command: 0x41,
+            payload: Data([0x02, 0x04, 0x02, 0x01, 0x04, 0x03, 0x06, 0x05])
+        )
+
+        XCTAssertEqual(
+            try decoder.decodeMediaCounts(frame),
+            HeyCyanMediaCounts(photos: 258, videos: 772, recordings: 1_286)
+        )
+    }
+
+    func testMediaCountsDecodeEmptyInventory() throws {
+        let frame = try decodedFrame(
+            command: 0x41,
+            payload: Data([0x02, 0x04, 0, 0, 0, 0, 0, 0])
+        )
+
+        let counts = try decoder.decodeMediaCounts(frame)
+        XCTAssertEqual(counts.total, 0)
+    }
+
     func testCapturedNetworkPreparationPreservesDeviceSelectedModeAndCredentials() throws {
         // Same 22-byte SSID / 9-byte passphrase layout as the physical capture, using synthetic
         // values so a real accessory credential is never committed to source control.
