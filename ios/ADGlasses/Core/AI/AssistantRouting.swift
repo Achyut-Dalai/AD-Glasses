@@ -23,11 +23,6 @@ enum AssistantRoute: Equatable, Sendable {
     case capturePhoto
 }
 
-/// Structural routing for the Assistant entry point.
-///
-/// Natural-language similarity is intentionally not used to guess destructive tools. A route is
-/// selected from input that is actually present. Read-only Search & Maps grounding is handled by
-/// `GroundingIntentRouter` immediately before Cloud AI synthesis.
 struct AssistantRequestRouter: Sendable {
     func route(_ request: AssistantRequest) -> AssistantRoute {
         let text = request.text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -45,8 +40,7 @@ struct AssistantRequestRouter: Sendable {
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
         let words = Set(normalized)
-        guard words.isDisjoint(with: ["not", "dont", "never"]) else { return false }
-        guard !words.contains("how") else { return false }
+        guard words.isDisjoint(with: ["not", "dont", "never"]), !words.contains("how") else { return false }
         let hasAction = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
         let hasSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
         return hasAction && hasSubject
@@ -57,12 +51,9 @@ enum ConversationContextPolicy {
     static let maximumMessages = 40
     static let maximumCharacters = 48_000
 
-    /// Keeps newest complete messages under a predictable request budget without modifying the
-    /// locally saved conversation. The newest message is always retained.
     static func requestMessages(from messages: [ConversationMessage]) -> [ConversationMessage] {
         var result = [ConversationMessage]()
         var characters = 0
-
         for message in messages.suffix(maximumMessages).reversed() {
             let nextCount = message.text.count
             if !result.isEmpty, characters + nextCount > maximumCharacters { break }
@@ -72,8 +63,6 @@ enum ConversationContextPolicy {
         return result.reversed()
     }
 }
-
-// MARK: - Read-only Search & Maps grounding
 
 enum GroundingIntent: Equatable, Sendable {
     case direct
@@ -106,12 +95,6 @@ struct GroundingRoute: Equatable, Sendable {
     var useCurrentLocation = true
 }
 
-/// Conservative, history-free routing for optional read-only evidence.
-///
-/// The Android implementation has a richer semantic planner. iOS deliberately starts with a
-/// bounded high-confidence router: unclear requests stay direct rather than opening location or
-/// web services. This prevents words such as "route", "network", or "current" in technical
-/// questions from accidentally becoming map/live-data requests.
 struct GroundingIntentRouter: Sendable {
     func route(_ prompt: String) -> GroundingRoute {
         let clean = Self.normalized(prompt)
@@ -126,10 +109,7 @@ struct GroundingIntentRouter: Sendable {
             return spatial
         }
         if needsSearch {
-            return GroundingRoute(
-                intent: .search,
-                searchQuery: prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
+            return GroundingRoute(intent: .search, searchQuery: prompt.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         return GroundingRoute(intent: .direct)
     }
@@ -147,54 +127,43 @@ struct GroundingIntentRouter: Sendable {
     }
 
     private static func hasTechnicalVeto(_ text: String) -> Bool {
-        let technical = [
-            "code", "swift", "kotlin", "python", "javascript", "typescript", "compile",
-            "compiler", "api endpoint", "http route", "router", "routing table", "network route",
-            "current variable", "current value", "map function", "mapping function", "database",
-            "sql", "regex", "algorithm", "unit test", "stack trace", "git branch"
-        ]
-        return containsAny(text, technical)
+        containsAny(text, [
+            "code", "swift", "kotlin", "python", "javascript", "typescript", "compile", "compiler",
+            "api endpoint", "http route", "router", "routing table", "network route", "current variable",
+            "current value", "map function", "mapping function", "database", "sql", "regex", "algorithm",
+            "unit test", "stack trace", "git branch"
+        ])
     }
 
     private static func isLiveWebRequest(_ text: String) -> Bool {
         if containsAny(text, [
-            "search the web", "search online", "look it up", "look this up", "web search",
-            "find online", "check online", "latest news", "breaking news", "news today",
-            "what's happening", "whats happening", "what happened today", "as of today",
-            "right now", "currently happening", "latest update", "most recent", "today's",
-            "todays", "live score", "score right now", "current score", "stock price",
-            "share price", "current price", "exchange rate", "weather today", "weather tomorrow",
-            "forecast today", "forecast tomorrow", "is it raining", "open now"
+            "search the web", "search online", "look it up", "look this up", "web search", "find online",
+            "check online", "latest news", "breaking news", "news today", "what's happening", "whats happening",
+            "what happened today", "as of today", "right now", "currently happening", "latest update", "most recent",
+            "today's", "todays", "live score", "score right now", "current score", "stock price", "share price",
+            "current price", "exchange rate", "weather today", "weather tomorrow", "forecast today",
+            "forecast tomorrow", "is it raining", "open now"
         ]) { return true }
-
-        let currentEntity = containsAny(text, [
-            "current president", "current prime minister", "current ceo", "current governor",
-            "current mayor", "current champion", "current ranking"
+        return containsAny(text, [
+            "current president", "current prime minister", "current ceo", "current governor", "current mayor",
+            "current champion", "current ranking"
         ])
-        return currentEntity
     }
 
     private static func spatialRoute(_ text: String) -> GroundingRoute? {
         if containsAny(text, [
-            "where am i", "where exactly am i", "my current location", "what street am i on",
-            "what road am i on", "what area am i in", "what neighborhood am i in"
+            "where am i", "where exactly am i", "my current location", "what street am i on", "what road am i on",
+            "what area am i in", "what neighborhood am i in"
         ]) {
             return GroundingRoute(intent: .spatial, spatialAction: .location)
         }
 
         if let route = routeRequest(text) { return route }
 
-        let proximity = containsAny(text, [
-            "near me", "nearby", "closest ", "nearest ", "around me", "close to me"
-        ])
+        let proximity = containsAny(text, ["near me", "nearby", "closest ", "nearest ", "around me", "close to me"])
         let category = poiCategory(in: text)
         if proximity, let category {
-            return GroundingRoute(
-                intent: .spatial,
-                spatialAction: .nearby,
-                poiCategory: category,
-                useCurrentLocation: true
-            )
+            return GroundingRoute(intent: .spatial, spatialAction: .nearby, poiCategory: category, useCurrentLocation: true)
         }
 
         if let category,
@@ -221,18 +190,15 @@ struct GroundingIntentRouter: Sendable {
         ])
         guard routeSignal else { return nil }
 
-        let mode: GroundingRouteMode = containsAny(text, ["walk to ", "walking", "on foot"])
-            ? .walking
-            : containsAny(text, ["bike to ", "cycle to ", "cycling", "bicycle"])
-                ? .cycling
-                : .driving
+        let mode: GroundingRouteMode
+        if containsAny(text, ["walk to ", "walking", "on foot"]) { mode = .walking }
+        else if containsAny(text, ["bike to ", "cycle to ", "cycling", "bicycle"]) { mode = .cycling }
+        else { mode = .driving }
 
         if let fromRange = text.range(of: " from "),
            let toRange = text.range(of: " to ", range: fromRange.upperBound..<text.endIndex) {
-            let origin = String(text[fromRange.upperBound..<toRange.lowerBound])
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let destination = String(text[toRange.upperBound...])
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let origin = String(text[fromRange.upperBound..<toRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let destination = String(text[toRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
             if !origin.isEmpty, !destination.isEmpty {
                 return GroundingRoute(
                     intent: .spatial,
@@ -245,13 +211,9 @@ struct GroundingIntentRouter: Sendable {
             }
         }
 
-        let prefixes = [
-            "directions to ", "navigate to ", "route to ", "how do i get to ", "how can i get to "
-        ]
-        for prefix in prefixes {
+        for prefix in ["directions to ", "navigate to ", "route to ", "how do i get to ", "how can i get to "] {
             if let range = text.range(of: prefix) {
-                let destination = String(text[range.upperBound...])
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let destination = String(text[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 if !destination.isEmpty {
                     return GroundingRoute(
                         intent: .spatial,
@@ -292,14 +254,10 @@ enum GroundingConfigurationError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidEndpoint(let label):
-            return "\(label) must be a valid HTTPS service URL without embedded credentials."
-        case .invalidSecret:
-            return "The API key is empty or invalid."
-        case .secureStorage(let status):
-            return "The grounding secret could not be saved securely (\(status))."
-        case .unavailable(let reason):
-            return reason
+        case .invalidEndpoint(let label): return "\(label) must be a valid HTTPS service URL without embedded credentials."
+        case .invalidSecret: return "The API key is empty or invalid."
+        case .secureStorage(let status): return "The grounding secret could not be saved securely (\(status))."
+        case .unavailable(let reason): return reason
         }
     }
 }
@@ -326,13 +284,10 @@ final class GroundingSettingsStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         keychain = GroundingKeychain(service: "com.achyutdalai.ADGlasses.grounding")
-        tavilyEnabled = defaults.object(forKey: "grounding.tavily.enabled.v1") as? Bool ?? true
-        nominatimBaseURL = defaults.string(forKey: "grounding.nominatim.baseURL.v1")
-            ?? Self.defaultNominatimBaseURL
-        overpassEndpoint = defaults.string(forKey: "grounding.overpass.endpoint.v1")
-            ?? Self.defaultOverpassEndpoint
-        osrmBaseURL = defaults.string(forKey: "grounding.osrm.baseURL.v1")
-            ?? Self.defaultOSRMBaseURL
+        tavilyEnabled = defaults.object(forKey: tavilyEnabledKey) as? Bool ?? true
+        nominatimBaseURL = defaults.string(forKey: nominatimKey) ?? Self.defaultNominatimBaseURL
+        overpassEndpoint = defaults.string(forKey: overpassKey) ?? Self.defaultOverpassEndpoint
+        osrmBaseURL = defaults.string(forKey: osrmKey) ?? Self.defaultOSRMBaseURL
     }
 
     var hasTavilyAPIKey: Bool {
@@ -357,25 +312,17 @@ final class GroundingSettingsStore: ObservableObject {
         try keychain.write(clean, account: tavilyAccount)
     }
 
-    func clearTavilyAPIKey() throws {
-        try keychain.delete(account: tavilyAccount)
-    }
+    func clearTavilyAPIKey() throws { try keychain.delete(account: tavilyAccount) }
 
     func tavilyAPIKeyForRequest() throws -> String {
-        guard tavilyEnabled else {
-            throw GroundingConfigurationError.unavailable("Tavily web grounding is disabled.")
-        }
+        guard tavilyEnabled else { throw GroundingConfigurationError.unavailable("Tavily web grounding is disabled.") }
         guard let value = try keychain.read(account: tavilyAccount), !value.isEmpty else {
             throw GroundingConfigurationError.unavailable("Tavily API key is not configured.")
         }
         return value
     }
 
-    func saveEndpoints(
-        nominatimBaseURL: String,
-        overpassEndpoint: String,
-        osrmBaseURL: String
-    ) throws {
+    func saveEndpoints(nominatimBaseURL: String, overpassEndpoint: String, osrmBaseURL: String) throws {
         let nominatim = try Self.validatedEndpoint(
             nominatimBaseURL,
             fallback: Self.defaultNominatimBaseURL,
@@ -402,32 +349,23 @@ final class GroundingSettingsStore: ObservableObject {
         defaults.set(osrm, forKey: osrmKey)
     }
 
-    static func validatedEndpoint(
-        _ value: String,
-        fallback: String,
-        allowPath: Bool,
-        label: String
-    ) throws -> String {
-        let raw = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? fallback
-            : value.trimmingCharacters(in: .whitespacesAndNewlines)
+    static func validatedEndpoint(_ value: String, fallback: String, allowPath: Bool, label: String) throws -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = trimmed.isEmpty ? fallback : trimmed
         guard var components = URLComponents(string: raw),
               components.scheme?.lowercased() == "https",
               components.host?.isEmpty == false,
               components.user == nil,
               components.password == nil,
               components.query == nil,
-              components.fragment == nil else {
+              components.fragment == nil,
+              !components.path.contains("..") else {
             throw GroundingConfigurationError.invalidEndpoint(label)
         }
         if !allowPath, !(components.path.isEmpty || components.path == "/") {
             throw GroundingConfigurationError.invalidEndpoint(label)
         }
-        guard !components.path.contains("..") else {
-            throw GroundingConfigurationError.invalidEndpoint(label)
-        }
-        if !allowPath { components.path = "" }
-        else if components.path == "/" { components.path = "" }
+        if !allowPath || components.path == "/" { components.path = "" }
         var normalized = components.url?.absoluteString ?? raw
         while normalized.hasSuffix("/") { normalized.removeLast() }
         return normalized
@@ -436,16 +374,13 @@ final class GroundingSettingsStore: ObservableObject {
     private static func cleanSecret(_ raw: String) -> String {
         var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.lowercased().hasPrefix("authorization:") {
-            value = String(value.dropFirst("authorization:".count))
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            value = String(value.dropFirst("authorization:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if value.lowercased().hasPrefix("bearer ") {
-            value = String(value.dropFirst("bearer ".count))
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            value = String(value.dropFirst("bearer ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if value.count >= 2,
-           (value.hasPrefix("\"") && value.hasSuffix("\"")) ||
-           (value.hasPrefix("'") && value.hasSuffix("'")) {
+           (value.hasPrefix("\"") && value.hasSuffix("\"")) || (value.hasPrefix("'") && value.hasSuffix("'")) {
             value.removeFirst()
             value.removeLast()
         }
@@ -486,16 +421,12 @@ private struct GroundingKeychain {
         let attributes: [String: Any] = [kSecValueData as String: data]
         let updateStatus = SecItemUpdate(identity as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecSuccess { return }
-        guard updateStatus == errSecItemNotFound else {
-            throw GroundingConfigurationError.secureStorage(updateStatus)
-        }
+        guard updateStatus == errSecItemNotFound else { throw GroundingConfigurationError.secureStorage(updateStatus) }
         var insertion = identity
         insertion[kSecValueData as String] = data
         insertion[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         let addStatus = SecItemAdd(insertion as CFDictionary, nil)
-        guard addStatus == errSecSuccess else {
-            throw GroundingConfigurationError.secureStorage(addStatus)
-        }
+        guard addStatus == errSecSuccess else { throw GroundingConfigurationError.secureStorage(addStatus) }
     }
 
     func delete(account: String) throws {
@@ -532,9 +463,7 @@ final class GroundingLocationProvider: NSObject, ObservableObject, CLLocationMan
         authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
     }
 
-    func requestPermission() {
-        manager.requestWhenInUseAuthorization()
-    }
+    func requestPermission() { manager.requestWhenInUseAuthorization() }
 
     func currentLocation() async -> CLLocation? {
         guard isAuthorized, locationContinuation == nil else { return nil }
@@ -609,12 +538,12 @@ final class AssistantGroundingService {
     private let router = GroundingIntentRouter()
 
     init(
-        settings: GroundingSettingsStore = GroundingSettingsStore(),
-        location: GroundingLocationProvider = .shared,
+        settings: GroundingSettingsStore? = nil,
+        location: GroundingLocationProvider? = nil,
         session: URLSession = .shared
     ) {
-        self.settings = settings
-        self.location = location
+        self.settings = settings ?? GroundingSettingsStore()
+        self.location = location ?? GroundingLocationProvider.shared
         self.session = session
     }
 
@@ -697,12 +626,10 @@ final class AssistantGroundingService {
         guard let url = URL(string: "https://api.tavily.com/search") else {
             throw GroundingConfigurationError.unavailable("Tavily endpoint is invalid.")
         }
-        let cleanQuery = query
-            .split(whereSeparator: { $0.isWhitespace })
-            .joined(separator: " ")
-            .prefix(1_500)
+        let cleanQuery = query.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(1_500)
         guard !cleanQuery.isEmpty else { return ("", []) }
 
+        let requestedResults = maxResults ?? (advanced ? 5 : 3)
         let payload: [String: Any] = [
             "query": String(cleanQuery),
             "search_depth": advanced ? "advanced" : "fast",
@@ -710,7 +637,7 @@ final class AssistantGroundingService {
             "topic": "general",
             "include_answer": false,
             "include_raw_content": false,
-            "max_results": min(max(maxResults ?? (advanced ? 5 : 3), 1), 8)
+            "max_results": min(max(requestedResults, 1), 8)
         ]
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -763,33 +690,27 @@ final class AssistantGroundingService {
             }
             let place = try await reverseGeocode(coordinate)
             return place.map { "Current-location evidence from OpenStreetMap/Nominatim: \($0)" }
+
         case .nearby:
             guard let category = route.poiCategory else { return nil }
             let center: GroundingCoordinate?
-            if route.useCurrentLocation {
-                center = await currentCoordinate()
-            } else if let referencePlace = route.referencePlace {
-                center = try await forwardGeocode(referencePlace)
-            } else {
-                center = nil
-            }
+            if route.useCurrentLocation { center = await currentCoordinate() }
+            else if let referencePlace = route.referencePlace { center = try await forwardGeocode(referencePlace) }
+            else { center = nil }
             guard let center else {
                 return route.useCurrentLocation
                     ? "Nearby-place lookup needs device location, but location permission is not granted or no current fix is available. Do not guess nearby places."
                     : "The reference place could not be resolved reliably. Do not guess nearby places."
             }
             return try await overpassNearby(category: category, center: center, radius: 1_500)
+
         case .route:
             guard let destinationName = route.routeDestination,
                   let destination = try await forwardGeocode(destinationName) else { return nil }
             let origin: GroundingCoordinate?
-            if route.useCurrentLocation {
-                origin = await currentCoordinate()
-            } else if let originName = route.routeOrigin {
-                origin = try await forwardGeocode(originName)
-            } else {
-                origin = nil
-            }
+            if route.useCurrentLocation { origin = await currentCoordinate() }
+            else if let originName = route.routeOrigin { origin = try await forwardGeocode(originName) }
+            else { origin = nil }
             guard let origin else {
                 return route.useCurrentLocation
                     ? "Routing from the current position needs device location, but location permission is not granted or no current fix is available. Do not invent a route."
@@ -801,11 +722,7 @@ final class AssistantGroundingService {
 
     private func currentCoordinate() async -> GroundingCoordinate? {
         guard let value = await location.currentLocation() else { return nil }
-        return GroundingCoordinate(
-            latitude: value.coordinate.latitude,
-            longitude: value.coordinate.longitude,
-            label: nil
-        )
+        return GroundingCoordinate(latitude: value.coordinate.latitude, longitude: value.coordinate.longitude, label: nil)
     }
 
     private func reverseGeocode(_ coordinate: GroundingCoordinate) async throws -> String? {
@@ -854,7 +771,8 @@ final class AssistantGroundingService {
               let first = array.first,
               let latText = first["lat"] as? String,
               let lonText = first["lon"] as? String,
-              let lat = Double(latText), let lon = Double(lonText) else { return nil }
+              let lat = Double(latText),
+              let lon = Double(lonText) else { return nil }
         return GroundingCoordinate(
             latitude: lat,
             longitude: lon,
@@ -862,11 +780,7 @@ final class AssistantGroundingService {
         )
     }
 
-    private func overpassNearby(
-        category: String,
-        center: GroundingCoordinate,
-        radius: Int
-    ) async throws -> String? {
+    private func overpassNearby(category: String, center: GroundingCoordinate, radius: Int) async throws -> String? {
         let filters: [String]
         switch category {
         case "cafe": filters = ["[\"amenity\"=\"cafe\"]"]
@@ -882,13 +796,15 @@ final class AssistantGroundingService {
         case "park": filters = ["[\"leisure\"=\"park\"]"]
         default: return nil
         }
+
         let boundedRadius = min(max(radius, 50), 5_000)
-        let clauses = filters.flatMap { filter in
-            ["node\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));",
-             "way\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));",
-             "relation\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));"]
-        }.joined(separator: "\n")
-        let query = "[out:json][timeout:8];(\n\(clauses)\n);out center tags 12;"
+        var clauseLines = [String]()
+        for filter in filters {
+            clauseLines.append("node\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));")
+            clauseLines.append("way\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));")
+            clauseLines.append("relation\(filter)(around:\(boundedRadius),\(center.latitude),\(center.longitude));")
+        }
+        let query = "[out:json][timeout:8];(\n\(clauseLines.joined(separator: "\n"))\n);out center tags 12;"
         guard let url = URL(string: settings.overpassEndpoint) else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -906,22 +822,25 @@ final class AssistantGroundingService {
         var rows = [(distance: CLLocationDistance, text: String)]()
         for element in elements {
             guard let tags = element["tags"] as? [String: Any] else { continue }
-            let name = ((tags["name"] as? String) ?? (tags["brand"] as? String) ?? category.capitalized)
-                .prefix(160)
-            let lat = (element["lat"] as? Double) ?? ((element["center"] as? [String: Any])?["lat"] as? Double)
-            let lon = (element["lon"] as? Double) ?? ((element["center"] as? [String: Any])?["lon"] as? Double)
+            let name = ((tags["name"] as? String) ?? (tags["brand"] as? String) ?? category.capitalized).prefix(160)
+            let centerObject = element["center"] as? [String: Any]
+            let lat = (element["lat"] as? Double) ?? (centerObject?["lat"] as? Double)
+            let lon = (element["lon"] as? Double) ?? (centerObject?["lon"] as? Double)
             guard let lat, let lon else { continue }
             let distance = origin.distance(from: CLLocation(latitude: lat, longitude: lon))
-            let address = [
+            let addressParts = [
                 tags["addr:housenumber"] as? String,
                 tags["addr:street"] as? String,
                 tags["addr:city"] as? String
-            ].compactMap { $0 }.joined(separator: " ")
+            ].compactMap { $0 }
+            let address = addressParts.joined(separator: " ")
             let suffix = address.isEmpty ? "" : " — \(address.prefix(180))"
             rows.append((distance, "\(name) — about \(Int(distance.rounded())) m away\(suffix)"))
         }
         let nearest = rows.sorted { $0.distance < $1.distance }.prefix(8)
-        guard !nearest.isEmpty else { return "OpenStreetMap/Overpass returned no matching \(category) results in the requested radius." }
+        guard !nearest.isEmpty else {
+            return "OpenStreetMap/Overpass returned no matching \(category) results in the requested radius."
+        }
         return "Nearby \(category) evidence from OpenStreetMap/Overpass:\n" + nearest.map(\.text).joined(separator: "\n")
     }
 
@@ -960,7 +879,11 @@ final class AssistantGroundingService {
         let destinationLabel = destination.label ?? "destination"
         return String(
             format: "OSRM route evidence (%@): %@ → %@. Distance %.1f km; estimated travel time %.0f minutes.",
-            mode.rawValue, originLabel, destinationLabel, km, minutes
+            mode.rawValue,
+            originLabel,
+            destinationLabel,
+            km,
+            minutes
         )
     }
 
@@ -970,7 +893,8 @@ final class AssistantGroundingService {
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode,
+        guard let http = response as? HTTPURLResponse,
+              200..<300 ~= http.statusCode,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw GroundingConfigurationError.unavailable("Grounding service returned an invalid response.")
         }
