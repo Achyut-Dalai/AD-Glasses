@@ -12,7 +12,14 @@ from pathlib import Path
 
 MIN_RECALL = 0.90
 MAX_FALSE_POSITIVES_PER_HOUR = 0.10
-MIN_POSITIVE_EVALUATION_SAMPLES = 5_000
+# jarvis.yaml uses 5,000 validation originals and 3 augmentation rounds. LiveKit
+# extracts features from every augmented round, so a complete evaluation should
+# contain at least 15,000 held-out positive feature examples.
+MIN_POSITIVE_EVALUATION_SAMPLES = 15_000
+# The phrase-specific negative validation clips alone are below this duration.
+# Requiring >=15h ensures the shared ACAV100M validation features were included
+# instead of accepting an evaluation based only on synthetic/local negatives.
+MIN_VALIDATION_HOURS = 15.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,11 +58,15 @@ def main() -> None:
     if not args.metrics.is_file():
         raise SystemExit(f"Evaluation metrics are missing: {args.metrics}")
 
-    metrics = json.loads(args.metrics.read_text(encoding="utf-8"))
-    threshold = float(metrics["optimal_threshold"])
-    recall = float(metrics["optimal_recall"])
-    false_positives_per_hour = float(metrics["optimal_fpph"])
-    positive_samples = int(metrics["n_positive"])
+    try:
+        metrics = json.loads(args.metrics.read_text(encoding="utf-8"))
+        threshold = float(metrics["optimal_threshold"])
+        recall = float(metrics["optimal_recall"])
+        false_positives_per_hour = float(metrics["optimal_fpph"])
+        positive_samples = int(metrics["n_positive"])
+        validation_hours = float(metrics["validation_hours"])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Evaluation metrics are incomplete or invalid: {error}") from error
 
     failures: list[str] = []
     if not 0.0 < threshold < 1.0:
@@ -69,11 +80,16 @@ def main() -> None:
         )
     if positive_samples < MIN_POSITIVE_EVALUATION_SAMPLES:
         failures.append(
-            f"only {positive_samples} held-out positives; expected at least "
-            f"{MIN_POSITIVE_EVALUATION_SAMPLES}"
+            f"only {positive_samples} held-out positive feature examples; expected at least "
+            f"{MIN_POSITIVE_EVALUATION_SAMPLES} from 5,000 originals × 3 augmentation rounds"
+        )
+    if validation_hours < MIN_VALIDATION_HOURS:
+        failures.append(
+            f"only {validation_hours:.2f} validation hours; expected at least "
+            f"{MIN_VALIDATION_HOURS:.1f}h so the shared general-negative validation set is included"
         )
     if failures:
-        raise SystemExit("Refusing to bundle an unevaluated classifier:\n- " + "\n- ".join(failures))
+        raise SystemExit("Refusing to bundle an incomplete/underperforming classifier:\n- " + "\n- ".join(failures))
 
     args.resources.mkdir(parents=True, exist_ok=True)
     destination = args.resources / "jarvis.onnx"
@@ -101,7 +117,7 @@ def main() -> None:
             "falsePositivesPerHour": false_positives_per_hour,
             "positiveSamples": positive_samples,
             "negativeSamples": metrics.get("n_negative"),
-            "validationHours": metrics.get("validation_hours"),
+            "validationHours": validation_hours,
         },
     }
     (args.resources / "manifest.json").write_text(
@@ -109,8 +125,12 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Bundled {destination} ({destination.stat().st_size} bytes)")
-    print(f"Wake phrase: Jarvis; model: jarvis")
-    print(f"Threshold: {threshold:.4f}; SHA-256: {model_hash}")
+    print("Wake phrase: Jarvis; model: jarvis")
+    print(
+        f"Threshold: {threshold:.4f}; recall: {recall:.3f}; "
+        f"FPPH: {false_positives_per_hour:.3f}; validation: {validation_hours:.2f}h"
+    )
+    print(f"SHA-256: {model_hash}")
 
 
 if __name__ == "__main__":
