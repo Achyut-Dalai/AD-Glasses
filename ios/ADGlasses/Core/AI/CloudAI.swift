@@ -134,8 +134,6 @@ final class AIProfileStore: ObservableObject {
         return value
     }
 
-    /// Reuses a stored secret during model discovery only when the draft still points at the same
-    /// provider/endpoint credential scope. A provider switch can therefore never leak the old key.
     func credentialForDiscovery(profile draft: AIProfile, replacement: String) throws -> String {
         let replacement = Self.normalizedCredential(replacement)
         if !replacement.isEmpty { return replacement }
@@ -701,8 +699,8 @@ final class TransportGroundingSettingsStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         secrets = SecureStringStore(service: "com.achyutdalai.ADGlasses.transport-grounding")
-        railHost = defaults.string(forKey: "grounding.transport.railHost.v1") ?? Self.defaultRailHost
-        aviationBaseURL = defaults.string(forKey: "grounding.transport.aviationBase.v1") ?? Self.defaultAviationBaseURL
+        railHost = defaults.string(forKey: railHostKey) ?? Self.defaultRailHost
+        aviationBaseURL = defaults.string(forKey: aviationBaseKey) ?? Self.defaultAviationBaseURL
         reloadFeeds()
     }
 
@@ -866,12 +864,12 @@ final class StructuredGroundingService {
 
     init(
         session: URLSession = .shared,
-        location: GroundingLocationProvider = .shared,
-        transport: TransportGroundingSettingsStore = .shared
+        location: GroundingLocationProvider? = nil,
+        transport: TransportGroundingSettingsStore? = nil
     ) {
         self.session = session
-        self.location = location
-        self.transport = transport
+        self.location = location ?? GroundingLocationProvider.shared
+        self.transport = transport ?? TransportGroundingSettingsStore.shared
     }
 
     func ground(prompt: String) async -> StructuredGroundingOutcome? {
@@ -924,8 +922,6 @@ final class StructuredGroundingService {
             suppressesGeneralGrounding: true
         )
     }
-
-    // MARK: Open-Meteo
 
     private func weather(prompt: String) async throws -> AssistantGroundingEvidence {
         let coordinate: CLLocationCoordinate2D
@@ -981,8 +977,6 @@ final class StructuredGroundingService {
         return evidence(lines.joined(separator: "\n"), urls: ["https://open-meteo.com/"])
     }
 
-    // MARK: Google News RSS
-
     private func news(prompt: String) async throws -> AssistantGroundingEvidence {
         let query = Self.newsQuery(from: prompt)
         let language = Locale.current.language.languageCode?.identifier ?? "en"
@@ -1012,8 +1006,6 @@ final class StructuredGroundingService {
         )
     }
 
-    // MARK: ESPN structured sports
-
     private func sports(prompt: String) async throws -> AssistantGroundingEvidence {
         let lower = prompt.lowercased()
         let range = Self.sportsDateRange(for: lower)
@@ -1040,24 +1032,36 @@ final class StructuredGroundingService {
         }
 
         let tokens = Set(Self.semanticTokens(lower))
-        let ranked = events.map { ($0, Self.sportsScore($0, tokens: tokens)) }
-            .filter { $0.1 > 0 || events.count <= 6 }
-            .sorted { lhs, rhs in
-                lhs.1 == rhs.1 ? lhs.0.stateRank > rhs.0.stateRank : lhs.1 > rhs.1
+        var scoredEvents: [(event: SportsEvent, score: Int)] = []
+        scoredEvents.reserveCapacity(events.count)
+        let keepUnmatched = events.count <= 6
+        for event in events {
+            let score = Self.sportsScore(event, tokens: tokens)
+            if score > 0 || keepUnmatched {
+                scoredEvents.append((event: event, score: score))
             }
-            .prefix(6)
+        }
+        scoredEvents.sort { lhs, rhs in
+            if lhs.score == rhs.score {
+                return lhs.event.stateRank > rhs.event.stateRank
+            }
+            return lhs.score > rhs.score
+        }
+        let ranked = scoredEvents.prefix(6)
         guard !ranked.isEmpty else {
             throw AIConfigurationError.requestFailed("ESPN structured scoreboards returned no matching event.")
         }
-        let rows = ranked.enumerated().map { "[\($0.offset + 1)] \($0.element.0.contextLine)" }
+        var rows = [String]()
+        rows.reserveCapacity(ranked.count)
+        for (index, entry) in ranked.enumerated() {
+            rows.append("[\(index + 1)] \(entry.event.contextLine)")
+        }
         return evidence(
             "ESPN structured score/event data for: \(prompt)\n" + rows.joined(separator: "\n") + "\nUse only these score/status records; do not infer a score from sports articles.",
             urls: ["https://www.espn.com/"],
             attribution: labels.uniqued().joined(separator: ", ").nonEmpty
         )
     }
-
-    // MARK: Wikipedia
 
     private func wikipedia(query: String) async throws -> AssistantGroundingEvidence {
         var components = URLComponents(string: "https://en.wikipedia.org/w/rest.php/v1/search/page")!
@@ -1078,8 +1082,6 @@ final class StructuredGroundingService {
             ?? "https://en.wikipedia.org/wiki/\(encoded)"
         return evidence("Wikipedia article: \(resolved). \(description). \(extract)", urls: [pageURL])
     }
-
-    // MARK: Free Dictionary
 
     private func dictionary(word: String) async throws -> AssistantGroundingEvidence {
         guard let encoded = word.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
@@ -1108,8 +1110,6 @@ final class StructuredGroundingService {
         return evidence("Dictionary entry for \(resolved): \(definitions.joined(separator: " "))", urls: ["https://dictionaryapi.dev/"])
     }
 
-    // MARK: Frankfurter currency
-
     private func currency(amount: Double, base: String, quote: String) async throws -> AssistantGroundingEvidence {
         guard base != quote, let url = URL(string: "https://api.frankfurter.dev/v2/rate/\(base)/\(quote)") else {
             throw AIConfigurationError.requestFailed("Choose two different currencies.")
@@ -1125,8 +1125,6 @@ final class StructuredGroundingService {
             urls: ["https://frankfurter.dev/"]
         )
     }
-
-    // MARK: Open Library
 
     private func books(query: String) async throws -> AssistantGroundingEvidence {
         var components = URLComponents(string: "https://openlibrary.org/search.json")!
@@ -1155,8 +1153,6 @@ final class StructuredGroundingService {
             urls: urls.isEmpty ? ["https://openlibrary.org/"] : urls
         )
     }
-
-    // MARK: RapidAPI IRCTC
 
     private func railLiveStatus(_ train: String) async throws -> AssistantGroundingEvidence {
         let key = try transport.railKey()
@@ -1223,8 +1219,6 @@ final class StructuredGroundingService {
         )
     }
 
-    // MARK: AviationStack
-
     private func flightStatus(_ code: String) async throws -> AssistantGroundingEvidence {
         let key = try transport.aviationKey()
         try transport.saveAviationBaseURL(transport.aviationBaseURL)
@@ -1261,8 +1255,6 @@ final class StructuredGroundingService {
             urls: ["https://aviationstack.com/"]
         )
     }
-
-    // MARK: GTFS-Realtime
 
     private func transitStatus(prompt: String) async throws -> AssistantGroundingEvidence {
         transport.reload()
@@ -1352,8 +1344,6 @@ final class StructuredGroundingService {
         return try await JSONHTTP.fetch(request, session: session, label: "GTFS-Realtime", maximumBytes: 3 * 1_024 * 1_024)
     }
 
-    // MARK: Network/evidence
-
     private func getJSON(_ url: URL, label: String) async throws -> [String: Any] {
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
@@ -1373,8 +1363,6 @@ final class StructuredGroundingService {
             attribution: attribution
         )
     }
-
-    // MARK: Routing helpers
 
     private static func containsAny(_ text: String, _ values: [String]) -> Bool {
         values.contains(where: text.contains)
@@ -1497,8 +1485,6 @@ final class StructuredGroundingService {
         }
         return values
     }
-
-    // MARK: ESPN helpers
 
     private struct SportsLeague: Hashable {
         let sport: String
@@ -1653,8 +1639,6 @@ final class StructuredGroundingService {
         return first == second ? first : "\(first)-\(second)"
     }
 
-    // MARK: Common parse helpers
-
     private static func double(_ value: Any?) -> Double? {
         if let number = value as? NSNumber { return number.doubleValue }
         if let string = value as? String { return Double(string) }
@@ -1735,8 +1719,6 @@ final class StructuredGroundingService {
     }
 }
 
-// MARK: - RSS parser
-
 private struct GroundingHeadline {
     let title: String
     let link: String
@@ -1808,8 +1790,6 @@ private final class GroundingRSSParser: NSObject, XMLParserDelegate {
         buffer = ""
     }
 }
-
-// MARK: - Minimal GTFS-Realtime protobuf subset
 
 private struct GTFSArrival {
     let routeID: String?
@@ -2093,8 +2073,6 @@ private struct ProtoReader {
         }
     }
 }
-
-// MARK: - Small shared helpers
 
 private extension ConversationRole {
     var wireRole: String {
