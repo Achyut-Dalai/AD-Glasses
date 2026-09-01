@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Bundle an evaluated production Hey A D classifier and its calibrated threshold."""
+"""Bundle an evaluated production wake-word classifier and calibrated threshold."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -13,27 +14,62 @@ from pathlib import Path
 MIN_RECALL = 0.90
 MAX_FALSE_POSITIVES_PER_HOUR = 0.10
 MIN_POSITIVE_EVALUATION_SAMPLES = 5_000
+MODEL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def parse_args() -> argparse.Namespace:
     training_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--model-name",
+        default="hey_a_d",
+        help="LiveKit classifier/output name (default: hey_a_d).",
+    )
+    parser.add_argument(
+        "--phrase",
+        default="Hey A D",
+        help="User-facing wake phrase written to manifest.json.",
+    )
+    parser.add_argument(
+        "--spoken-as",
+        default="hey A-dee",
+        help="Pronunciation note written to manifest.json.",
+    )
+    parser.add_argument(
         "--model",
         type=Path,
-        default=training_dir / "output/hey_a_d/hey_a_d.onnx",
+        default=None,
+        help="Override the evaluated ONNX path.",
     )
     parser.add_argument(
         "--metrics",
         type=Path,
-        default=training_dir / "output/hey_a_d/hey_a_d_eval.json",
+        default=None,
+        help="Override the LiveKit evaluation JSON path.",
     )
     parser.add_argument(
         "--resources",
         type=Path,
         default=training_dir.parent / "ADGlasses/Resources/WakeWords",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    args.model_name = args.model_name.strip()
+    args.phrase = args.phrase.strip()
+    args.spoken_as = args.spoken_as.strip()
+    if not MODEL_NAME_PATTERN.fullmatch(args.model_name):
+        parser.error("--model-name may contain only letters, numbers, underscores, and hyphens")
+    if not args.phrase:
+        parser.error("--phrase must not be empty")
+    if not args.spoken_as:
+        parser.error("--spoken-as must not be empty")
+
+    output_dir = training_dir / "output" / args.model_name
+    if args.model is None:
+        args.model = output_dir / f"{args.model_name}.onnx"
+    if args.metrics is None:
+        args.metrics = output_dir / f"{args.model_name}_eval.json"
+    return args
 
 
 def sha256(path: Path) -> str:
@@ -76,16 +112,16 @@ def main() -> None:
         raise SystemExit("Refusing to bundle an unevaluated classifier:\n- " + "\n- ".join(failures))
 
     args.resources.mkdir(parents=True, exist_ok=True)
-    destination = args.resources / "hey_a_d.onnx"
+    destination = args.resources / f"{args.model_name}.onnx"
     shutil.copy2(args.model, destination)
     model_hash = sha256(destination)
 
     manifest = {
         "schemaVersion": 1,
-        "phrase": "Hey A D",
-        "spokenAs": "hey A-dee",
+        "phrase": args.phrase,
+        "spokenAs": args.spoken_as,
         "modelFile": destination.name,
-        "modelName": "hey_a_d",
+        "modelName": args.model_name,
         "threshold": threshold,
         "debounceSeconds": 2.0,
         "modelSHA256": model_hash,
@@ -103,6 +139,7 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Bundled {destination} ({destination.stat().st_size} bytes)")
+    print(f"Wake phrase: {args.phrase}; model: {args.model_name}")
     print(f"Threshold: {threshold:.4f}; SHA-256: {model_hash}")
 
 
