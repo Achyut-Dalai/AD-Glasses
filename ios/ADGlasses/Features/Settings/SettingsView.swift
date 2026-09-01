@@ -2,8 +2,8 @@ import AVFoundation
 import CoreLocation
 import Speech
 import SwiftUI
-import UniformTypeIdentifiers
 
+@MainActor
 struct SettingsView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
@@ -53,10 +53,7 @@ struct SettingsView: View {
                     NavigationLink {
                         PhoneVoiceActivationSettingsView(controller: phoneVoiceActivation)
                     } label: {
-                        LabeledContent(
-                            "Phone voice activation",
-                            value: phoneVoiceActivation.configurationState.label
-                        )
+                        LabeledContent("Phone voice activation", value: phoneVoiceActivation.configurationState.label)
                     }
                 }
 
@@ -128,10 +125,7 @@ struct SettingsView: View {
 
                     DisclosureGroup("Provider details") {
                         ForEach(glasses.providers) { provider in
-                            LabeledContent(
-                                glasses.technicalProviderName(for: provider.id),
-                                value: provider.id
-                            )
+                            LabeledContent(glasses.technicalProviderName(for: provider.id), value: provider.id)
                         }
                         Text("Technical identifiers appear only here for troubleshooting.")
                             .font(.footnote)
@@ -195,11 +189,9 @@ struct SettingsView: View {
     }
 }
 
+@MainActor
 private struct PhoneVoiceActivationSettingsView: View {
     @ObservedObject var controller: PhoneVoiceActivationController
-    #if DEBUG || AD_PERSONAL_TEAM_BUILD
-    @State private var importsModel = false
-    #endif
 
     var body: some View {
         List {
@@ -211,7 +203,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                 LabeledContent("Status", value: controller.configurationState.label)
 
                 if controller.configurationState == .missingModel {
-                    Text("Install the \(controller.phrase) wake-word model below. Voice activation becomes available as soon as the classifier is installed.")
+                    Text("This build does not contain the evaluated Jarvis classifier. Release builds use the Jarvis ONNX model bundled with AD Glasses; users are never asked to choose a model file.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -223,36 +215,13 @@ private struct PhoneVoiceActivationSettingsView: View {
 
             Section("LiveKit WakeWord") {
                 LabeledContent("Engine", value: "LiveKit WakeWord")
-                Text("Wake-word detection runs locally on this iPhone. No account, API key, or hosted wake-word service is used.")
+                Text("Wake-word detection runs locally on this iPhone. No account, API key, hosted wake-word service, or user-selected model file is required.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-
-                #if DEBUG || AD_PERSONAL_TEAM_BUILD
-                if controller.configurationState == .missingModel {
-                    Button("Choose trained \(controller.phrase) model…") { importsModel = true }
-                    Text("Developer fallback only. Release builds use the evaluated Jarvis model bundled with AD Glasses and do not ask the user to choose an ONNX file.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                #endif
             }
         }
         .navigationTitle("Phone voice activation")
         .navigationBarTitleDisplayMode(.inline)
-        #if DEBUG || AD_PERSONAL_TEAM_BUILD
-        .fileImporter(
-            isPresented: $importsModel,
-            allowedContentTypes: [.data],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first { controller.importModel(from: url, phrase: controller.phrase) }
-            case .failure(let error):
-                controller.errorMessage = error.localizedDescription
-            }
-        }
-        #endif
         .alert("Phone voice activation", isPresented: Binding(
             get: { controller.errorMessage != nil },
             set: { if !$0 { controller.errorMessage = nil } }
@@ -266,32 +235,19 @@ private struct PhoneVoiceActivationSettingsView: View {
     private var voiceActivationBinding: Binding<Bool> {
         Binding(
             get: { controller.isEnabled },
-            set: { requestedValue in
-                #if DEBUG || AD_PERSONAL_TEAM_BUILD
-                if requestedValue, controller.configurationState == .missingModel {
-                    importsModel = true
-                    return
-                }
-                #endif
-                controller.isEnabled = requestedValue
-            }
+            set: { controller.isEnabled = $0 }
         )
     }
 
     private var voiceActivationControlIsDisabled: Bool {
         switch controller.configurationState {
         case .ready: return false
-        case .missingModel:
-            #if DEBUG || AD_PERSONAL_TEAM_BUILD
-            return false
-            #else
-            return true
-            #endif
-        case .unavailable: return true
+        case .missingModel, .unavailable: return true
         }
     }
 }
 
+@MainActor
 private struct SpeechVoiceSettingsView: View {
     @ObservedObject var controller: SpeechOutputController
     @State private var errorMessage: String?
@@ -342,6 +298,7 @@ private struct SpeechVoiceSettingsView: View {
     }
 }
 
+@MainActor
 private struct CloudAISettingsView: View {
     @ObservedObject var store: AIProfileStore
     @State private var errorMessage: String?
@@ -413,6 +370,7 @@ private struct CloudAISettingsView: View {
     }
 }
 
+@MainActor
 private struct AIProfileEditorView: View {
     @ObservedObject var store: AIProfileStore
     @Environment(\.dismiss) private var dismiss
@@ -444,7 +402,7 @@ private struct AIProfileEditorView: View {
                 }
             }
 
-            Section("Model") {
+            Section {
                 if !availableModels.isEmpty {
                     Picker("Available model", selection: $profile.model) {
                         ForEach(modelChoices, id: \.self) { model in
@@ -469,8 +427,12 @@ private struct AIProfileEditorView: View {
                 .disabled(isLoadingModels || isTesting)
 
                 if let modelStatus {
-                    Text(modelStatus).font(.footnote).foregroundStyle(.secondary)
+                    Text(modelStatus)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
+            } header: {
+                Text("Model")
             } footer: {
                 Text("The provider model API is the source of truth. Keep manual model ID as a fallback for custom or newly released models. For Lens scene understanding, choose a model that accepts image input.")
             }
@@ -491,13 +453,19 @@ private struct AIProfileEditorView: View {
                 SecureField(apiKeyPrompt, text: $apiKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Text(existingCredentialNote).font(.footnote).foregroundStyle(.secondary)
+                Text(existingCredentialNote)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Section { Toggle("Make active", isOn: $makeActive) }
+            Section {
+                Toggle("Make active", isOn: $makeActive)
+            }
 
             Section {
-                Button { Task { await saveAndTest() } } label: {
+                Button {
+                    Task { await saveAndTest() }
+                } label: {
                     HStack(spacing: 10) {
                         if isTesting { ProgressView().controlSize(.small) }
                         Text(isTesting ? "Testing connection…" : "Save and test")
@@ -512,7 +480,9 @@ private struct AIProfileEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save).fontWeight(.semibold).disabled(isTesting || isLoadingModels)
+                Button("Save", action: save)
+                    .fontWeight(.semibold)
+                    .disabled(isTesting || isLoadingModels)
             }
         }
         .onChange(of: profile.provider) { oldProvider, newProvider in
@@ -521,11 +491,18 @@ private struct AIProfileEditorView: View {
             modelStatus = nil
             profile.model = newProvider.defaultModel
             profile.baseURL = newProvider.defaultBaseURL
-            if profile.name.isEmpty || profile.name == oldProvider.displayName { profile.name = newProvider.displayName }
+            if profile.name.isEmpty || profile.name == oldProvider.displayName {
+                profile.name = newProvider.displayName
+            }
         }
-        .alert(alertTitle, isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert(alertTitle, isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
             Button("OK", role: .cancel) {}
-        } message: { Text(errorMessage ?? "") }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 
     private var modelChoices: [String] {
@@ -547,19 +524,14 @@ private struct AIProfileEditorView: View {
         isLoadingModels = true
         modelStatus = nil
         defer { isLoadingModels = false }
+
         do {
             var discoveryProfile = profile
             if discoveryProfile.provider.managesEndpoint {
                 discoveryProfile.baseURL = discoveryProfile.provider.defaultBaseURL
             }
-            let credential = try store.credentialForDiscovery(
-                profile: discoveryProfile,
-                replacement: apiKey
-            )
-            let models = try await AIModelCatalogClient().availableModels(
-                profile: discoveryProfile,
-                credential: credential
-            )
+            let credential = try store.credentialForDiscovery(profile: discoveryProfile, replacement: apiKey)
+            let models = try await AIModelCatalogClient().availableModels(profile: discoveryProfile, credential: credential)
             guard !Task.isCancelled else { return }
             availableModels = models
             if models.isEmpty {
@@ -568,7 +540,9 @@ private struct AIProfileEditorView: View {
                 let preferred = models.first(where: { $0 == profile.provider.defaultModel })
                     ?? models.first(where: { $0 == profile.model })
                     ?? models.first
-                if let preferred, profile.model.isEmpty || !models.contains(profile.model) { profile.model = preferred }
+                if let preferred, profile.model.isEmpty || !models.contains(profile.model) {
+                    profile.model = preferred
+                }
                 modelStatus = "Found \(models.count) conversational model\(models.count == 1 ? "" : "s") for this key."
             }
         } catch {
@@ -577,8 +551,13 @@ private struct AIProfileEditorView: View {
     }
 
     private func save() {
-        do { _ = try saveProfile(); dismiss() }
-        catch { alertTitle = "Could not save profile"; errorMessage = error.localizedDescription }
+        do {
+            _ = try saveProfile()
+            dismiss()
+        } catch {
+            alertTitle = "Could not save profile"
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func saveAndTest() async {
@@ -608,6 +587,7 @@ private struct AIProfileEditorView: View {
     }
 }
 
+@MainActor
 private struct SearchAndMapsSettingsView: View {
     @ObservedObject var store: GroundingSettingsStore
     @ObservedObject private var location = GroundingLocationProvider.shared
@@ -619,7 +599,7 @@ private struct SearchAndMapsSettingsView: View {
 
     var body: some View {
         List {
-            Section("Web search") {
+            Section {
                 Toggle("Use Tavily for live web evidence", isOn: tavilyEnabledBinding)
                 LabeledContent("API key", value: store.hasTavilyAPIKey ? "Stored" : "Not configured")
                 SecureField(store.hasTavilyAPIKey ? "Replacement key (optional)" : "Tavily API key", text: $tavilyReplacement)
@@ -641,15 +621,21 @@ private struct SearchAndMapsSettingsView: View {
 
                 if store.hasTavilyAPIKey {
                     Button("Remove Tavily key", role: .destructive) {
-                        do { try store.clearTavilyAPIKey(); statusMessage = "Tavily key removed." }
-                        catch { errorMessage = error.localizedDescription }
+                        do {
+                            try store.clearTavilyAPIKey()
+                            statusMessage = "Tavily key removed."
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
                     }
                 }
+            } header: {
+                Text("Web search")
             } footer: {
                 Text("Tavily is retrieval-only. AD Glasses requests source snippets and URLs with Tavily answer generation disabled; your selected Cloud AI model remains the only model that writes Jarvis's answer.")
             }
 
-            Section("Location") {
+            Section {
                 LabeledContent("Permission", value: locationPermissionLabel)
                 if location.authorizationStatus == .notDetermined {
                     Button("Allow location for nearby places") { location.requestPermission() }
@@ -659,17 +645,25 @@ private struct SearchAndMapsSettingsView: View {
                         UIApplication.shared.open(url)
                     }
                 }
+            } header: {
+                Text("Location")
             } footer: {
                 Text("Location is requested only from this Settings action. A Jarvis question never triggers the iOS permission prompt by itself.")
             }
 
-            Section("OpenStreetMap services") {
+            Section {
                 TextField("Nominatim base URL", text: $store.nominatimBaseURL)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
                 TextField("Overpass endpoint", text: $store.overpassEndpoint)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
                 TextField("OSRM base URL", text: $store.osrmBaseURL)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
 
                 Button("Save map service endpoints") { saveEndpoints() }
                 Button("Restore public defaults") {
@@ -678,20 +672,31 @@ private struct SearchAndMapsSettingsView: View {
                     store.osrmBaseURL = GroundingSettingsStore.defaultOSRMBaseURL
                     saveEndpoints()
                 }
+            } header: {
+                Text("OpenStreetMap services")
             } footer: {
                 Text("Nominatim is used only for user-triggered geocoding and is rate-limited to about one request per second. Nearby POIs use bounded Overpass queries; routes use FOSSGIS OSRM. Map-derived answers should attribute © OpenStreetMap contributors.")
             }
 
             if let statusMessage {
-                Section { Text(statusMessage).font(.footnote).foregroundStyle(.secondary) }
+                Section {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .navigationTitle("Search & Maps")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { store.reload() }
-        .alert("Search & Maps", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert("Search & Maps", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
             Button("OK", role: .cancel) {}
-        } message: { Text(errorMessage ?? "") }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 
     private var tavilyEnabledBinding: Binding<Bool> {
@@ -713,7 +718,9 @@ private struct SearchAndMapsSettingsView: View {
             try store.replaceTavilyAPIKey(tavilyReplacement)
             tavilyReplacement = ""
             statusMessage = "Tavily key saved securely in Keychain."
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func saveEndpoints() {
@@ -724,7 +731,9 @@ private struct SearchAndMapsSettingsView: View {
                 osrmBaseURL: store.osrmBaseURL
             )
             statusMessage = "Search & Maps endpoints saved."
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func testTavily() async {
@@ -733,11 +742,16 @@ private struct SearchAndMapsSettingsView: View {
         do {
             let service = AssistantGroundingService(settings: store, location: location)
             let count = try await service.testTavily()
-            statusMessage = count > 0 ? "Tavily retrieval succeeded." : "Tavily responded, but no usable result was returned."
-        } catch { errorMessage = error.localizedDescription }
+            statusMessage = count > 0
+                ? "Tavily retrieval succeeded."
+                : "Tavily responded, but no usable result was returned."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
+@MainActor
 private struct TransportGroundingSettingsView: View {
     @ObservedObject var store: TransportGroundingSettingsStore
     @State private var railKey = ""
@@ -749,43 +763,62 @@ private struct TransportGroundingSettingsView: View {
 
     var body: some View {
         List {
-            Section("Indian Railways") {
+            Section {
                 LabeledContent("RapidAPI key", value: store.hasRailKey ? "Stored" : "Not configured")
                 SecureField(store.hasRailKey ? "Replacement key (optional)" : "RapidAPI key", text: $railKey)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                 TextField("RapidAPI host", text: $railHost)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
                 Button("Save Rail settings") { saveRail() }
                 if store.hasRailKey {
                     Button("Remove Rail key", role: .destructive) {
-                        do { try store.clearRailKey(); statusMessage = "Rail key removed." }
-                        catch { errorMessage = error.localizedDescription }
+                        do {
+                            try store.clearRailKey()
+                            statusMessage = "Rail key removed."
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
                     }
                 }
+            } header: {
+                Text("Indian Railways")
             } footer: {
                 Text("Used only for an explicit train-number or 10-digit PNR request. The key is stored in Keychain and is never displayed after saving.")
             }
 
-            Section("Flights") {
+            Section {
                 LabeledContent("AviationStack key", value: store.hasAviationKey ? "Stored" : "Not configured")
                 SecureField(store.hasAviationKey ? "Replacement key (optional)" : "AviationStack access key", text: $aviationKey)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                 TextField("AviationStack base URL", text: $aviationBaseURL)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
                 Button("Save Flight settings") { saveAviation() }
                 if store.hasAviationKey {
                     Button("Remove AviationStack key", role: .destructive) {
-                        do { try store.clearAviationKey(); statusMessage = "AviationStack key removed." }
-                        catch { errorMessage = error.localizedDescription }
+                        do {
+                            try store.clearAviationKey()
+                            statusMessage = "AviationStack key removed."
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
                     }
                 }
+            } header: {
+                Text("Flights")
             } footer: {
                 Text("Used only when Jarvis recognizes an explicit flight-status request. The selected Cloud AI model summarizes the structured provider record; it does not invent live flight data.")
             }
 
-            Section("GTFS-Realtime feeds") {
+            Section {
                 if store.gtfsFeeds.isEmpty {
-                    Text("No realtime transit feeds configured.").foregroundStyle(.secondary)
+                    Text("No realtime transit feeds configured.")
+                        .foregroundStyle(.secondary)
                 } else {
                     ForEach(store.gtfsFeeds) { feed in
                         NavigationLink {
@@ -793,7 +826,10 @@ private struct TransportGroundingSettingsView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(feed.label)
-                                Text(publicFeedURL(feed.url)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                Text(publicFeedURL(feed.url))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
                             }
                         }
                         .swipeActions {
@@ -804,11 +840,14 @@ private struct TransportGroundingSettingsView: View {
                         }
                     }
                 }
+
                 NavigationLink {
                     GTFSFeedEditorView(store: store, feed: nil)
                 } label: {
                     Label("Add GTFS-Realtime feed", systemImage: "plus")
                 }
+            } header: {
+                Text("GTFS-Realtime feeds")
             } footer: {
                 Text("Add agency-provided GTFS-Realtime protobuf feeds for trip updates, service alerts, and nearby vehicle positions. Optional authentication headers are stored in Keychain. Feed URLs may contain query tokens; Jarvis strips query strings from source attribution.")
             }
@@ -821,9 +860,16 @@ private struct TransportGroundingSettingsView: View {
                         try store.saveRailHost(railHost)
                         try store.saveAviationBaseURL(aviationBaseURL)
                         statusMessage = "Service defaults restored."
-                    } catch { errorMessage = error.localizedDescription }
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 }
-                if let statusMessage { Text(statusMessage).font(.footnote).foregroundStyle(.secondary) }
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .navigationTitle("Travel & Transit")
@@ -833,9 +879,14 @@ private struct TransportGroundingSettingsView: View {
             railHost = store.railHost
             aviationBaseURL = store.aviationBaseURL
         }
-        .alert("Travel & Transit", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert("Travel & Transit", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
             Button("OK", role: .cancel) {}
-        } message: { Text(errorMessage ?? "") }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 
     private func saveRail() {
@@ -847,7 +898,9 @@ private struct TransportGroundingSettingsView: View {
             }
             railHost = store.railHost
             statusMessage = "Rail settings saved."
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func saveAviation() {
@@ -859,7 +912,9 @@ private struct TransportGroundingSettingsView: View {
             }
             aviationBaseURL = store.aviationBaseURL
             statusMessage = "Flight settings saved."
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func publicFeedURL(_ raw: String) -> String {
@@ -871,6 +926,7 @@ private struct TransportGroundingSettingsView: View {
     }
 }
 
+@MainActor
 private struct GTFSFeedEditorView: View {
     @ObservedObject var store: TransportGroundingSettingsStore
     @Environment(\.dismiss) private var dismiss
@@ -890,18 +946,26 @@ private struct GTFSFeedEditorView: View {
             Section("Feed") {
                 TextField("Label", text: $draft.label)
                 TextField("HTTPS feed URL", text: $draft.url)
-                    .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
             }
+
             Section("Optional authentication header") {
                 TextField("Header name, e.g. Authorization", text: Binding(
                     get: { draft.headerName ?? "" },
                     set: { draft.headerName = $0.isEmpty ? nil : $0 }
                 ))
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
                 SecureField("Header value", text: $headerValue)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
                 Text("Leave the value blank when editing to keep the existing encrypted value, provided the header name is unchanged.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle(draft.label.isEmpty ? "Add realtime feed" : "Edit realtime feed")
@@ -912,17 +976,25 @@ private struct GTFSFeedEditorView: View {
                     do {
                         try store.saveGTFSFeed(draft, headerValueReplacement: headerValue)
                         dismiss()
-                    } catch { errorMessage = error.localizedDescription }
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 }
                 .fontWeight(.semibold)
             }
         }
-        .alert("GTFS-Realtime feed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert("GTFS-Realtime feed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
             Button("OK", role: .cancel) {}
-        } message: { Text(errorMessage ?? "") }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 }
 
+@MainActor
 private struct PrivacySettingsView: View {
     @EnvironmentObject private var app: AppModel
     @State private var confirmsDeletion = false
@@ -932,8 +1004,10 @@ private struct PrivacySettingsView: View {
             Section("On this iPhone") {
                 LabeledContent("Conversations", value: "\(app.conversations.count)")
                 Text("Conversation text is stored locally so Jarvis history survives app restarts.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
+
             Section {
                 Button("Delete all conversations", role: .destructive) { confirmsDeletion = true }
                     .disabled(app.conversations.isEmpty)
@@ -950,8 +1024,10 @@ private struct PrivacySettingsView: View {
     }
 }
 
+@MainActor
 private struct StorageSettingsView: View {
     @EnvironmentObject private var app: AppModel
+
     var body: some View {
         List {
             Section("Local data") {
@@ -960,23 +1036,32 @@ private struct StorageSettingsView: View {
             }
             Section {
                 Text("Captures, recordings, and notes will report their storage here after their repositories are connected. No glasses storage value is guessed or cached by the app.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Storage").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Storage")
+        .navigationBarTitleDisplayMode(.inline)
     }
-    private var messageCount: Int { app.conversations.reduce(0) { $0 + $1.messages.count } }
+
+    private var messageCount: Int {
+        app.conversations.reduce(0) { $0 + $1.messages.count }
+    }
 }
 
+@MainActor
 private struct PermissionsSettingsView: View {
     @ObservedObject private var location = GroundingLocationProvider.shared
+
     var body: some View {
         List {
             Section("Voice") {
                 LabeledContent("Microphone", value: microphoneStatus)
                 LabeledContent("Speech recognition", value: speechStatus)
             }
-            Section("Search & Maps") { LabeledContent("Location", value: locationStatus) }
+            Section("Search & Maps") {
+                LabeledContent("Location", value: locationStatus)
+            }
             Section {
                 Button("Open iOS Settings") {
                     guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
@@ -986,8 +1071,10 @@ private struct PermissionsSettingsView: View {
                 Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Search & Maps settings; asking Jarvis a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
             }
         }
-        .navigationTitle("Permissions").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Permissions")
+        .navigationBarTitleDisplayMode(.inline)
     }
+
     private var microphoneStatus: String {
         switch AVAudioApplication.shared.recordPermission {
         case .granted: return "Allowed"
@@ -996,6 +1083,7 @@ private struct PermissionsSettingsView: View {
         @unknown default: return "Unknown"
         }
     }
+
     private var speechStatus: String {
         switch SFSpeechRecognizer.authorizationStatus() {
         case .authorized: return "Allowed"
@@ -1005,6 +1093,7 @@ private struct PermissionsSettingsView: View {
         @unknown default: return "Unknown"
         }
     }
+
     private var locationStatus: String {
         switch location.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse: return "Allowed"
@@ -1030,8 +1119,10 @@ private struct AboutSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("About").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
     }
+
     private var version: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
