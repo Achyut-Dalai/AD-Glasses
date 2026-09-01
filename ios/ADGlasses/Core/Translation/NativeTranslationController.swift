@@ -350,8 +350,9 @@ final class LiveTranslationController: ObservableObject {
 #endif
 
     func stop() async {
+        let activeFinalizeTask = finalizeTask
         let wasProcessingTurn = isProcessingTurn
-        finalizeTask?.cancel()
+        activeFinalizeTask?.cancel()
         finalizeTask = nil
         sessionID = nil
         isRunning = false
@@ -360,7 +361,12 @@ final class LiveTranslationController: ObservableObject {
         if let transcriber {
             transcriber.onUpdate = nil
             transcriber.onError = nil
-            if !wasProcessingTurn {
+            if wasProcessingTurn {
+                // processTurn owns the in-flight SpeechAnalyzer finalization. Wait until that
+                // cancelled task leaves its stop call before yielding the shared audio session to
+                // wake-word capture or another foreground feature.
+                await activeFinalizeTask?.value
+            } else {
                 await transcriber.stop()
             }
         }
