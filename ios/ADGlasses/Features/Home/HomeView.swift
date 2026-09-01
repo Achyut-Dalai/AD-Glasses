@@ -554,16 +554,21 @@ private struct MediaSyncSheet: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Waiting for the Wi-Fi handoff")
+                            Text("Waiting for you to return from Wi-Fi Settings")
                                 .font(.footnote.weight(.medium))
                         }
 
-                        Text("iOS normally remembers this password after the first join. If it switches back to your internet Wi-Fi, select the glasses network again; this sync session stays open while you do it.")
+                        Text("The current password has been copied for you. If iPhone reports an incorrect password, forget the saved glasses network, select it again, and paste this freshly copied password. This sync session stays open while you do it.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     .padding(24)
+                    .onAppear {
+                        // The coordinator copies the current session password before opening
+                        // Settings so the first render after returning reflects the real state.
+                        didCopyNetworkPassword = true
+                    }
                 } else if isPreparing {
                     ContentUnavailableView {
                         ProgressView()
@@ -577,6 +582,12 @@ private struct MediaSyncSheet: View {
                         systemImage: "exclamationmark.triangle",
                         description: Text(errorMessage)
                     )
+                } else if let completionMessage {
+                    ContentUnavailableView(
+                        "Sync complete",
+                        systemImage: "checkmark.circle.fill",
+                        description: Text("\(completionMessage). The original media is now saved in your Library.")
+                    )
                 } else if unsyncedItems.isEmpty {
                     ContentUnavailableView(
                         "Nothing to sync",
@@ -585,13 +596,6 @@ private struct MediaSyncSheet: View {
                     )
                 } else {
                     List {
-                        if let completionMessage {
-                            Section {
-                                Label(completionMessage, systemImage: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
-                        }
-
                         Section("On AD Glasses") {
                             ForEach(items) { item in
                                 HStack(spacing: 12) {

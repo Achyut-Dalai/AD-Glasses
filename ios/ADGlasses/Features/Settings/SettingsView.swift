@@ -225,11 +225,11 @@ private struct PhoneVoiceActivationSettingsView: View {
                     .foregroundStyle(.secondary)
 
                 #if DEBUG || AD_PERSONAL_TEAM_BUILD
-                Button("Install Hey A D .onnx model") {
+                Button("Choose trained Hey A D model…") {
                     importsModel = true
                 }
 
-                Text("Personal builds can install the local classifier directly. Once an evaluated Hey A D model is bundled with AD Glasses, this manual installation step is no longer needed.")
+                Text("This build does not contain a trained Hey A D classifier yet. Personal builds can import an evaluated .onnx model directly; once that model is bundled with AD Glasses, this step disappears.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 #endif

@@ -116,6 +116,7 @@ final class HeyCyanMediaTransferCoordinator {
                 deviceAddress = reportedDeviceIPv4Address
             } else {
                 state = .awaitingManualNetworkJoin(credentials: credentials)
+                copyNetworkPassword(credentials.passphrase)
                 openWiFiSettings()
                 try await waitForManualNetworkJoin(operationID: operationID)
                 deviceAddress = try await waitForDeviceAddress(
@@ -403,9 +404,22 @@ final class HeyCyanMediaTransferCoordinator {
     /// manually. We deliberately keep this out of entitlement-enabled/App-Store-oriented builds.
     private func openWiFiSettings() {
         openSettingsURLCandidates([
-            "App-Prefs:root=WIFI",
-            "prefs:root=WIFI"
+            "prefs:root=WIFI",
+            "App-Prefs:root=WIFI"
         ])
+    }
+
+    /// Keep the verified glasses passphrase available if iOS asks for it during the handoff.
+    /// Normally iOS reuses the saved network and does not prompt. The value remains on this
+    /// iPhone only and expires shortly after the handoff.
+    private func copyNetworkPassword(_ passphrase: String) {
+        UIPasteboard.general.setItems(
+            [[UIPasteboard.typeAutomatic: passphrase]],
+            options: [
+                .localOnly: true,
+                .expirationDate: Date().addingTimeInterval(120)
+            ]
+        )
     }
 
     private func openSettingsURLCandidates(_ candidates: [String]) {
