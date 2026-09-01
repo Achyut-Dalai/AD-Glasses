@@ -86,10 +86,12 @@ final class AppModel: ObservableObject {
               generationTask == nil,
               !isGlassesAssistantAudioActive else { return }
         speechError = nil
+        // Publish ownership before opening the microphone so phone wake-word capture yields its
+        // audio session first instead of racing the manual Jarvis transcriber during startup.
+        isManualTranscription = true
         speechOutput.stop()
         do {
             try await transcriber.start()
-            isManualTranscription = true
         } catch {
             isManualTranscription = false
             speechError = error.localizedDescription
@@ -97,7 +99,15 @@ final class AppModel: ObservableObject {
     }
 
     func stopTranscription() async {
-        guard !isStoppingTranscription else { return }
+        // Multiple foreground features share this transcriber. If another caller is already
+        // finalizing recognition, wait for that handoff instead of returning while audio teardown
+        // is still in progress and allowing a competing feature to open its microphone early.
+        if isStoppingTranscription {
+            while isStoppingTranscription {
+                await Task.yield()
+            }
+            return
+        }
         guard transcriber.snapshot.isRunning else {
             isManualTranscription = false
             return
@@ -407,11 +417,11 @@ final class AppModel: ObservableObject {
             return
         }
 
+        let interruptedManualTranscription = isManualTranscription
         isManualTranscription = false
         cancelResponse()
         speechOutput.stop()
         speechError = nil
-        clearTranscript()
         glassesSpeechStartTask?.cancel()
         let sessionID = UUID()
         glassesAssistantSessionID = sessionID
@@ -423,6 +433,18 @@ final class AppModel: ObservableObject {
         glassesSpeechStartTask = Task { [weak self] in
             guard let self else { return }
             do {
+                // The AppModel transcriber is shared by manual dictation, phone wake turns, and
+                // decoded glasses PCM. Finalize the previous source before clearing its transcript;
+                // otherwise a late final callback can leak old phone text into this glasses turn.
+                if transcriber.snapshot.isRunning || isStoppingTranscription {
+                    await stopTranscription()
+                    guard glassesAssistantSessionID == sessionID, !Task.isCancelled else { return }
+                }
+                if interruptedManualTranscription {
+                    useTranscriptAsDraft()
+                }
+                clearTranscript()
+
                 try await streamingTranscriber.startExternalAudio()
                 guard glassesAssistantSessionID == sessionID, !Task.isCancelled else {
                     await streamingTranscriber.finishExternalAudio()
