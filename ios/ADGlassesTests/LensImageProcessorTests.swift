@@ -32,7 +32,9 @@ final class LensImageProcessorTests: XCTestCase {
     }
 
     func testOpenAIVisualRequestUsesResponsesInputImageDataURL() async throws {
+        let host = "api.openai.com"
         let session = makeStubSession(
+            host: host,
             statusCode: 200,
             responseJSONObject: ["output_text": "A red mug is on a table."]
         )
@@ -52,11 +54,11 @@ final class LensImageProcessorTests: XCTestCase {
         )
 
         XCTAssertEqual(answer, "A red mug is on a table.")
-        let request = try XCTUnwrap(VisualRequestRecorder.shared.lastRequest())
+        let request = try XCTUnwrap(VisualRequestRecorder.shared.lastRequest(host: host))
         XCTAssertEqual(request.url?.absoluteString, "https://api.openai.com/v1/responses")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-key")
 
-        let root = try requestJSONObject(request)
+        let root = try requestJSONObject(host: host)
         let input = try XCTUnwrap(root["input"] as? [[String: Any]])
         let content = try XCTUnwrap(input.first?["content"] as? [[String: Any]])
         XCTAssertEqual(content.first?["type"] as? String, "input_text")
@@ -66,6 +68,7 @@ final class LensImageProcessorTests: XCTestCase {
     }
 
     func testGeminiVisualRequestUsesInlineJPEGData() async throws {
+        let host = "generativelanguage.googleapis.com"
         let response: [String: Any] = [
             "candidates": [[
                 "content": [
@@ -73,7 +76,7 @@ final class LensImageProcessorTests: XCTestCase {
                 ]
             ]]
         ]
-        let session = makeStubSession(statusCode: 200, responseJSONObject: response)
+        let session = makeStubSession(host: host, statusCode: 200, responseJSONObject: response)
         let profile = AIProfile(
             id: UUID(),
             name: "Gemini",
@@ -90,14 +93,14 @@ final class LensImageProcessorTests: XCTestCase {
         )
 
         XCTAssertEqual(answer, "A bicycle is leaning against a wall.")
-        let request = try XCTUnwrap(VisualRequestRecorder.shared.lastRequest())
+        let request = try XCTUnwrap(VisualRequestRecorder.shared.lastRequest(host: host))
         XCTAssertEqual(
             request.url?.absoluteString,
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent"
         )
         XCTAssertEqual(request.value(forHTTPHeaderField: "x-goog-api-key"), "gemini-test-key")
 
-        let root = try requestJSONObject(request)
+        let root = try requestJSONObject(host: host)
         let contents = try XCTUnwrap(root["contents"] as? [[String: Any]])
         let parts = try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
         let inline = try XCTUnwrap(parts.compactMap { $0["inline_data"] as? [String: Any] }.first)
@@ -105,23 +108,23 @@ final class LensImageProcessorTests: XCTestCase {
         XCTAssertFalse((inline["data"] as? String)?.isEmpty ?? true)
     }
 
-    override func tearDown() {
-        VisualRequestRecorder.shared.reset()
-        super.tearDown()
-    }
-
     private func makeStubSession(
+        host: String,
         statusCode: Int,
         responseJSONObject: [String: Any]
     ) -> URLSession {
-        VisualRequestRecorder.shared.configure(statusCode: statusCode, responseJSONObject: responseJSONObject)
+        VisualRequestRecorder.shared.configure(
+            host: host,
+            statusCode: statusCode,
+            responseJSONObject: responseJSONObject
+        )
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [VisualStubURLProtocol.self]
         return URLSession(configuration: configuration)
     }
 
-    private func requestJSONObject(_ request: URLRequest) throws -> [String: Any] {
-        let data = try XCTUnwrap(request.httpBody)
+    private func requestJSONObject(host: String) throws -> [String: Any] {
+        let data = try XCTUnwrap(VisualRequestRecorder.shared.lastBody(host: host))
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 }
@@ -129,44 +132,77 @@ final class LensImageProcessorTests: XCTestCase {
 private final class VisualRequestRecorder: @unchecked Sendable {
     static let shared = VisualRequestRecorder()
 
-    private let lock = NSLock()
-    private var request: URLRequest?
-    private var statusCode = 200
-    private var responseData = Data("{}".utf8)
+    private struct Stub {
+        let statusCode: Int
+        let responseData: Data
+        var request: URLRequest?
+        var requestBody: Data?
+    }
 
-    func configure(statusCode: Int, responseJSONObject: [String: Any]) {
+    private let lock = NSLock()
+    private var stubs: [String: Stub] = [:]
+
+    func configure(host: String, statusCode: Int, responseJSONObject: [String: Any]) {
         lock.lock()
         defer { lock.unlock() }
-        self.statusCode = statusCode
-        responseData = (try? JSONSerialization.data(withJSONObject: responseJSONObject)) ?? Data("{}".utf8)
-        request = nil
+        stubs[host] = Stub(
+            statusCode: statusCode,
+            responseData: (try? JSONSerialization.data(withJSONObject: responseJSONObject)) ?? Data("{}".utf8),
+            request: nil,
+            requestBody: nil
+        )
     }
 
     func response(for request: URLRequest) -> (HTTPURLResponse, Data) {
+        let host = request.url?.host ?? ""
+        let body = request.httpBody ?? Self.readAll(from: request.httpBodyStream)
+
         lock.lock()
         defer { lock.unlock() }
-        self.request = request
+        var stub = stubs[host] ?? Stub(
+            statusCode: 500,
+            responseData: Data("{}".utf8),
+            request: nil,
+            requestBody: nil
+        )
+        stub.request = request
+        stub.requestBody = body
+        stubs[host] = stub
+
         let response = HTTPURLResponse(
             url: request.url!,
-            statusCode: statusCode,
+            statusCode: stub.statusCode,
             httpVersion: "HTTP/1.1",
             headerFields: ["Content-Type": "application/json"]
         )!
-        return (response, responseData)
+        return (response, stub.responseData)
     }
 
-    func lastRequest() -> URLRequest? {
+    func lastRequest(host: String) -> URLRequest? {
         lock.lock()
         defer { lock.unlock() }
-        return request
+        return stubs[host]?.request
     }
 
-    func reset() {
+    func lastBody(host: String) -> Data? {
         lock.lock()
         defer { lock.unlock() }
-        request = nil
-        statusCode = 200
-        responseData = Data("{}".utf8)
+        return stubs[host]?.requestBody
+    }
+
+    private static func readAll(from stream: InputStream?) -> Data? {
+        guard let stream else { return nil }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 { return nil }
+            if count == 0 { break }
+            data.append(buffer, count: count)
+        }
+        return data.isEmpty ? nil : data
     }
 }
 
