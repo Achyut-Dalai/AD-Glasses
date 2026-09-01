@@ -38,7 +38,7 @@ struct HomeView: View {
 
             AssistantView(openSettings: { showsSettings = true })
                 .tag(AppTab.assistant)
-                .tabItem { Label("Assistant", systemImage: "sparkles") }
+                .tabItem { Label("Jarvis", systemImage: "sparkles") }
 
             LibraryScreen(
                 openDeviceCenter: { showsDeviceCenter = true },
@@ -1216,7 +1216,7 @@ private extension LibraryItemKind {
         switch self {
         case .photo: return "photo"
         case .video: return "video"
-        case .audio: return "waveform"
+        case .audio: return "waveform.circle"
         case .transcript: return "note.text"
         }
     }
