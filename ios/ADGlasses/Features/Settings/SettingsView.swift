@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreLocation
 import Speech
 import SwiftUI
 import UniformTypeIdentifiers
@@ -8,6 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject private var glasses: GlassesManager
     @EnvironmentObject private var phoneVoiceActivation: PhoneVoiceActivationController
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var grounding = GroundingSettingsStore()
     @State private var diagnosticsEnabled = false
     @State private var diagnosticsURL: URL?
     @State private var diagnosticsError: String?
@@ -17,10 +19,7 @@ struct SettingsView: View {
             List {
                 Section("Glasses") {
                     ForEach(glasses.providers) { provider in
-                        LabeledContent(
-                            provider.displayName,
-                            value: provider.connectionState.settingsLabel
-                        )
+                        LabeledContent(provider.displayName, value: provider.connectionState.settingsLabel)
                     }
                 }
 
@@ -31,15 +30,18 @@ struct SettingsView: View {
                         LabeledContent("Cloud AI", value: cloudAIStatus)
                     }
 
+                    NavigationLink {
+                        SearchAndMapsSettingsView(store: grounding)
+                    } label: {
+                        LabeledContent("Search & Maps", value: groundingStatus)
+                    }
+
                     LabeledContent("Speech engine", value: app.speechEngineName)
 
                     NavigationLink {
                         SpeechVoiceSettingsView(controller: app.speechOutput)
                     } label: {
-                        LabeledContent(
-                            "Spoken voice",
-                            value: selectedSpeechVoiceName
-                        )
+                        LabeledContent("Spoken voice", value: selectedSpeechVoiceName)
                     }
 
                     NavigationLink {
@@ -53,24 +55,14 @@ struct SettingsView: View {
                 }
 
                 Section("Data and access") {
-                    NavigationLink("Privacy") {
-                        PrivacySettingsView()
-                    }
-                    NavigationLink("Storage") {
-                        StorageSettingsView()
-                    }
-                    NavigationLink("Permissions") {
-                        PermissionsSettingsView()
-                    }
-                    Button("Language") {
-                        openSystemSettings()
-                    }
+                    NavigationLink("Privacy") { PrivacySettingsView() }
+                    NavigationLink("Storage") { StorageSettingsView() }
+                    NavigationLink("Permissions") { PermissionsSettingsView() }
+                    Button("Language") { openSystemSettings() }
                 }
 
                 Section {
-                    NavigationLink("About AD Glasses") {
-                        AboutSettingsView()
-                    }
+                    NavigationLink("About AD Glasses") { AboutSettingsView() }
                 }
 
                 Section("Diagnostics") {
@@ -149,6 +141,7 @@ struct SettingsView: View {
                 }
             }
             .task(id: glasses.selectedProviderID) {
+                grounding.reload()
                 diagnosticsEnabled = await glasses.isHardwareDiagnosticsEnabled() ?? false
                 await refreshDiagnosticsURL()
             }
@@ -167,6 +160,13 @@ struct SettingsView: View {
     private var cloudAIStatus: String {
         guard let profile = app.aiProfiles.activeProfile else { return "Not configured" }
         return app.aiProfiles.isConfigured ? profile.name : "Key required"
+    }
+
+    private var groundingStatus: String {
+        if grounding.tavilyEnabled {
+            return grounding.hasTavilyAPIKey ? "Web + maps" : "Maps · web key needed"
+        }
+        return "Maps only"
     }
 
     private var selectedSpeechVoiceName: String {
@@ -201,10 +201,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                 Toggle("Phone Voice Activation", isOn: voiceActivationBinding)
                     .disabled(voiceActivationControlIsDisabled)
                 LabeledContent("Wake phrase", value: controller.phrase)
-                LabeledContent(
-                    "Listening",
-                    value: controller.isListening ? "On" : "Off"
-                )
+                LabeledContent("Listening", value: controller.isListening ? "On" : "Off")
                 LabeledContent("Status", value: controller.configurationState.label)
 
                 if controller.configurationState == .missingModel {
@@ -225,10 +222,7 @@ private struct PhoneVoiceActivationSettingsView: View {
                     .foregroundStyle(.secondary)
 
                 #if DEBUG || AD_PERSONAL_TEAM_BUILD
-                Button("Choose trained \(controller.phrase) model…") {
-                    importsModel = true
-                }
-
+                Button("Choose trained \(controller.phrase) model…") { importsModel = true }
                 Text("This build does not contain a trained \(controller.phrase) classifier yet. Personal builds can import an evaluated .onnx model directly; once that model is bundled with AD Glasses, this step disappears.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -245,9 +239,7 @@ private struct PhoneVoiceActivationSettingsView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                if let url = urls.first {
-                    controller.importModel(from: url, phrase: controller.phrase)
-                }
+                if let url = urls.first { controller.importModel(from: url, phrase: controller.phrase) }
             case .failure(let error):
                 controller.errorMessage = error.localizedDescription
             }
@@ -280,16 +272,14 @@ private struct PhoneVoiceActivationSettingsView: View {
 
     private var voiceActivationControlIsDisabled: Bool {
         switch controller.configurationState {
-        case .ready:
-            return false
+        case .ready: return false
         case .missingModel:
             #if DEBUG || AD_PERSONAL_TEAM_BUILD
             return false
             #else
             return true
             #endif
-        case .unavailable:
-            return true
+        case .unavailable: return true
         }
     }
 }
@@ -357,7 +347,7 @@ private struct CloudAISettingsView: View {
                 ContentUnavailableView(
                     "No Cloud AI profile",
                     systemImage: "cloud",
-                    description: Text("Add a provider, model, and API key to enable assistant responses.")
+                    description: Text("Add a provider and API key, then fetch the models available to that account.")
                 )
                 .listRowBackground(Color.clear)
             } else {
@@ -383,11 +373,8 @@ private struct CloudAISettingsView: View {
                         }
                         .swipeActions {
                             Button("Delete", role: .destructive) {
-                                do {
-                                    try store.delete(profile.id)
-                                } catch {
-                                    errorMessage = error.localizedDescription
-                                }
+                                do { try store.delete(profile.id) }
+                                catch { errorMessage = error.localizedDescription }
                             }
                         }
                     }
@@ -406,7 +393,7 @@ private struct CloudAISettingsView: View {
             }
 
             Section {
-                Text("API keys are stored in the iOS Keychain. They are sent only to the selected profile endpoint when you ask Jarvis for a response.")
+                Text("API keys are stored in the iOS Keychain and are never displayed after saving. Model lists are fetched directly from the selected provider using that profile's key; manual model IDs remain available for providers with incomplete catalogs.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -431,6 +418,9 @@ private struct AIProfileEditorView: View {
     @State private var profile: AIProfile
     @State private var apiKey = ""
     @State private var makeActive: Bool
+    @State private var availableModels = [String]()
+    @State private var isLoadingModels = false
+    @State private var modelStatus: String?
     @State private var errorMessage: String?
     @State private var alertTitle = "Cloud AI profile"
     @State private var isTesting = false
@@ -450,9 +440,42 @@ private struct AIProfileEditorView: View {
                         Text(provider.displayName).tag(provider)
                     }
                 }
-                TextField("Model", text: $profile.model)
+            }
+
+            Section("Model") {
+                if !availableModels.isEmpty {
+                    Picker("Available model", selection: $profile.model) {
+                        ForEach(modelChoices, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                }
+
+                TextField("Model ID", text: $profile.model)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+
+                Button {
+                    Task { await fetchModels() }
+                } label: {
+                    HStack(spacing: 9) {
+                        if isLoadingModels { ProgressView().controlSize(.small) }
+                        Label(
+                            isLoadingModels ? "Fetching models…" : "Fetch available models",
+                            systemImage: "arrow.clockwise"
+                        )
+                    }
+                }
+                .disabled(isLoadingModels || isTesting)
+
+                if let modelStatus {
+                    Text(modelStatus)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } footer: {
+                Text("The provider's model API is the source of truth. The text field is kept as a fallback for custom or newly released model IDs.")
             }
 
             Section("Endpoint") {
@@ -485,14 +508,11 @@ private struct AIProfileEditorView: View {
                     Task { await saveAndTest() }
                 } label: {
                     HStack(spacing: 10) {
-                        if isTesting {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
+                        if isTesting { ProgressView().controlSize(.small) }
                         Text(isTesting ? "Testing connection…" : "Save and test")
                     }
                 }
-                .disabled(isTesting)
+                .disabled(isTesting || isLoadingModels)
             } footer: {
                 Text("Saves this profile, then sends a short request through the same connection Jarvis uses.")
             }
@@ -503,13 +523,14 @@ private struct AIProfileEditorView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save", action: save)
                     .fontWeight(.semibold)
-                    .disabled(isTesting)
+                    .disabled(isTesting || isLoadingModels)
             }
         }
         .onChange(of: profile.provider) { oldProvider, newProvider in
-            if profile.model.isEmpty || profile.model == oldProvider.defaultModel {
-                profile.model = newProvider.defaultModel
-            }
+            guard oldProvider != newProvider else { return }
+            availableModels.removeAll()
+            modelStatus = nil
+            profile.model = newProvider.defaultModel
             profile.baseURL = newProvider.defaultBaseURL
             if profile.name.isEmpty || profile.name == oldProvider.displayName {
                 profile.name = newProvider.displayName
@@ -525,15 +546,55 @@ private struct AIProfileEditorView: View {
         }
     }
 
+    private var modelChoices: [String] {
+        if profile.model.isEmpty || availableModels.contains(profile.model) { return availableModels }
+        return ([profile.model] + availableModels).removingDuplicates()
+    }
+
     private var apiKeyPrompt: String {
         store.hasCredential(for: profile.id) ? "New key (optional)" : "API key"
     }
 
     private var existingCredentialNote: String {
         if store.hasCredential(for: profile.id) {
-            return "A key is already stored. Leave this blank to keep it."
+            return "A key is already stored. Leave this blank to keep it. Saved keys are never read back into this field."
         }
         return "The key is stored in Keychain and is never shown again."
+    }
+
+    private func fetchModels() async {
+        isLoadingModels = true
+        modelStatus = nil
+        defer { isLoadingModels = false }
+        do {
+            let credential = try store.credentialForDiscovery(
+                profileID: profile.id,
+                replacement: apiKey
+            )
+            var discoveryProfile = profile
+            if discoveryProfile.provider.managesEndpoint {
+                discoveryProfile.baseURL = discoveryProfile.provider.defaultBaseURL
+            }
+            let models = try await AIModelCatalogClient().availableModels(
+                profile: discoveryProfile,
+                credential: credential
+            )
+            guard !Task.isCancelled else { return }
+            availableModels = models
+            if models.isEmpty {
+                modelStatus = "The provider returned no conversational models. You can still enter a supported model ID manually."
+            } else {
+                let preferred = models.first(where: { $0 == profile.provider.defaultModel })
+                    ?? models.first(where: { $0 == profile.model })
+                    ?? models.first
+                if let preferred, profile.model.isEmpty || !models.contains(profile.model) {
+                    profile.model = preferred
+                }
+                modelStatus = "Found \(models.count) conversational model\(models.count == 1 ? "" : "s") for this key."
+            }
+        } catch {
+            modelStatus = "Could not fetch models: \(error.localizedDescription)"
+        }
     }
 
     private func save() {
@@ -549,7 +610,6 @@ private struct AIProfileEditorView: View {
     private func saveAndTest() async {
         isTesting = true
         defer { isTesting = false }
-
         do {
             let savedProfile = try saveProfile()
             let credential = try store.credential(for: savedProfile.id)
@@ -578,6 +638,170 @@ private struct AIProfileEditorView: View {
     }
 }
 
+private struct SearchAndMapsSettingsView: View {
+    @ObservedObject var store: GroundingSettingsStore
+    @ObservedObject private var location = GroundingLocationProvider.shared
+
+    @State private var tavilyReplacement = ""
+    @State private var statusMessage: String?
+    @State private var errorMessage: String?
+    @State private var isTestingTavily = false
+
+    var body: some View {
+        List {
+            Section("Web search") {
+                Toggle("Use Tavily for live web evidence", isOn: tavilyEnabledBinding)
+                LabeledContent("API key", value: store.hasTavilyAPIKey ? "Stored" : "Not configured")
+                SecureField(store.hasTavilyAPIKey ? "Replacement key (optional)" : "Tavily API key", text: $tavilyReplacement)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Button {
+                    saveTavilyKey()
+                } label: {
+                    Label(store.hasTavilyAPIKey ? "Save replacement key" : "Save Tavily key", systemImage: "key")
+                }
+                .disabled(tavilyReplacement.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button {
+                    Task { await testTavily() }
+                } label: {
+                    HStack(spacing: 9) {
+                        if isTestingTavily { ProgressView().controlSize(.small) }
+                        Text(isTestingTavily ? "Testing Tavily…" : "Test Tavily retrieval")
+                    }
+                }
+                .disabled(!store.tavilyEnabled || !store.hasTavilyAPIKey || isTestingTavily)
+
+                if store.hasTavilyAPIKey {
+                    Button("Remove Tavily key", role: .destructive) {
+                        do {
+                            try store.clearTavilyAPIKey()
+                            statusMessage = "Tavily key removed."
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
+                    }
+                }
+            } footer: {
+                Text("Tavily is retrieval-only. AD Glasses requests source snippets and URLs with Tavily answer generation disabled; your selected Cloud AI model remains the only model that writes Jarvis's answer.")
+            }
+
+            Section("Location") {
+                LabeledContent("Permission", value: locationPermissionLabel)
+                if location.authorizationStatus == .notDetermined {
+                    Button("Allow location for nearby places") { location.requestPermission() }
+                } else if !location.isAuthorized {
+                    Button("Open iOS Settings") {
+                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } footer: {
+                Text("Location is requested only from this Settings action. A Jarvis question never triggers the iOS permission prompt by itself.")
+            }
+
+            Section("OpenStreetMap services") {
+                TextField("Nominatim base URL", text: $store.nominatimBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                TextField("Overpass endpoint", text: $store.overpassEndpoint)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                TextField("OSRM base URL", text: $store.osrmBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+
+                Button("Save map service endpoints") { saveEndpoints() }
+                Button("Restore public defaults") {
+                    store.nominatimBaseURL = GroundingSettingsStore.defaultNominatimBaseURL
+                    store.overpassEndpoint = GroundingSettingsStore.defaultOverpassEndpoint
+                    store.osrmBaseURL = GroundingSettingsStore.defaultOSRMBaseURL
+                    saveEndpoints()
+                }
+            } footer: {
+                Text("Nominatim is used only for user-triggered geocoding and is rate-limited to about one request per second. Nearby POIs use bounded Overpass queries; routes use FOSSGIS OSRM. Map-derived answers should attribute © OpenStreetMap contributors.")
+            }
+
+            if let statusMessage {
+                Section {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Search & Maps")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { store.reload() }
+        .alert("Search & Maps", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private var tavilyEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { store.tavilyEnabled },
+            set: { store.setTavilyEnabled($0) }
+        )
+    }
+
+    private var locationPermissionLabel: String {
+        switch location.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse: return "Allowed"
+        case .denied: return "Denied"
+        case .restricted: return "Restricted"
+        case .notDetermined: return "Not requested"
+        @unknown default: return "Unknown"
+        }
+    }
+
+    private func saveTavilyKey() {
+        do {
+            try store.replaceTavilyAPIKey(tavilyReplacement)
+            tavilyReplacement = ""
+            statusMessage = "Tavily key saved securely in Keychain."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveEndpoints() {
+        do {
+            try store.saveEndpoints(
+                nominatimBaseURL: store.nominatimBaseURL,
+                overpassEndpoint: store.overpassEndpoint,
+                osrmBaseURL: store.osrmBaseURL
+            )
+            statusMessage = "Search & Maps endpoints saved."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func testTavily() async {
+        isTestingTavily = true
+        defer { isTestingTavily = false }
+        do {
+            let service = AssistantGroundingService(settings: store, location: location)
+            let count = try await service.testTavily()
+            statusMessage = count > 0
+                ? "Tavily retrieval succeeded."
+                : "Tavily responded, but no usable result was returned."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
 private struct PrivacySettingsView: View {
     @EnvironmentObject private var app: AppModel
     @State private var confirmsDeletion = false
@@ -592,10 +816,8 @@ private struct PrivacySettingsView: View {
             }
 
             Section {
-                Button("Delete all conversations", role: .destructive) {
-                    confirmsDeletion = true
-                }
-                .disabled(app.conversations.isEmpty)
+                Button("Delete all conversations", role: .destructive) { confirmsDeletion = true }
+                    .disabled(app.conversations.isEmpty)
             } footer: {
                 Text("This removes AD Glasses conversation history from this iPhone. It does not delete data held by an AI provider.")
             }
@@ -607,9 +829,7 @@ private struct PrivacySettingsView: View {
             isPresented: $confirmsDeletion,
             titleVisibility: .visible
         ) {
-            Button("Delete all", role: .destructive) {
-                Task { await app.deleteAllConversations() }
-            }
+            Button("Delete all", role: .destructive) { Task { await app.deleteAllConversations() } }
             Button("Cancel", role: .cancel) {}
         }
     }
@@ -641,11 +861,17 @@ private struct StorageSettingsView: View {
 }
 
 private struct PermissionsSettingsView: View {
+    @ObservedObject private var location = GroundingLocationProvider.shared
+
     var body: some View {
         List {
             Section("Voice") {
                 LabeledContent("Microphone", value: microphoneStatus)
                 LabeledContent("Speech recognition", value: speechStatus)
+            }
+
+            Section("Search & Maps") {
+                LabeledContent("Location", value: locationStatus)
             }
 
             Section {
@@ -654,7 +880,7 @@ private struct PermissionsSettingsView: View {
                     UIApplication.shared.open(url)
                 }
             } footer: {
-                Text("AD Glasses requests permissions only when a feature needs them. Bluetooth access is managed by iOS when the app scans for glasses.")
+                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Search & Maps settings; asking Jarvis a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
             }
         }
         .navigationTitle("Permissions")
@@ -679,6 +905,16 @@ private struct PermissionsSettingsView: View {
         @unknown default: return "Unknown"
         }
     }
+
+    private var locationStatus: String {
+        switch location.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse: return "Allowed"
+        case .denied: return "Denied"
+        case .restricted: return "Restricted"
+        case .notDetermined: return "Not requested"
+        @unknown default: return "Unknown"
+        }
+    }
 }
 
 private struct AboutSettingsView: View {
@@ -692,7 +928,7 @@ private struct AboutSettingsView: View {
             }
 
             Section {
-                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, voice, and continuity when you need to continue on iPhone.")
+                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, voice, grounded search and maps, and continuity when you need to continue on iPhone.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -716,5 +952,12 @@ private extension GlassesConnectionState {
         case .connected: return "Connected"
         case .unavailable: return "Unavailable"
         }
+    }
+}
+
+private extension Array where Element: Hashable {
+    func removingDuplicates() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
     }
 }
