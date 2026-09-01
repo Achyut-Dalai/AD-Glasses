@@ -124,9 +124,13 @@ struct AssistantView: View {
                 Text("The current conversation is saved locally and will remain in History.")
             }
             .onChange(of: app.transcript) { _, transcript in
-                if (app.isTranscribing || app.isStoppingTranscription), !transcript.isEmpty {
+                if app.isManualTranscription, !transcript.isEmpty {
                     app.useTranscriptAsDraft()
                 }
+            }
+            .onDisappear {
+                guard app.isManualTranscription else { return }
+                Task { await app.finishManualTranscriptionAsDraft() }
             }
         }
     }
@@ -399,7 +403,13 @@ private struct AssistantComposer: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if app.isTranscribing || app.isStoppingTranscription {
+            if let speechError = app.speechError {
+                ConversationNotice(text: speechError) {
+                    app.speechError = nil
+                }
+            }
+
+            if app.isManualTranscription {
                 HStack(spacing: 8) {
                     if app.isStoppingTranscription {
                         ProgressView()
@@ -413,13 +423,19 @@ private struct AssistantComposer: View {
                         .font(.caption.weight(.semibold))
                     Spacer()
                     Button(app.isStoppingTranscription ? "Stopping…" : "Stop") {
-                        Task {
-                            await app.stopTranscription()
-                            app.useTranscriptAsDraft()
-                        }
+                        Task { await app.finishManualTranscriptionAsDraft() }
                     }
                     .font(.caption.weight(.semibold))
                     .disabled(app.isStoppingTranscription)
+                }
+                .padding(.horizontal, 4)
+            } else if app.isTranscribing || app.isStoppingTranscription {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(app.isGlassesAssistantAudioActive ? "Listening from glasses" : "Voice turn in progress")
+                        .font(.caption.weight(.semibold))
+                    Spacer()
                 }
                 .padding(.horizontal, 4)
             }
@@ -460,12 +476,9 @@ private struct AssistantComposer: View {
                             .foregroundStyle(.red)
                     }
                     .accessibilityLabel("Stop response")
-                } else if app.isTranscribing || app.isStoppingTranscription {
+                } else if app.isManualTranscription {
                     Button {
-                        Task {
-                            await app.stopTranscription()
-                            app.useTranscriptAsDraft()
-                        }
+                        Task { await app.finishManualTranscriptionAsDraft() }
                     } label: {
                         Image(systemName: app.isStoppingTranscription ? "hourglass" : "stop.fill")
                             .font(.body.weight(.semibold))
@@ -474,6 +487,12 @@ private struct AssistantComposer: View {
                     }
                     .disabled(app.isStoppingTranscription)
                     .accessibilityLabel(app.isStoppingTranscription ? "Stopping voice input" : "Stop listening")
+                } else if app.isTranscribing || app.isStoppingTranscription {
+                    Image(systemName: app.isStoppingTranscription ? "hourglass" : "waveform")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 38, height: 38)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Voice turn in progress")
                 } else if app.chatDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Button {
                         Task {
