@@ -23,7 +23,7 @@ struct NativeTranslationHost<Content: View>: View {
                         guard let controller else { throw TextTranslationError.requiresIOS18 }
                         return try await controller.translate(
                             text,
-                            from: sourceLanguageCode.map(Locale.Language.init(identifier:)),
+                            from: sourceLanguageCode.map { Locale.Language(identifier: $0) },
                             to: Locale.Language(identifier: targetLanguageCode)
                         )
                     },
