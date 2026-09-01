@@ -132,10 +132,25 @@ final class AIProfileStore: ObservableObject {
         return credential
     }
 
-    func credentialForDiscovery(profileID: UUID, replacement: String) throws -> String {
+    /// Returns either the unsaved replacement key or the saved key only when the draft still
+    /// belongs to the same provider/endpoint credential scope. This prevents an old provider key
+    /// from ever being sent to a newly selected provider during model discovery.
+    func credentialForDiscovery(profile draft: AIProfile, replacement: String) throws -> String {
         let clean = Self.normalizedCredential(replacement)
         if !clean.isEmpty { return clean }
-        return try credential(for: profileID)
+        guard let existing = profiles.first(where: { $0.id == draft.id }) else {
+            throw AIConfigurationError.missingCredential
+        }
+        let draftBase = normalizedBaseURL(
+            draft.provider.managesEndpoint ? draft.provider.defaultBaseURL : draft.baseURL
+        )
+        let existingBase = normalizedBaseURL(
+            existing.provider.managesEndpoint ? existing.provider.defaultBaseURL : existing.baseURL
+        )
+        let changedCredentialScope = existing.provider != draft.provider ||
+            (!draft.provider.managesEndpoint && existingBase != draftBase)
+        guard !changedCredentialScope else { throw AIConfigurationError.credentialScopeChanged }
+        return try credential(for: draft.id)
     }
 
     @discardableResult
