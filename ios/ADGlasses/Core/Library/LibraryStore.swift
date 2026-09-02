@@ -1,6 +1,11 @@
+import CoreSpotlight
 import Foundation
+import UniformTypeIdentifiers
 
 actor LibraryStore {
+    private static let spotlightDomain = "com.achyutdalai.ADGlasses.library"
+    private static let spotlightPrefix = "ad-library:"
+
     private let fileManager: FileManager
     private let rootURL: URL
     private nonisolated let filesURL: URL
@@ -22,7 +27,10 @@ actor LibraryStore {
 
     func load() throws -> [LibraryItem] {
         try ensureDirectories()
-        guard fileManager.fileExists(atPath: indexURL.path) else { return [] }
+        guard fileManager.fileExists(atPath: indexURL.path) else {
+            reindexSpotlight([])
+            return []
+        }
         let data = try Data(contentsOf: indexURL)
         let decoded: [LibraryItem]
         do {
@@ -32,10 +40,12 @@ actor LibraryStore {
             // while writing the exact Foundation Date representation going forward.
             decoded = try Self.legacyDecoder.decode([LibraryItem].self, from: data)
         }
-        return decoded
+        let items = decoded
             .filter { safeRelativeName($0.relativeFileName) != nil }
             .filter { fileManager.fileExists(atPath: fileURL(for: $0).path) }
             .sorted { $0.createdAt > $1.createdAt }
+        reindexSpotlight(items)
+        return items
     }
 
     func saveTranscript(title: String, text: String) throws -> LibraryItem {
@@ -178,11 +188,95 @@ actor LibraryStore {
 
     private func saveIndex(_ items: [LibraryItem]) throws {
         try ensureDirectories()
-        let data = try Self.encoder.encode(items.sorted { $0.createdAt > $1.createdAt })
+        let sorted = items.sorted { $0.createdAt > $1.createdAt }
+        let data = try Self.encoder.encode(sorted)
         try data.write(
             to: indexURL,
             options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
         )
+        reindexSpotlight(sorted)
+    }
+
+    /// Keeps the system's semantic/lexical index aligned with the protected local Library. This is
+    /// best-effort metadata indexing: a Spotlight failure never makes a local save or delete fail.
+    private func reindexSpotlight(_ items: [LibraryItem]) {
+        let searchableItems = items.map(makeSearchableItem)
+        let index = CSSearchableIndex.default()
+        index.deleteSearchableItems(withDomainIdentifiers: [Self.spotlightDomain]) { _ in
+            guard !searchableItems.isEmpty else { return }
+            index.indexSearchableItems(searchableItems) { _ in }
+        }
+    }
+
+    private func makeSearchableItem(_ item: LibraryItem) -> CSSearchableItem {
+        let contentType: UTType
+        switch item.kind {
+        case .photo:
+            contentType = .image
+        case .video:
+            contentType = .movie
+        case .audio:
+            contentType = .audio
+        case .transcript:
+            contentType = .plainText
+        }
+
+        let attributes = CSSearchableItemAttributeSet(contentType: contentType)
+        attributes.title = item.title
+        attributes.displayName = item.title
+        attributes.contentURL = fileURL(for: item)
+        attributes.creationDate = item.createdAt
+        attributes.metadataModificationDate = item.createdAt
+        attributes.containerTitle = "AD Glasses Library"
+        attributes.containerDisplayName = "AD Glasses Library"
+        attributes.keywords = spotlightKeywords(for: item)
+        attributes.rankingHint = NSNumber(value: item.isFavorite ? 1.0 : 0.35)
+        attributes.contentDescription = spotlightDescription(for: item)
+
+        if item.kind == .transcript,
+           let text = try? String(contentsOf: fileURL(for: item), encoding: .utf8) {
+            let searchableText = String(text.prefix(20_000))
+            attributes.textContent = searchableText
+            attributes.transcribedTextContent = searchableText
+        }
+
+        let searchable = CSSearchableItem(
+            uniqueIdentifier: Self.spotlightPrefix + item.id.uuidString,
+            domainIdentifier: Self.spotlightDomain,
+            attributeSet: attributes
+        )
+        searchable.expirationDate = .distantFuture
+        return searchable
+    }
+
+    private func spotlightKeywords(for item: LibraryItem) -> [String] {
+        var values = ["AD Glasses", "Library", item.kind.rawValue]
+        if item.isFavorite { values.append("favorite") }
+        if item.sourceProviderID != nil { values.append("glasses") }
+        switch item.kind {
+        case .photo:
+            values.append(contentsOf: ["photo", "picture", "capture"])
+        case .video:
+            values.append(contentsOf: ["video", "recording", "capture"])
+        case .audio:
+            values.append(contentsOf: ["audio", "recording", "soundbite"])
+        case .transcript:
+            values.append(contentsOf: ["transcript", "note", "soundbite", "text"])
+        }
+        return values
+    }
+
+    private func spotlightDescription(for item: LibraryItem) -> String {
+        switch item.kind {
+        case .photo:
+            return "Photo saved in AD Glasses Library"
+        case .video:
+            return "Video saved in AD Glasses Library"
+        case .audio:
+            return "Audio recording saved in AD Glasses Library"
+        case .transcript:
+            return "Transcript or note saved in AD Glasses Library"
+        }
     }
 
     private func safeRelativeName(_ value: String) -> String? {
