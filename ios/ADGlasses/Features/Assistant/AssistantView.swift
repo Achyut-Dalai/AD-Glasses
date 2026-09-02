@@ -448,7 +448,18 @@ private struct AssistantComposer: View {
                 }
             }
 
-            if app.isManualTranscription {
+            if app.isPreparingTranscription {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Preparing Apple speech model…")
+                        .font(.caption.weight(.semibold))
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Preparing Apple speech model")
+            } else if app.isManualTranscription {
                 HStack(spacing: 8) {
                     if app.isStoppingTranscription {
                         ProgressView()
@@ -499,15 +510,29 @@ private struct AssistantComposer: View {
                     .lineLimit(1...5)
                     .submitLabel(.send)
                     .onSubmit { app.sendChatMessage() }
+                    .onChange(of: app.chatDraft) { _, value in
+                        if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           !app.isPreparingTranscription,
+                           !app.isTranscribing,
+                           !app.isStoppingTranscription {
+                            // A failed voice attempt should not leave an en-US model warning pinned
+                            // above an unrelated typed conversation.
+                            app.speechError = nil
+                        }
+                    }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
                     .background(
                         Color(uiColor: .tertiarySystemFill),
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
-                    .disabled(app.isTranscribing || app.isStoppingTranscription)
+                    .disabled(
+                        app.isPreparingTranscription ||
+                            app.isTranscribing ||
+                            app.isStoppingTranscription
+                    )
 
-                if app.isGenerating {
+                if app.isGenerating || app.speechOutput.isSpeaking {
                     Button(action: app.cancelResponse) {
                         Image(systemName: "stop.fill")
                             .font(.body.weight(.semibold))
@@ -515,6 +540,11 @@ private struct AssistantComposer: View {
                             .foregroundStyle(.red)
                     }
                     .accessibilityLabel("Stop response")
+                } else if app.isPreparingTranscription {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 38, height: 38)
+                        .accessibilityLabel("Preparing voice input")
                 } else if app.isManualTranscription {
                     Button {
                         Task { await app.cancelVoiceQuestion() }
