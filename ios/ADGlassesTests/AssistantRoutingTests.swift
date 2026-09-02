@@ -97,8 +97,6 @@ final class GroundingPolicyTests: XCTestCase {
     func testGeneralWebRouterOnlyOwnsExplicitOrUnstructuredFreshness() {
         XCTAssertEqual(router.route("Search the web for the latest OpenAI update").intent, .search)
         XCTAssertEqual(router.route("Who is the current president of France?").intent, .search)
-        // Score and weather prompts are owned by StructuredGroundingService. Keeping them direct
-        // here prevents Tavily from becoming a hidden fallback for a deterministic capability.
         XCTAssertEqual(router.route("What's the NBA score?").intent, .direct)
         XCTAssertEqual(router.route("What's the weather today?").intent, .direct)
     }
@@ -330,7 +328,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
 
     func testTranscriptStabilityFinalizesGlassesTurnWithoutHardwareEndEvent() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "click")
+        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "")
         let provider = FakeAssistantAudioProvider()
         let manager = GlassesManager(providers: [provider])
         let app = AppModel(
@@ -361,6 +359,43 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(provider.photoRequestCount, 1)
         XCTAssertFalse(app.isGlassesAssistantAudioActive)
         XCTAssertTrue(app.conversation.isEmpty)
+        XCTAssertNil(app.speechError)
+    }
+
+    func testNoSpeechAbandonsGlassesTurnAfterThreeSecondsWithoutError() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "")
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: transcriber,
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.attach(to: manager)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
+
+        provider.emit(.started(format: format))
+        for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
+            await Task.yield()
+        }
+        XCTAssertTrue(app.isGlassesAssistantAudioActive)
+
+        try await Task.sleep(for: .milliseconds(3_150))
+        for _ in 0 ..< 200 where app.isGlassesAssistantAudioActive {
+            await Task.yield()
+        }
+
+        XCTAssertFalse(app.isGlassesAssistantAudioActive)
+        XCTAssertEqual(transcriber.externalFinishCount, 1)
+        XCTAssertTrue(app.conversation.isEmpty)
+        XCTAssertNil(app.speechError)
+        XCTAssertEqual(provider.photoRequestCount, 0)
     }
 
     func testDuplicateHardwareEndEventsFinalizeOneGlassesTurnOnly() async throws {
