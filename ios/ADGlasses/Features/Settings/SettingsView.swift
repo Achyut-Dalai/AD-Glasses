@@ -36,12 +36,9 @@ struct SettingsView: View {
                     }
 
                     NavigationLink {
-                        AssistantCapabilitiesSettingsView(
-                            grounding: grounding,
-                            transport: TransportGroundingSettingsStore.shared
-                        )
+                        AssistantCapabilitiesSettingsView(grounding: grounding)
                     } label: {
-                        LabeledContent("Capabilities", value: "Knowledge · live · maps · travel")
+                        LabeledContent("Capabilities", value: "Knowledge · live · maps")
                     }
 
                     NavigationLink {
@@ -176,7 +173,6 @@ struct SettingsView: View {
 @MainActor
 private struct AssistantCapabilitiesSettingsView: View {
     @ObservedObject var grounding: GroundingSettingsStore
-    @ObservedObject var transport: TransportGroundingSettingsStore
 
     var body: some View {
         List {
@@ -196,24 +192,15 @@ private struct AssistantCapabilitiesSettingsView: View {
                 } label: {
                     LabeledContent("Web & Maps", value: webStatus)
                 }
-
-                NavigationLink {
-                    TransportGroundingSettingsView(store: transport)
-                } label: {
-                    LabeledContent("Travel & Realtime", value: "Rail · flights · transit")
-                }
             } header: {
                 Text("Services")
             } footer: {
-                Text("General web retrieval is optional. Rail and flight status use their configured live-data providers; GTFS-Realtime uses agency feeds and may or may not require feed-specific authentication.")
+                Text("General web retrieval is optional. Maps and routes use the configured OpenStreetMap services; structured knowledge and live-information tools remain separate from general web search.")
             }
         }
         .navigationTitle("Capabilities")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            grounding.reload()
-            transport.reload()
-        }
+        .task { grounding.reload() }
     }
 
     private var webStatus: String {
@@ -427,7 +414,7 @@ private struct AIProfileEditorView: View {
                 }
 
                 TextField("Model ID", text: $profile.model)
-                    .textInputAutocapitalization(.never)
+                    .textInputAutapitalization(.never)
                     .autocorrectionDisabled()
 
                 Button {
@@ -646,7 +633,7 @@ private struct SearchAndMapsSettingsView: View {
             } header: {
                 Text("General web")
             } footer: {
-                Text("Tavily is optional retrieval-only evidence for requests that genuinely need the open web. It is not used as a fallback when a structured capability such as weather, sports, currency, rail, or flight status fails. Your selected Cloud AI model remains the only model that writes AD's answer.")
+                Text("Tavily is optional retrieval-only evidence for requests that genuinely need the open web. It is not used as a fallback when a structured capability such as weather, sports, or currency fails. Your selected Cloud AI model remains the only model that writes AD's answer.")
             }
 
             Section {
@@ -761,249 +748,6 @@ private struct SearchAndMapsSettingsView: View {
                 : "Tavily responded, but no usable result was returned."
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-}
-
-@MainActor
-private struct TransportGroundingSettingsView: View {
-    @ObservedObject var store: TransportGroundingSettingsStore
-    @State private var railKey = ""
-    @State private var aviationKey = ""
-    @State private var railHost = ""
-    @State private var aviationBaseURL = ""
-    @State private var statusMessage: String?
-    @State private var errorMessage: String?
-
-    var body: some View {
-        List {
-            Section {
-                LabeledContent("RapidAPI key", value: store.hasRailKey ? "Stored" : "Not configured")
-                SecureField(store.hasRailKey ? "Replacement key (optional)" : "RapidAPI key", text: $railKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("RapidAPI host", text: $railHost)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                Button("Save Rail settings") { saveRail() }
-                if store.hasRailKey {
-                    Button("Remove Rail key", role: .destructive) {
-                        do {
-                            try store.clearRailKey()
-                            statusMessage = "Rail key removed."
-                        } catch {
-                            errorMessage = error.localizedDescription
-                        }
-                    }
-                }
-            } header: {
-                Text("Indian Railways")
-            } footer: {
-                Text("Used only for an explicit train-number or 10-digit PNR request. The key is stored in Keychain and is never displayed after saving.")
-            }
-
-            Section {
-                LabeledContent("AviationStack key", value: store.hasAviationKey ? "Stored" : "Not configured")
-                SecureField(store.hasAviationKey ? "Replacement key (optional)" : "AviationStack access key", text: $aviationKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("AviationStack base URL", text: $aviationBaseURL)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                Button("Save Flight settings") { saveAviation() }
-                if store.hasAviationKey {
-                    Button("Remove AviationStack key", role: .destructive) {
-                        do {
-                            try store.clearAviationKey()
-                            statusMessage = "AviationStack key removed."
-                        } catch {
-                            errorMessage = error.localizedDescription
-                        }
-                    }
-                }
-            } header: {
-                Text("Flights")
-            } footer: {
-                Text("Used only when AD recognizes an explicit flight-status request. The selected Cloud AI model summarizes the structured provider record; it does not invent live flight data.")
-            }
-
-            Section {
-                if store.gtfsFeeds.isEmpty {
-                    Text("No realtime transit feeds configured.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(store.gtfsFeeds) { feed in
-                        NavigationLink {
-                            GTFSFeedEditorView(store: store, feed: feed)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(feed.label)
-                                Text(publicFeedURL(feed.url))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-                        .swipeActions {
-                            Button("Delete", role: .destructive) {
-                                do { try store.deleteGTFSFeed(id: feed.id) }
-                                catch { errorMessage = error.localizedDescription }
-                            }
-                        }
-                    }
-                }
-
-                NavigationLink {
-                    GTFSFeedEditorView(store: store, feed: nil)
-                } label: {
-                    Label("Add GTFS-Realtime feed", systemImage: "plus")
-                }
-            } header: {
-                Text("GTFS-Realtime feeds")
-            } footer: {
-                Text("Add agency-provided GTFS-Realtime protobuf feeds for trip updates, service alerts, and nearby vehicle positions. Optional authentication headers are stored in Keychain. Feed URLs may contain query tokens; AD strips query strings from source attribution.")
-            }
-
-            Section {
-                Button("Restore service defaults") {
-                    railHost = TransportGroundingSettingsStore.defaultRailHost
-                    aviationBaseURL = TransportGroundingSettingsStore.defaultAviationBaseURL
-                    do {
-                        try store.saveRailHost(railHost)
-                        try store.saveAviationBaseURL(aviationBaseURL)
-                        statusMessage = "Service defaults restored."
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                }
-
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .navigationTitle("Travel & Realtime")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            store.reload()
-            railHost = store.railHost
-            aviationBaseURL = store.aviationBaseURL
-        }
-        .alert("Travel & Realtime", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMessage ?? "")
-        }
-    }
-
-    private func saveRail() {
-        do {
-            try store.saveRailHost(railHost)
-            if !railKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                try store.replaceRailKey(railKey)
-                railKey = ""
-            }
-            railHost = store.railHost
-            statusMessage = "Rail settings saved."
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func saveAviation() {
-        do {
-            try store.saveAviationBaseURL(aviationBaseURL)
-            if !aviationKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                try store.replaceAviationKey(aviationKey)
-                aviationKey = ""
-            }
-            aviationBaseURL = store.aviationBaseURL
-            statusMessage = "Flight settings saved."
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func publicFeedURL(_ raw: String) -> String {
-        guard var components = URLComponents(string: raw) else { return raw }
-        components.query = nil
-        components.user = nil
-        components.password = nil
-        return components.url?.absoluteString ?? raw
-    }
-}
-
-@MainActor
-private struct GTFSFeedEditorView: View {
-    @ObservedObject var store: TransportGroundingSettingsStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var draft: GTFSRealtimeFeedConfig
-    @State private var headerValue = ""
-    @State private var errorMessage: String?
-
-    init(store: TransportGroundingSettingsStore, feed: GTFSRealtimeFeedConfig?) {
-        self.store = store
-        var value = feed ?? .new()
-        value.headerValue = nil
-        _draft = State(initialValue: value)
-    }
-
-    var body: some View {
-        Form {
-            Section("Feed") {
-                TextField("Label", text: $draft.label)
-                TextField("HTTPS feed URL", text: $draft.url)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-            }
-
-            Section("Optional authentication header") {
-                TextField("Header name, e.g. Authorization", text: Binding(
-                    get: { draft.headerName ?? "" },
-                    set: { draft.headerName = $0.isEmpty ? nil : $0 }
-                ))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-                SecureField("Header value", text: $headerValue)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
-                Text("Leave the value blank when editing to keep the existing encrypted value, provided the header name is unchanged.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .navigationTitle(draft.label.isEmpty ? "Add realtime feed" : "Edit realtime feed")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    do {
-                        try store.saveGTFSFeed(draft, headerValueReplacement: headerValue)
-                        dismiss()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                }
-                .fontWeight(.semibold)
-            }
-        }
-        .alert("GTFS-Realtime feed", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMessage ?? "")
         }
     }
 }
