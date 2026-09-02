@@ -1,5 +1,6 @@
 import AppIntents
 import BackgroundTasks
+import Combine
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -79,6 +80,9 @@ final class ADContinuedProcessingCoordinator {
             title: title,
             subtitle: subtitle
         )
+        // AD continued work is coupled to the foreground action that started it. Don't enqueue a
+        // hardware/media job to run later after the relevant glasses session has changed.
+        request.strategy = .fail
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
@@ -141,6 +145,7 @@ final class ADContinuedProcessingCoordinator {
     }
 }
 
+@MainActor
 final class ADGlassesAppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
@@ -188,7 +193,7 @@ private extension Notification.Name {
     static let adPendingSystemAction = Notification.Name("com.achyutdalai.ADGlasses.pending-system-action")
 }
 
-private struct ConnectADGlassesIntent: AppIntent {
+struct ConnectADGlassesIntent: AppIntent {
     static let title: LocalizedStringResource = "Connect AD Glasses"
     static let description = IntentDescription("Reconnects the most recently paired AD Glasses.")
     static var openAppWhenRun = true
@@ -199,7 +204,7 @@ private struct ConnectADGlassesIntent: AppIntent {
     }
 }
 
-private struct AskADGlassesIntent: AppIntent {
+struct AskADGlassesIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask AD Glasses"
     static let description = IntentDescription("Opens AD Glasses and starts a voice Ask turn.")
     static var openAppWhenRun = true
@@ -210,7 +215,7 @@ private struct AskADGlassesIntent: AppIntent {
     }
 }
 
-private struct TakeADGlassesPhotoIntent: AppIntent {
+struct TakeADGlassesPhotoIntent: AppIntent {
     static let title: LocalizedStringResource = "Take AD Glasses Photo"
     static let description = IntentDescription("Takes a photo using the connected AD Glasses.")
     static var openAppWhenRun = true
@@ -221,7 +226,7 @@ private struct TakeADGlassesPhotoIntent: AppIntent {
     }
 }
 
-private struct ToggleADGlassesVideoIntent: AppIntent {
+struct ToggleADGlassesVideoIntent: AppIntent {
     static let title: LocalizedStringResource = "Toggle AD Glasses Video"
     static let description = IntentDescription("Starts or stops video recording on AD Glasses.")
     static var openAppWhenRun = true
@@ -232,7 +237,7 @@ private struct ToggleADGlassesVideoIntent: AppIntent {
     }
 }
 
-private struct ToggleADGlassesAudioIntent: AppIntent {
+struct ToggleADGlassesAudioIntent: AppIntent {
     static let title: LocalizedStringResource = "Toggle AD Glasses Audio"
     static let description = IntentDescription("Starts or stops audio recording on AD Glasses.")
     static var openAppWhenRun = true
