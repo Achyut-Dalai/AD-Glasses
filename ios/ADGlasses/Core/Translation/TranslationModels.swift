@@ -30,7 +30,7 @@ enum TextTranslationError: LocalizedError, Sendable {
     }
 }
 
-/// App-wide bridge used by deterministic Jarvis shortcuts without making the iOS 17-compatible
+/// App-wide bridge used by deterministic AD shortcuts without making the iOS 17-compatible
 /// voice layer depend directly on the iOS 18 Translation framework types. NativeTranslationHost
 /// installs the closures while Apple's translationTask is alive.
 @MainActor

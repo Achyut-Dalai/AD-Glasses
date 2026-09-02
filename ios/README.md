@@ -28,13 +28,6 @@ The main voice action is placed with SwiftUI's safe-area layout so it stays abov
 
 Both implementations currently consume the iPhone microphone. A verified HeyCyan audio transport can later feed the same speech abstraction instead of creating a second transcription stack.
 
-## Phone wake word
-
-Phone voice activation uses the open-source `LiveKitWakeWord` Swift package. Wake-word inference is local: the package runs ONNX models with ONNX Runtime and uses the CoreML execution provider by default. AD Glasses does not require a wake-word API key or hosted wake-word account.
-
-The app stores one imported LiveKit/openWakeWord-compatible `.onnx` classifier in Application Support. Custom classifier training happens outside the iOS app with LiveKit's open-source training/export workflow; the exported classifier is then imported from Settings.
-
-AD Glasses owns microphone/session continuity around the detector so an already-running foreground wake-word session can hand off cleanly to Apple Speech when the phone is locked or the user has switched apps.
 
 ## Glasses architecture
 

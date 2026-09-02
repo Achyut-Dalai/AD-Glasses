@@ -46,7 +46,7 @@ final class LensImageProcessorTests: XCTestCase {
             model: "gpt-5"
         )
 
-        let answer = try await JarvisVisualAIClient(session: session).answer(
+        let answer = try await ADVisualAIClient(session: session).answer(
             question: "What am I looking at?",
             imageJPEGData: Data([0xFF, 0xD8, 0xFF, 0xD9]),
             profile: profile,
@@ -85,7 +85,7 @@ final class LensImageProcessorTests: XCTestCase {
             model: "models/gemini-3.7-flash:generateContent"
         )
 
-        let answer = try await JarvisVisualAIClient(session: session).answer(
+        let answer = try await ADVisualAIClient(session: session).answer(
             question: "Describe the scene",
             imageJPEGData: Data([0xFF, 0xD8, 0xFF, 0xD9]),
             profile: profile,

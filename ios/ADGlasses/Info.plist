@@ -32,7 +32,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>AD Glasses connects to the private Wi-Fi network created by your glasses to transfer your photos, videos, and recordings.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>AD Glasses uses your location only when you enable it for nearby places, current-location context, or directions requested from Jarvis.</string>
+	<string>AD Glasses uses your location only when you enable it for nearby places, current-location context, or directions you request in AD Glasses.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>AD Glasses uses the microphone for native speech transcription and glasses voice features.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

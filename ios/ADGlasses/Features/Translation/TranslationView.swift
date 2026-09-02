@@ -54,7 +54,6 @@ private struct TranslationLanguageOption: Identifiable, Hashable {
 private struct NativeTranslateExperience: View {
     @EnvironmentObject private var translation: NativeTranslationController
     @EnvironmentObject private var app: AppModel
-    @EnvironmentObject private var phoneVoiceActivation: PhoneVoiceActivationController
 
     @StateObject private var liveTranslation = LiveTranslationController()
 
@@ -589,7 +588,6 @@ private struct NativeTranslateExperience: View {
         app.cancelResponse()
         app.speechOutput.stop()
         await app.stopTranscription()
-        phoneVoiceActivation.setExternalAudioSuspended(true)
 
         let started = await liveTranslation.start(
             sourceLanguageCode: sourceLanguage,
@@ -598,7 +596,6 @@ private struct NativeTranslateExperience: View {
             speechOutput: app.speechOutput
         )
         if !started {
-            phoneVoiceActivation.setExternalAudioSuspended(false)
         }
     }
 
@@ -606,7 +603,6 @@ private struct NativeTranslateExperience: View {
         if liveTranslation.isRunning {
             await liveTranslation.stop()
         }
-        phoneVoiceActivation.setExternalAudioSuspended(false)
     }
 
     private func translatePhrase() async {

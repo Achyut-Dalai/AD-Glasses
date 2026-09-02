@@ -64,9 +64,9 @@ final class LensSessionController: ObservableObject {
     }
 }
 
-/// Provider-aware image understanding used by both Lens and wake-word visual questions.
+/// Provider-aware image understanding used by Lens visual questions.
 /// Images are sent only for an explicit Lens/visual request and are never persisted by this client.
-struct JarvisVisualAIClient: Sendable {
+struct ADVisualAIClient: Sendable {
     private let session: URLSession
     private static let maximumJPEGBytes = 8 * 1_024 * 1_024
     private static let outputTokenLimit = 700
@@ -239,7 +239,7 @@ struct JarvisVisualAIClient: Sendable {
     }
 
     private static var visualInstruction: String {
-        "You are Jarvis, the visual companion for AD Glasses. Answer only from the supplied image and the user's question. Be concise and practical. If something is uncertain, say so. Never claim to recognize a person's identity from appearance alone. Do not invent text, objects, hazards, locations, or events that are not visible in the image."
+        "You are AD, the visual companion for AD Glasses. Answer only from the supplied image and the user's question. Be concise and practical. If something is uncertain, say so. Never claim to recognize a person's identity from appearance alone. Do not invent text, objects, hazards, locations, or events that are not visible in the image."
     }
 
     private static func looksLikeUnsupportedImageError(_ message: String) -> Bool {
@@ -263,10 +263,10 @@ struct LensView: View {
     @State private var isCapturingFromGlasses = false
     @State private var isAskingVisualAI = false
     @State private var lastLoadedVisualCaptureID: UUID?
-    @State private var preservedJarvisDraftForVoiceQuestion: String?
+    @State private var preservedAssistantDraftForVoiceQuestion: String?
 
     private var ownsLensVoiceQuestion: Bool {
-        preservedJarvisDraftForVoiceQuestion != nil
+        preservedAssistantDraftForVoiceQuestion != nil
     }
 
     private var isRecordingLensVoiceQuestion: Bool {
@@ -328,9 +328,9 @@ struct LensView: View {
 
                         Button { Task { await performQuestion() } } label: {
                             if isAskingVisualAI {
-                                HStack(spacing: 10) { ProgressView(); Text("Asking Jarvis…") }
+                                HStack(spacing: 10) { ProgressView(); Text("Asking AD…") }
                             } else {
-                                Label("Ask Jarvis", systemImage: "sparkles")
+                                Label("Ask AD", systemImage: "sparkles")
                             }
                         }
                         .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isAskingVisualAI)
@@ -342,7 +342,7 @@ struct LensView: View {
                 }
 
                 if !visualAnswer.isEmpty {
-                    Section("Jarvis") {
+                    Section("AD") {
                         Text(visualAnswer).textSelection(.enabled)
                         Button("Read answer aloud", systemImage: "speaker.wave.2") {
                             do { try app.speechOutput.speak(visualAnswer) }
@@ -417,7 +417,7 @@ struct LensView: View {
             if let image = lens.image, let uiImage = UIImage(data: image.jpegData) {
                 Image(uiImage: uiImage).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 24)).accessibilityLabel("Selected Lens image")
             } else {
-                ContentUnavailableView("Choose what Lens should see", systemImage: "viewfinder", description: Text("Read text locally or ask Jarvis a visual question."))
+                ContentUnavailableView("Choose what Lens should see", systemImage: "viewfinder", description: Text("Read text locally or ask AD a visual question."))
             }
             if lens.state == .preparing || lens.state == .recognizingText {
                 ProgressView(lens.state == .preparing ? "Preparing image" : "Reading text")
@@ -436,7 +436,7 @@ struct LensView: View {
     }
 
     private func toggleLensVoiceQuestion() async {
-        if let preserved = preservedJarvisDraftForVoiceQuestion {
+        if let preserved = preservedAssistantDraftForVoiceQuestion {
             if app.isManualTranscription {
                 await app.stopTranscription()
                 let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -446,27 +446,27 @@ struct LensView: View {
                 if !value.isEmpty { question = value }
             }
             app.chatDraft = preserved
-            preservedJarvisDraftForVoiceQuestion = nil
+            preservedAssistantDraftForVoiceQuestion = nil
             return
         }
 
         guard !app.isTranscribing else { return }
-        preservedJarvisDraftForVoiceQuestion = app.chatDraft
+        preservedAssistantDraftForVoiceQuestion = app.chatDraft
         await app.startTranscription()
         if !app.isManualTranscription {
-            preservedJarvisDraftForVoiceQuestion = nil
+            preservedAssistantDraftForVoiceQuestion = nil
         }
     }
 
     private func finishLensVoiceQuestionIfNeeded() async {
-        guard let preserved = preservedJarvisDraftForVoiceQuestion else { return }
+        guard let preserved = preservedAssistantDraftForVoiceQuestion else { return }
         if app.isManualTranscription {
             await app.stopTranscription()
             let value = app.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             if !value.isEmpty { question = value }
         }
         app.chatDraft = preserved
-        preservedJarvisDraftForVoiceQuestion = nil
+        preservedAssistantDraftForVoiceQuestion = nil
     }
 
     private func performQuestion() async {
@@ -491,7 +491,7 @@ struct LensView: View {
         visualAnswer = ""
         defer { isAskingVisualAI = false }
         do {
-            visualAnswer = try await JarvisVisualAIClient().answer(question: value, imageJPEGData: image.jpegData, profile: profile, credential: credential)
+            visualAnswer = try await ADVisualAIClient().answer(question: value, imageJPEGData: image.jpegData, profile: profile, credential: credential)
         } catch is CancellationError {
             return
         } catch {

@@ -236,7 +236,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let transcriber = FakeExternalAudioTranscriber(
             finalTranscript: "Question from glasses",
-            phoneFinalTranscript: "Manual Jarvis draft"
+            phoneFinalTranscript: "Manual AD draft"
         )
         let provider = FakeAssistantAudioProvider()
         let manager = GlassesManager(providers: [provider])
@@ -271,7 +271,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         }
 
         XCTAssertEqual(transcriber.phoneStopCount, 1)
-        XCTAssertEqual(app.chatDraft, "Manual Jarvis draft")
+        XCTAssertEqual(app.chatDraft, "Manual AD draft")
         XCTAssertEqual(app.conversation.last?.text, "Question from glasses")
     }
 
@@ -310,123 +310,6 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertTrue(app.conversation.isEmpty)
     }
 
-    func testManualJarvisDictationSuspendsPhoneWakeListeningBeforeOpeningMicrophone() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        defaults.set(true, forKey: "phoneVoiceActivation.enabled.v1")
-        let service = FakePhoneWakeWordService()
-        let provider = FakeAssistantAudioProvider()
-        let manager = GlassesManager(providers: [provider])
-        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "")
-        let app = AppModel(
-            transcriber: transcriber,
-            aiProfiles: AIProfileStore(defaults: defaults),
-            speechOutput: SpeechOutputController(defaults: defaults)
-        )
-        let controller = PhoneVoiceActivationController(
-            service: service,
-            glasses: manager,
-            app: app,
-            defaults: defaults
-        )
-
-        controller.setApplicationActive(true)
-        for _ in 0 ..< 100 where !controller.isListening {
-            await Task.yield()
-        }
-        XCTAssertTrue(controller.isListening)
-        let stopCountBeforeDictation = service.stopCount
-
-        await app.startTranscription()
-
-        XCTAssertTrue(app.isManualTranscription)
-        XCTAssertTrue(app.isTranscribing)
-        XCTAssertFalse(controller.isListening)
-        XCTAssertGreaterThan(service.stopCount, stopCountBeforeDictation)
-        XCTAssertEqual(transcriber.phoneStartCount, 1)
-
-        await app.finishManualTranscriptionAsDraft()
-    }
-
-    func testPhoneWakeTurnPreservesExistingTypedDraft() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        let transcriber = FakeExternalAudioTranscriber(
-            finalTranscript: "",
-            phoneFinalTranscript: "Wake word question"
-        )
-        let storeURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            .appendingPathComponent("conversations.json")
-        let app = AppModel(
-            transcriber: transcriber,
-            aiProfiles: AIProfileStore(defaults: defaults),
-            speechOutput: SpeechOutputController(defaults: defaults),
-            conversationStore: ConversationStore(fileURL: storeURL)
-        )
-        app.chatDraft = "Unsent typed message"
-
-        let didStart = await app.startPhoneVoiceTranscriptionFromWakeWord()
-        XCTAssertTrue(didStart)
-        await app.finishPhoneVoiceTranscriptionFromWakeWord()
-        for _ in 0 ..< 200 where app.conversation.isEmpty || app.isGenerating {
-            await Task.yield()
-        }
-
-        XCTAssertEqual(app.conversation.last?.text, "Wake word question")
-        XCTAssertEqual(app.chatDraft, "Unsent typed message")
-    }
-
-    func testPhoneWakeListeningContinuesWhenAppMovesToBackground() async throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        defaults.set(true, forKey: "phoneVoiceActivation.enabled.v1")
-        let service = FakePhoneWakeWordService()
-        let provider = FakeAssistantAudioProvider()
-        let manager = GlassesManager(providers: [provider])
-        let app = AppModel(
-            transcriber: FakeExternalAudioTranscriber(finalTranscript: ""),
-            aiProfiles: AIProfileStore(defaults: defaults),
-            speechOutput: SpeechOutputController(defaults: defaults)
-        )
-        let controller = PhoneVoiceActivationController(
-            service: service,
-            glasses: manager,
-            app: app,
-            defaults: defaults
-        )
-
-        controller.setApplicationActive(true)
-        await Task.yield()
-        XCTAssertTrue(controller.isListening)
-        XCTAssertEqual(service.startCount, 1)
-
-        let stopCountBeforeBackgrounding = service.stopCount
-        controller.setApplicationActive(false)
-        XCTAssertTrue(controller.isListening)
-        XCTAssertEqual(service.stopCount, stopCountBeforeBackgrounding)
-
-        controller.isEnabled = false
-        XCTAssertFalse(controller.isListening)
-        XCTAssertEqual(service.stopCount, stopCountBeforeBackgrounding + 1)
-    }
-}
-
-@MainActor
-private final class FakePhoneWakeWordService: PhoneWakeWordDetecting {
-    let phrase = "Jarvis"
-    let configurationState = PhoneWakeWordConfigurationState.ready
-    private(set) var startCount = 0
-    private(set) var stopCount = 0
-
-    func start(onDetection: @escaping @MainActor () -> Void) async throws {
-        startCount += 1
-    }
-
-    func stop() {
-        stopCount += 1
-    }
-
-    #if DEBUG
-    func importModel(from sourceURL: URL, phrase: String) throws {}
-    #endif
 }
 
 @MainActor

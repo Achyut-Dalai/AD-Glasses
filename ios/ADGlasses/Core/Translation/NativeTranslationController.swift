@@ -494,8 +494,8 @@ final class LiveTranslationController: ObservableObject {
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
             .trimmingCharacters(in: CharacterSet(charactersIn: " .,!?:;\""))
-        if normalized.hasPrefix("jarvis ") {
-            normalized = String(normalized.dropFirst("jarvis ".count))
+        if normalized.hasPrefix("ad ") {
+            normalized = String(normalized.dropFirst("ad ".count))
         }
         return [
             "stop translation",
