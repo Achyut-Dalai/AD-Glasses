@@ -312,8 +312,14 @@ final class GlassesManager: ObservableObject {
             if provider.isVideoRecording {
                 try await provider.stopVideoRecording()
             } else {
+                if let audioProvider = providerInstances[activeProviderID] as? any GlassesAudioRecording,
+                   audioProvider.isAudioRecording {
+                    try await audioProvider.stopAudioRecording()
+                    isAudioRecording = audioProvider.isAudioRecording
+                }
                 try await provider.startVideoRecording()
             }
+            isVideoRecording = provider.isVideoRecording
             return true
         } catch is CancellationError {
             return false
@@ -334,8 +340,14 @@ final class GlassesManager: ObservableObject {
             if provider.isAudioRecording {
                 try await provider.stopAudioRecording()
             } else {
+                if let videoProvider = providerInstances[activeProviderID] as? any GlassesVideoRecording,
+                   videoProvider.isVideoRecording {
+                    try await videoProvider.stopVideoRecording()
+                    isVideoRecording = videoProvider.isVideoRecording
+                }
                 try await provider.startAudioRecording()
             }
+            isAudioRecording = provider.isAudioRecording
             return true
         } catch is CancellationError {
             return false
@@ -352,14 +364,25 @@ final class GlassesManager: ObservableObject {
             errorMessage = "Connect glasses with visual capture support first."
             return nil
         }
-        do {
-            return try await provider.requestVisualCapture()
-        } catch is CancellationError {
-            return nil
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
+
+        var lastError: Error?
+        for attempt in 0 ..< 2 {
+            do {
+                let capture = try await provider.requestVisualCapture()
+                latestVisualCapture = capture
+                return capture
+            } catch is CancellationError {
+                return nil
+            } catch {
+                lastError = error
+                if attempt == 0 {
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
         }
+
+        errorMessage = lastError?.localizedDescription ?? "Visual capture failed."
+        return nil
     }
 
     var supportsMediaTransfer: Bool {
@@ -541,6 +564,8 @@ final class GlassesManager: ObservableObject {
         if connectionState.isConnected {
             activeProviderID = providerID
             selectedProviderID = providerID
+            isVideoRecording = (providerInstances[providerID] as? any GlassesVideoRecording)?.isVideoRecording ?? false
+            isAudioRecording = (providerInstances[providerID] as? any GlassesAudioRecording)?.isAudioRecording ?? false
         } else if activeProviderID == providerID,
                   case .disconnected = connectionState {
             activeProviderID = nil
@@ -556,6 +581,9 @@ final class GlassesManager: ObservableObject {
             mediaTransferState = .idle
             if activeProviderID == nil || activeProviderID == providerID {
                 assistantInputState = .idle
+                latestVisualCapture = nil
+                isVideoRecording = false
+                isAudioRecording = false
             }
         }
 
