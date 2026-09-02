@@ -48,10 +48,6 @@
 		B00000000000000000000027 /* HeyCyanResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* HeyCyanResponses.swift */; };
 		B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */; };
 		B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* HeyCyanOpusDecoder.swift */; };
-		B0000000000000000000002A /* PhoneVoiceActivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002D /* PhoneVoiceActivation.swift */; };
-		B0000000000000000000002B /* LiveKitPhoneWakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002E /* LiveKitPhoneWakeWordService.swift */; };
-		B0000000000000000000002C /* LiveKitWakeWord in Frameworks */ = {isa = PBXBuildFile; productRef = D20000000000000000000002 /* LiveKitWakeWord */; };
-		B0000000000000000000002D /* WakeWords in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002F /* WakeWords */; };
 		B10000000000000000000001 /* HeyCyanProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* HeyCyanProtocolTests.swift */; };
 		B10000000000000000000002 /* GlassesManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* GlassesManagerTests.swift */; };
 		B10000000000000000000003 /* HeyCyanSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HeyCyanSessionTests.swift */; };
@@ -117,9 +113,6 @@
 		A0000000000000000000002A /* HeyCyanResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanResponses.swift; sourceTree = "<group>"; };
 		A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanThumbnailTransfer.swift; sourceTree = "<group>"; };
 		A0000000000000000000002C /* HeyCyanOpusDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanOpusDecoder.swift; sourceTree = "<group>"; };
-		A0000000000000000000002D /* PhoneVoiceActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneVoiceActivation.swift; sourceTree = "<group>"; };
-		A0000000000000000000002E /* LiveKitPhoneWakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveKitPhoneWakeWordService.swift; sourceTree = "<group>"; };
-		A0000000000000000000002F /* WakeWords */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WakeWords; sourceTree = "<group>"; };
 		A10000000000000000000001 /* HeyCyanProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanProtocolTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* GlassesManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesManagerTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* ADGlassesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADGlassesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -136,7 +129,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B0000000000000000000002C /* LiveKitWakeWord in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,7 +193,6 @@
 				C00000000000000000000013 /* Translation */,
 				C00000000000000000000014 /* Lens */,
 				C00000000000000000000017 /* Library */,
-				C00000000000000000000019 /* VoiceActivation */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -233,7 +224,6 @@
 			children = (
 				C00000000000000000000009 /* HeyCyan */,
 				C0000000000000000000000A /* Meta */,
-				C0000000000000000000001A /* LiveKitWakeWord */,
 			);
 			path = Integrations;
 			sourceTree = "<group>";
@@ -290,7 +280,6 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000D /* Assets.xcassets */,
-				A0000000000000000000002F /* WakeWords */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -389,22 +378,6 @@
 			path = Soundbites;
 			sourceTree = "<group>";
 		};
-		C00000000000000000000019 /* VoiceActivation */ = {
-			isa = PBXGroup;
-			children = (
-				A0000000000000000000002D /* PhoneVoiceActivation.swift */,
-			);
-			path = VoiceActivation;
-			sourceTree = "<group>";
-		};
-		C0000000000000000000001A /* LiveKitWakeWord */ = {
-			isa = PBXGroup;
-			children = (
-				A0000000000000000000002E /* LiveKitPhoneWakeWordService.swift */,
-			);
-			path = LiveKitWakeWord;
-			sourceTree = "<group>";
-		};
 		C10000000000000000000001 /* ADGlassesTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -437,7 +410,6 @@
 			);
 			name = ADGlasses;
 			packageProductDependencies = (
-				D20000000000000000000002 /* LiveKitWakeWord */,
 			);
 			productName = ADGlasses;
 			productReference = A0000000000000000000000E /* ADGlasses.app */;
@@ -489,9 +461,6 @@
 				Base,
 			);
 			mainGroup = C00000000000000000000001;
-			packageReferences = (
-				D20000000000000000000001 /* XCRemoteSwiftPackageReference "livekit-wakeword" */,
-			);
 			productRefGroup = C00000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -508,7 +477,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				B0000000000000000000000D /* Assets.xcassets in Resources */,
-				B0000000000000000000002D /* WakeWords in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -566,8 +534,6 @@
 				B00000000000000000000027 /* HeyCyanResponses.swift in Sources */,
 				B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */,
 				B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */,
-				B0000000000000000000002A /* PhoneVoiceActivation.swift in Sources */,
-				B0000000000000000000002B /* LiveKitPhoneWakeWordService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -822,25 +788,6 @@
 			defaultConfigurationName = "Release Personal";
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		D20000000000000000000001 /* XCRemoteSwiftPackageReference "livekit-wakeword" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/livekit/livekit-wakeword.git";
-			requirement = {
-				kind = revision;
-				revision = 95448a7559c453fcd87645bd67b247ffb45f85b0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		D20000000000000000000002 /* LiveKitWakeWord */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D20000000000000000000001 /* XCRemoteSwiftPackageReference "livekit-wakeword" */;
-			productName = LiveKitWakeWord;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D00000000000000000000002 /* Project object */;
 }
