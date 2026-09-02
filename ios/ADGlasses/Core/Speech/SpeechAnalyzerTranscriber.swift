@@ -55,81 +55,51 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         let languageName = languageDisplayName(locale)
-        var lastDownloadError: Error?
+        let status = await AssetInventory.status(forModules: [module])
 
-        for attempt in 0 ..< 3 {
-            try Task.checkCancellation()
-            var status = await AssetInventory.status(forModules: [module])
+        switch status {
+        case .installed:
+            statusUpdate?("\(languageName) speech model ready")
+            return locale
+        case .unsupported:
+            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
+        case .supported, .downloading:
+            statusUpdate?("Downloading \(languageName) speech model…")
+        @unknown default:
+            throw SpeechAnalyzerAssetError.installationFailed(
+                languageName,
+                "Apple Speech returned an unknown asset state."
+            )
+        }
 
-            switch status {
-            case .installed:
-                statusUpdate?("\(languageName) speech model ready")
-                return locale
-            case .unsupported:
-                throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
-            case .supported:
-                statusUpdate?(attempt == 0
-                    ? "Downloading \(languageName) speech model…"
-                    : "Retrying \(languageName) speech model download…")
-                do {
-                    if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
-                        try await request.downloadAndInstall()
-                    }
-                    lastDownloadError = nil
-                } catch is CancellationError {
-                    throw CancellationError()
-                } catch {
-                    lastDownloadError = error
-                }
-            case .downloading:
-                statusUpdate?("Downloading \(languageName) speech model…")
-            @unknown default:
-                throw SpeechAnalyzerAssetError.installationFailed(
-                    languageName,
-                    "Apple Speech returned an unknown asset state."
-                )
+        do {
+            if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+                try await request.downloadAndInstall()
             }
-
-            status = await AssetInventory.status(forModules: [module])
-            if status == .installed {
-                statusUpdate?("\(languageName) speech model ready")
-                return locale
-            }
-            if status == .unsupported {
-                throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
-            }
-
-            for _ in 0 ..< 45 {
-                try Task.checkCancellation()
-                try await Task.sleep(for: .seconds(1))
-                status = await AssetInventory.status(forModules: [module])
-                switch status {
-                case .installed:
-                    statusUpdate?("\(languageName) speech model ready")
-                    return locale
-                case .downloading:
-                    statusUpdate?("Downloading \(languageName) speech model…")
-                case .unsupported:
-                    throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
-                case .supported:
-                    break
-                @unknown default:
-                    break
-                }
-                if status == .supported { break }
-            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw SpeechAnalyzerAssetError.installationFailed(
+                languageName,
+                error.localizedDescription
+            )
         }
 
         let finalStatus = await AssetInventory.status(forModules: [module])
-        if finalStatus == .installed { return locale }
-
-        if let lastDownloadError {
+        switch finalStatus {
+        case .installed:
+            statusUpdate?("\(languageName) speech model ready")
+            return locale
+        case .unsupported:
+            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
+        case .supported, .downloading:
+            throw SpeechAnalyzerAssetError.installationIncomplete(languageName)
+        @unknown default:
             throw SpeechAnalyzerAssetError.installationFailed(
                 languageName,
-                lastDownloadError.localizedDescription
+                "Apple Speech returned an unknown asset state after installation."
             )
         }
-        throw SpeechAnalyzerAssetError.installationTimedOut(languageName)
     }
 
     func start() async throws {
@@ -324,7 +294,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let locale = try await prepareAssets()
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         guard await AssetInventory.status(forModules: [module]) == .installed else {
-            throw SpeechAnalyzerAssetError.installationTimedOut(languageDisplayName(locale))
+            throw SpeechAnalyzerAssetError.installationIncomplete(languageDisplayName(locale))
         }
         guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw SpeechTranscriptionError.failedToCreateAudioInput
@@ -388,7 +358,7 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
     case moduleUnavailable
     case unsupportedLanguage(String)
     case installationFailed(String, String)
-    case installationTimedOut(String)
+    case installationIncomplete(String)
 
     var errorDescription: String? {
         switch self {
@@ -397,9 +367,9 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
         case .unsupportedLanguage(let language):
             return "Apple SpeechAnalyzer does not support \(language) on this iPhone."
         case .installationFailed(let language, let reason):
-            return "The \(language) speech model could not finish installing. \(reason)"
-        case .installationTimedOut(let language):
-            return "The \(language) speech model is not installed yet. Keep this iPhone online and try again after the download finishes."
+            return "The \(language) speech model could not be installed. \(reason)"
+        case .installationIncomplete(let language):
+            return "The \(language) speech model is still not installed. Keep this iPhone online and try the download again."
         }
     }
 }
