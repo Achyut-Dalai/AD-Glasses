@@ -238,30 +238,32 @@ final class AssistantCompletionSanitizerTests: XCTestCase {
 
 @MainActor
 final class GlassesAssistantPipelineTests: XCTestCase {
-    func testSpokenPhotoCommandExecutesLocalGlassesActionWithoutCloudProfile() async throws {
+    func testSpokenPhotoCommandExecutesDirectGlassesActionWithoutConversationOrTTS() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let provider = FakeAssistantAudioProvider()
         let manager = GlassesManager(providers: [provider])
         let storeURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent("conversations.json")
+        let speechOutput = SpeechOutputController(defaults: defaults)
         let app = AppModel(
             transcriber: FakeExternalAudioTranscriber(finalTranscript: ""),
             aiProfiles: AIProfileStore(defaults: defaults),
-            speechOutput: SpeechOutputController(defaults: defaults),
+            speechOutput: speechOutput,
             conversationStore: ConversationStore(fileURL: storeURL)
         )
         app.attach(to: manager)
         app.chatDraft = "click"
 
-        app.sendChatMessage(source: .glassesVoice, speakResponse: false)
-        for _ in 0 ..< 200 where app.isGenerating {
+        app.sendChatMessage(source: .glassesVoice, speakResponse: true)
+        for _ in 0 ..< 200 where provider.photoRequestCount == 0 {
             await Task.yield()
         }
 
         XCTAssertEqual(provider.photoRequestCount, 1)
-        XCTAssertEqual(app.conversation.map(\.role), [.user, .assistant])
-        XCTAssertEqual(app.conversation.last?.text, "Photo taken. It is saved on AD Glasses and will appear after your next Library sync.")
+        XCTAssertFalse(app.isGenerating)
+        XCTAssertTrue(app.conversation.isEmpty)
+        XCTAssertFalse(speechOutput.isSpeaking)
     }
 
     func testDecodedProviderAudioBecomesOneGlassesVoiceConversationTurn() async throws {
@@ -451,7 +453,6 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(transcriber.externalFinishCount, 1)
         XCTAssertTrue(app.conversation.isEmpty)
     }
-
 }
 
 @MainActor
