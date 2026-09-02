@@ -1,11 +1,10 @@
 import AVFoundation
 import Foundation
-import Speech
 
 /// Audio-session policy for an intentional, finite speech turn.
 ///
 /// The always-on wake path is gone. Voice input now opens Bluetooth HFP only while the user is
-/// actively dictating or the assistant is handling a glasses-triggered turn, then releases it as
+/// actively dictating or the assistant is handling a phone-microphone turn, then releases it as
 /// soon as recognition finishes. Prefer the connected glasses/headset microphone when iOS exposes
 /// one, matching Android's communication-input policy without keeping that route alive all day.
 @MainActor
@@ -51,15 +50,17 @@ enum SpeechTranscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .microphonePermissionDenied:
-            return "Microphone permission is required for transcription."
+            return "Microphone permission is required for voice input."
         case .speechPermissionDenied:
-            return "Speech recognition permission is required for transcription."
+            // Retained for protocol/source compatibility. SpeechAnalyzer itself does not use the
+            // legacy SFSpeechRecognizer authorization path.
+            return "SpeechAnalyzer permission is unavailable."
         case .recognizerUnavailable:
-            return "Apple speech recognition is currently unavailable."
+            return "SpeechAnalyzer is unavailable. Voice input requires iOS 26 or later."
         case .localeUnsupported:
-            return "The current language is not supported by the selected Apple speech engine."
+            return "The current language is not supported by SpeechAnalyzer."
         case .failedToCreateAudioInput:
-            return "The microphone audio stream could not be created."
+            return "The voice audio stream could not be created."
         }
     }
 }
@@ -77,8 +78,8 @@ protocol SpeechTranscribing: AnyObject {
 }
 
 /// Optional input seam for providers that already deliver decoded PCM, such as HeyCyan's BLE
-/// Assistant stream. It keeps vendor packets out of Apple speech implementations and avoids
-/// opening the iPhone microphone for audio that is already arriving from the glasses.
+/// Assistant stream. It keeps vendor packets out of SpeechAnalyzer and avoids opening the iPhone
+/// microphone for audio that is already arriving from the glasses.
 @MainActor
 protocol ExternalAudioSpeechTranscribing: SpeechTranscribing {
     func startExternalAudio() async throws
@@ -87,14 +88,6 @@ protocol ExternalAudioSpeechTranscribing: SpeechTranscribing {
 }
 
 enum SpeechPermissions {
-    static func requestSpeechRecognition() async -> Bool {
-        await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status == .authorized)
-            }
-        }
-    }
-
     static func requestMicrophone() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { granted in
@@ -103,18 +96,16 @@ enum SpeechPermissions {
         }
     }
 
+    /// SpeechAnalyzer transcriber modules run on device and do not use the legacy
+    /// `SFSpeechRecognizer.requestAuthorization` service permission. Phone input only needs access
+    /// to the microphone. External glasses PCM needs no input-device permission at all.
     static func requestAll() async throws {
         guard await requestMicrophone() else {
             throw SpeechTranscriptionError.microphonePermissionDenied
         }
-        guard await requestSpeechRecognition() else {
-            throw SpeechTranscriptionError.speechPermissionDenied
-        }
     }
 
     static func requestRecognition() async throws {
-        guard await requestSpeechRecognition() else {
-            throw SpeechTranscriptionError.speechPermissionDenied
-        }
+        // Intentionally empty for SpeechAnalyzer external PCM.
     }
 }
