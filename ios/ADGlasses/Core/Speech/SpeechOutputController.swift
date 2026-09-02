@@ -112,30 +112,15 @@ final class SpeechOutputController: NSObject, ObservableObject {
             throw SpeechOutputError.noVoiceAvailable
         }
 
-        // Publish the competing-audio state before touching AVAudioSession. This gives the
-        // phone wake-word controller a chance to stop its audio engine while retaining the
-        // foreground-established background recording lease.
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
         isSpeaking = true
 
         do {
-            if VoiceAudioSessionContinuity.shared.keepsRecordingSessionActive {
-                try audioSession.setCategory(
-                    .playAndRecord,
-                    mode: .spokenAudio,
-                    options: [.allowBluetoothA2DP, .allowBluetoothHFP]
-                )
-            } else {
-                // Playback already routes to the selected Bluetooth output. Supplying
-                // `allowBluetoothA2DP` with the playback category is an invalid category-option
-                // combination on physical devices and caused voice previews to fail with -50.
-                try audioSession.setCategory(
-                    .playback,
-                    mode: .spokenAudio
-                )
-            }
+            // Voice input is now finite and releases HFP before inference/TTS. Playback can use the
+            // normal system-selected output route instead of preserving an old recording lease.
+            try audioSession.setCategory(.playback, mode: .spokenAudio)
             try audioSession.setActive(true)
         } catch {
             isSpeaking = false
@@ -151,7 +136,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
-        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
+        deactivateAudioSession()
     }
 
     func preferredVoice(languageCode: String?) -> SpeechVoiceOption? {
@@ -162,6 +147,10 @@ final class SpeechOutputController: NSObject, ObservableObject {
         return matching.max { lhs, rhs in
             Self.preferenceScore(lhs) < Self.preferenceScore(rhs)
         }
+    }
+
+    private func deactivateAudioSession() {
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
@@ -222,7 +211,7 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         didFinish utterance: AVSpeechUtterance
     ) {
         isSpeaking = false
-        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
+        deactivateAudioSession()
     }
 
     func speechSynthesizer(
@@ -230,6 +219,6 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         didCancel utterance: AVSpeechUtterance
     ) {
         isSpeaking = false
-        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
+        deactivateAudioSession()
     }
 }
