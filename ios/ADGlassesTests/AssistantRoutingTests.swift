@@ -99,7 +99,7 @@ final class GroundingPolicyTests: XCTestCase {
         XCTAssertEqual(router.route("Who is the current president of France?").intent, .search)
         // Score and weather prompts are owned by StructuredGroundingService. Keeping them direct
         // here prevents Tavily from becoming a hidden fallback for a deterministic capability.
-        XCTAssertEqual(router.route("What is the current score right now?").intent, .direct)
+        XCTAssertEqual(router.route("What's the NBA score?").intent, .direct)
         XCTAssertEqual(router.route("What's the weather today?").intent, .direct)
     }
 
