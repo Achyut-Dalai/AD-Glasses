@@ -230,7 +230,7 @@ actor LibraryStore {
         attributes.containerTitle = "AD Glasses Library"
         attributes.containerDisplayName = "AD Glasses Library"
         attributes.keywords = spotlightKeywords(for: item)
-        attributes.rankingHint = NSNumber(value: item.isFavorite ? 1.0 : 0.35)
+        attributes.rankingHint = NSNumber(value: item.isFavorite ? 100 : 35)
         attributes.contentDescription = spotlightDescription(for: item)
 
         if item.kind == .transcript,
