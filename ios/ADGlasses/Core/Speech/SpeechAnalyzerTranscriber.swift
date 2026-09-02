@@ -27,6 +27,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var finalizedTranscript = ""
     private var lastEndpointTranscript = ""
     private var inputSource: InputSource?
+    private var preparedLocale: Locale?
 
     private let transcriptSilenceDelay: Duration = .milliseconds(1_200)
     private let initialNoSpeechDelay: Duration = .seconds(6)
@@ -56,7 +57,18 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         return await SpeechTranscriber.installedLocales
     }
 
+    /// Ensures the requested SpeechAnalyzer language asset is ready once per transcriber lifetime.
+    ///
+    /// A successful preparation is cached. Later Assistant turns reuse that prepared locale and go
+    /// straight to analyzer construction instead of repeatedly asking AssetInventory to reserve,
+    /// install, or re-evaluate the same en-US model. This keeps multi-turn Ask/glasses sessions on
+    /// SpeechAnalyzer without spuriously returning to a "model downloading" state after a few turns.
     func prepareAssets(statusUpdate: ((String) -> Void)? = nil) async throws -> Locale {
+        if let preparedLocale {
+            statusUpdate?("\(languageDisplayName(preparedLocale)) speech model ready")
+            return preparedLocale
+        }
+
         guard SpeechTranscriber.isAvailable else {
             throw SpeechAnalyzerAssetError.moduleUnavailable
         }
@@ -85,6 +97,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let status = await AssetInventory.status(forModules: [module])
         switch status {
         case .installed:
+            preparedLocale = locale
             statusUpdate?("\(languageName) speech model ready")
             return locale
         case .unsupported:
@@ -143,13 +156,15 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             }
         }
 
-        return try await waitForInstalledModel(
+        let installedLocale = try await waitForInstalledModel(
             module,
             locale: locale,
             languageName: languageName,
             statusUpdate: statusUpdate,
             initialError: installationError
         )
+        preparedLocale = installedLocale
+        return installedLocale
     }
 
     func start() async throws {
@@ -160,11 +175,12 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         try await startWithPreparedLocale(preparedLocale)
     }
 
-    private func startWithPreparedLocale(_ preparedLocale: Locale?) async throws {
+    private func startWithPreparedLocale(_ explicitPreparedLocale: Locale?) async throws {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
         await stop()
-        _ = try await prepareAnalyzerPipeline(preparedLocale: preparedLocale)
+        let locale = explicitPreparedLocale ?? (try await prepareAssets())
+        _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
 
         do {
             try SpeechInputAudioSession.activate()
@@ -217,6 +233,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 audioEngine.stop()
             }
             audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.reset()
         }
 
         audioContinuation?.finish()
@@ -248,7 +265,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     func startExternalAudio() async throws {
         if snapshot.isRunning { await stop() }
         try await SpeechPermissions.requestRecognition()
-        _ = try await prepareAnalyzerPipeline()
+        let locale = try await prepareAssets()
+        _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
         inputSource = .externalPCM
         snapshot.isRunning = true
     }
@@ -305,6 +323,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
@@ -326,6 +345,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                 return
@@ -391,27 +411,14 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         throw SpeechAnalyzerAssetError.installationPending(languageName)
     }
 
-    private func prepareAnalyzerPipeline(preparedLocale: Locale? = nil) async throws -> AVAudioFormat {
-        let locale: Locale
-        if let preparedLocale {
-            locale = preparedLocale
-        } else {
-            locale = try await prepareAssets()
-        }
-        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-        let status = await AssetInventory.status(forModules: [module])
-        guard status == .installed else {
-            await Self.logAssetDiagnostic(
-                locale: locale,
-                status: status,
-                error: nil,
-                stage: "analyzer-start"
-            )
-            if status == .unsupported {
-                throw SpeechAnalyzerAssetError.unsupportedLanguage(languageDisplayName(locale))
-            }
-            throw SpeechAnalyzerAssetError.installationPending(languageDisplayName(locale))
-        }
+    private func prepareAnalyzerPipeline(preparedLocale: Locale) async throws -> AVAudioFormat {
+        let module = SpeechTranscriber(locale: preparedLocale, preset: .progressiveTranscription)
+
+        // `prepareAssets()` is the authoritative installation gate. Once it succeeds, do not query
+        // AssetInventory again for every conversation turn: iOS can transiently report supported or
+        // downloading while an already-prepared model is usable, which was the source of the
+        // repeated "English (US) model is downloading" experience. Build/start the analyzer and let
+        // the analyzer itself surface a real runtime failure.
         guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
