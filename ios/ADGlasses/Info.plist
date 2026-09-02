@@ -34,9 +34,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>AD Glasses uses your location only when you enable it for nearby places, current-location context, or directions you request in AD Glasses.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>AD Glasses uses the microphone for native speech transcription and glasses voice features.</string>
+	<string>AD Glasses uses the microphone for voice input and on-device SpeechAnalyzer transcription.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>AD Glasses converts speech to text using Apple's native speech recognition.</string>
+	<string>AD Glasses transcribes your voice on device with Apple's SpeechAnalyzer.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
