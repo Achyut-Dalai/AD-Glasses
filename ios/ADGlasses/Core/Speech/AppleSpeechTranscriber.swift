@@ -1,10 +1,11 @@
+import AVFoundation
 import Foundation
 
 #if compiler(>=6.2)
 @available(iOS 26.0, *)
 @MainActor
 private final class ResilientAppleSpeechTranscriber: ExternalAudioSpeechTranscribing {
-    private enum Backend {
+    private enum Backend: Equatable {
         case speechAnalyzer
         case legacy
     }
