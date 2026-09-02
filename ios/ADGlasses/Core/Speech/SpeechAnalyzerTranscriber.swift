@@ -258,8 +258,10 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline()
         inputSource = .externalPCM
         snapshot.isRunning = true
-        // External PCM has a hardware-owned endpoint. HeyCyan's verified Assistant-ended event
-        // closes this stream; Apple transcript silence must not race the glasses state machine.
+        // Glasses turns remain finite even if the firmware's trailing Assistant-ended event is
+        // delayed or missed. The first terminal condition wins: six seconds of no speech or 1.2
+        // seconds of stable transcript silence. AppModel de-duplicates this against hardware end.
+        armInitialEndpoint()
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -305,8 +307,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    /// Phone-microphone turns endpoint after silence so Ask remains one-shot. External glasses
-    /// audio is endpointed by the glasses firmware and never enters this timer path.
+    /// Every one-shot speech turn is bounded: six seconds when nothing is recognized, then 1.2
+    /// seconds of transcript stability after speech begins. For glasses audio, the firmware-ended
+    /// event is an additional terminal signal; AppModel ensures only one of them can dispatch.
     private func armInitialEndpoint() {
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
@@ -316,7 +319,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
-                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
@@ -326,7 +328,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func noteTranscriptActivity(_ text: String) {
-        guard inputSource == .phoneMicrophone else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
         lastEndpointTranscript = clean
@@ -338,7 +339,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
-                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                 return
@@ -464,7 +464,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         if reservations.count >= AssetInventory.maximumReservedLocales {
             for reservedLocale in reservations
-            where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
+            where Self.normalizedIdentifier($0) != normalizedRequested {
                 _ = await AssetInventory.release(reservedLocale: reservedLocale)
             }
             reservations = await AssetInventory.reservedLocales
