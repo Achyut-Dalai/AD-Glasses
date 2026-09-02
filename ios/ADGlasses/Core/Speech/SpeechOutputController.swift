@@ -29,6 +29,14 @@ struct SpeechVoiceOption: Identifiable, Equatable, Sendable {
     let quality: SpeechVoiceQuality
 }
 
+enum SpeechOutputAudioSessionPolicy: Sendable {
+    /// Normal Assistant speech owns a finite media-playback audio session.
+    case managedPlayback
+    /// Live Translation already owns a play-and-record/HFP session and must not flip the system
+    /// between call-volume and media-volume routes for every translated utterance.
+    case reuseCurrentSession
+}
+
 enum SpeechOutputError: LocalizedError {
     case noVoiceAvailable
     case audioRouteUnavailable(String)
@@ -63,6 +71,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
     private let audioSession: AVAudioSession
     private let selectedVoiceKey = "speech.output.selectedVoiceIdentifier.v1"
     private var queuedUtterances: [AVSpeechUtterance] = []
+    private var ownsAudioSession = false
 
     init(
         synthesizer: AVSpeechSynthesizer = AVSpeechSynthesizer(),
@@ -93,7 +102,11 @@ final class SpeechOutputController: NSObject, ObservableObject {
         }
     }
 
-    func speak(_ text: String, languageCode: String? = nil) throws {
+    func speak(
+        _ text: String,
+        languageCode: String? = nil,
+        audioSessionPolicy: SpeechOutputAudioSessionPolicy = .managedPlayback
+    ) throws {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
 
@@ -117,13 +130,21 @@ final class SpeechOutputController: NSObject, ObservableObject {
             // Clear ownership before stopping. AVSpeechSynthesizer can deliver didCancel later;
             // that stale callback must not deactivate the audio session used by this new reply.
             queuedUtterances.removeAll()
+            if ownsAudioSession {
+                deactivateAudioSession()
+            }
+            ownsAudioSession = false
             synthesizer.stopSpeaking(at: .immediate)
         }
-        try enqueue(value, voice: voice)
+        try enqueue(value, voice: voice, audioSessionPolicy: audioSessionPolicy)
     }
 
     /// Adds a safe streaming segment without interrupting speech already in progress.
-    func enqueue(_ text: String, languageCode: String? = nil) throws {
+    func enqueue(
+        _ text: String,
+        languageCode: String? = nil,
+        audioSessionPolicy: SpeechOutputAudioSessionPolicy = .managedPlayback
+    ) throws {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
         let option = languageCode.flatMap(preferredVoice(languageCode:))
@@ -133,14 +154,17 @@ final class SpeechOutputController: NSObject, ObservableObject {
               let voice = AVSpeechSynthesisVoice(identifier: option.identifier) else {
             throw SpeechOutputError.noVoiceAvailable
         }
-        try enqueue(value, voice: voice)
+        try enqueue(value, voice: voice, audioSessionPolicy: audioSessionPolicy)
     }
 
     func stop() {
         queuedUtterances.removeAll()
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
-        deactivateAudioSession()
+        if ownsAudioSession {
+            deactivateAudioSession()
+        }
+        ownsAudioSession = false
     }
 
     func preferredVoice(languageCode: String?) -> SpeechVoiceOption? {
@@ -157,16 +181,28 @@ final class SpeechOutputController: NSObject, ObservableObject {
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    private func enqueue(_ text: String, voice: AVSpeechSynthesisVoice) throws {
+    private func enqueue(
+        _ text: String,
+        voice: AVSpeechSynthesisVoice,
+        audioSessionPolicy: SpeechOutputAudioSessionPolicy
+    ) throws {
         if queuedUtterances.isEmpty {
-            do {
-                // The finite input turn has released HFP. Playback follows the system-selected
-                // output route and therefore works with the phone speaker or Bluetooth audio.
-                try audioSession.setCategory(.playback, mode: .spokenAudio)
-                try audioSession.setActive(true)
-            } catch {
-                isSpeaking = false
-                throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
+            switch audioSessionPolicy {
+            case .managedPlayback:
+                do {
+                    // Normal Assistant output is a finite media-style spoken response.
+                    try audioSession.setCategory(.playback, mode: .spokenAudio)
+                    try audioSession.setActive(true)
+                    ownsAudioSession = true
+                } catch {
+                    ownsAudioSession = false
+                    isSpeaking = false
+                    throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
+                }
+            case .reuseCurrentSession:
+                // Live Translation intentionally leaves its play-and-record/HFP route active so
+                // iOS does not bounce between media and communication volume domains each turn.
+                ownsAudioSession = false
             }
         }
 
@@ -183,7 +219,10 @@ final class SpeechOutputController: NSObject, ObservableObject {
         queuedUtterances.remove(at: index)
         guard queuedUtterances.isEmpty else { return }
         isSpeaking = false
-        deactivateAudioSession()
+        if ownsAudioSession {
+            deactivateAudioSession()
+        }
+        ownsAudioSession = false
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
