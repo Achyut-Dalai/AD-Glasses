@@ -173,10 +173,12 @@ final class GlassesManagerTests: XCTestCase {
         await manager.scan()
         await manager.connect(to: device)
 
-        XCTAssertTrue(await manager.toggleAudioRecording())
+        let didStartAudio = await manager.toggleAudioRecording()
+        XCTAssertTrue(didStartAudio)
         XCTAssertTrue(manager.isAudioRecording)
 
-        XCTAssertTrue(await manager.toggleVideoRecording())
+        let didStartVideo = await manager.toggleVideoRecording()
+        XCTAssertTrue(didStartVideo)
         XCTAssertTrue(manager.isVideoRecording)
         XCTAssertFalse(manager.isAudioRecording)
         XCTAssertEqual(provider.stopAudioCount, 1)
@@ -195,16 +197,18 @@ final class GlassesManagerTests: XCTestCase {
         await manager.scan()
         await manager.connect(to: device)
 
-        XCTAssertTrue(await manager.toggleVideoRecording())
+        let didStartVideo = await manager.toggleVideoRecording()
+        XCTAssertTrue(didStartVideo)
         XCTAssertTrue(manager.isVideoRecording)
 
-        XCTAssertTrue(await manager.toggleAudioRecording())
+        let didStartAudio = await manager.toggleAudioRecording()
+        XCTAssertTrue(didStartAudio)
         XCTAssertTrue(manager.isAudioRecording)
         XCTAssertFalse(manager.isVideoRecording)
         XCTAssertEqual(provider.stopVideoCount, 1)
     }
 
-    func testDisconnectClearsPublishedRecordingState() async {
+    func testDisconnectClearsPublishedRecordingAndCaptureState() async {
         let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
         let manager = GlassesManager(providers: [provider])
         let device = GlassesDevice(
@@ -217,8 +221,12 @@ final class GlassesManagerTests: XCTestCase {
         await manager.scan()
         await manager.connect(to: device)
 
-        XCTAssertTrue(await manager.toggleVideoRecording())
+        let didStartVideo = await manager.toggleVideoRecording()
+        let capture = await manager.requestVisualCapture()
+        XCTAssertTrue(didStartVideo)
         XCTAssertTrue(manager.isVideoRecording)
+        XCTAssertNotNil(capture)
+        XCTAssertNotNil(manager.latestVisualCapture)
 
         await manager.disconnect()
         XCTAssertFalse(manager.isVideoRecording)
@@ -248,6 +256,27 @@ final class GlassesManagerTests: XCTestCase {
         XCTAssertEqual(result.jpegData, Data([0xFF, 0xD8, 0xFF, 0xD9]))
         XCTAssertEqual(manager.latestVisualCapture, result)
         XCTAssertEqual(publishedCapture, result)
+    }
+
+    func testVisualCaptureRetriesOneTransientFailure() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        provider.visualCaptureFailuresRemaining = 1
+        await manager.scan()
+        await manager.connect(to: device)
+
+        let capture = await manager.requestVisualCapture()
+
+        XCTAssertNotNil(capture)
+        XCTAssertEqual(provider.visualCaptureRequestCount, 2)
+        XCTAssertNil(manager.errorMessage)
     }
 
     func testProviderDeviceStatusFlowsWithoutVendorBranchingAndClearsOnDisconnect() async {
@@ -321,6 +350,10 @@ final class GlassesManagerTests: XCTestCase {
     }
 }
 
+private enum FakeGlassesProviderError: Error {
+    case transientVisualCapture
+}
+
 @MainActor
 private final class FakeGlassesProvider:
     GlassesProvider,
@@ -367,6 +400,7 @@ private final class FakeGlassesProvider:
     private(set) var batteryStatus: GlassesBatteryStatus?
     private(set) var deviceInformation: GlassesDeviceInformation?
     var scanResult = [GlassesDevice]()
+    var visualCaptureFailuresRemaining = 0
     private(set) var disconnectCount = 0
     private(set) var photoRequestCount = 0
     private(set) var startVideoCount = 0
@@ -439,6 +473,10 @@ private final class FakeGlassesProvider:
 
     func requestVisualCapture() async throws -> GlassesVisualCapture {
         visualCaptureRequestCount += 1
+        if visualCaptureFailuresRemaining > 0 {
+            visualCaptureFailuresRemaining -= 1
+            throw FakeGlassesProviderError.transientVisualCapture
+        }
         let capture = GlassesVisualCapture(
             jpegData: Data([0xFF, 0xD8, 0xFF, 0xD9]),
             providerID: id
