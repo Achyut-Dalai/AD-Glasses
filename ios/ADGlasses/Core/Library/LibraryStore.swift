@@ -114,6 +114,25 @@ actor LibraryStore {
         return items
     }
 
+    func delete(itemID: UUID) throws -> [LibraryItem] {
+        var items = try load()
+        guard let item = items.first(where: { $0.id == itemID }) else { return items }
+
+        let sourceURL = fileURL(for: item)
+        if fileManager.fileExists(atPath: sourceURL.path) {
+            try fileManager.removeItem(at: sourceURL)
+        }
+
+        let enhancedURL = enhancedPhotoURL(for: item)
+        if fileManager.fileExists(atPath: enhancedURL.path) {
+            try fileManager.removeItem(at: enhancedURL)
+        }
+
+        items.removeAll { $0.id == itemID }
+        try saveIndex(items)
+        return items
+    }
+
     func existingEnhancedPhotoURL(for item: LibraryItem) -> URL? {
         guard item.kind == .photo else { return nil }
         let url = enhancedPhotoURL(for: item)
