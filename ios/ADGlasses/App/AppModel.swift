@@ -747,7 +747,7 @@ final class AppModel: ObservableObject {
                     generationID: generationID,
                     userMessageID: userMessageID,
                     userMessageText: originalText,
-                    userMessageDate: userMessageMessageDate
+                    userMessageDate: userMessageDate
                 )
                 do {
                     let answer = try await visualAI.answer(
