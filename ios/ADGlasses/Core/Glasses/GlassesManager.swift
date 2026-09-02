@@ -280,6 +280,7 @@ final class GlassesManager: ObservableObject {
                 }
                 selectedProviderID = providerID
                 if try await reconnectingProvider.reconnectLastDevice() {
+                    errorMessage = nil
                     return true
                 }
             } catch is CancellationError {
@@ -625,6 +626,7 @@ final class GlassesManager: ObservableObject {
         if connectionState.isConnected {
             activeProviderID = providerID
             selectedProviderID = providerID
+            errorMessage = nil
             isVideoRecording = (providerInstances[providerID] as? any GlassesVideoRecording)?.isVideoRecording ?? false
             isAudioRecording = (providerInstances[providerID] as? any GlassesAudioRecording)?.isAudioRecording ?? false
         } else if activeProviderID == providerID,
@@ -724,9 +726,23 @@ final class GlassesManager: ObservableObject {
         _ event: GlassesAssistantAudioEvent,
         from providerID: String
     ) {
-        guard providerID == activeProviderID else { return }
+        guard let provider = providerInstances[providerID],
+              provider.connectionState.isConnected else {
+            return
+        }
+
+        // A live Assistant event came through this provider's verified notification stream. Do not
+        // discard it merely because the manager's cached active-provider id lagged a reconnect or
+        // restoration callback. The provider's connected state plus the incoming event are the
+        // authoritative activity signal.
+        if activeProviderID != providerID {
+            activeProviderID = providerID
+            selectedProviderID = providerID
+        }
+
         switch event {
         case .started:
+            errorMessage = nil
             assistantInputState = .listening
         case .pcmBuffer:
             guard assistantInputState == .listening else { return }
