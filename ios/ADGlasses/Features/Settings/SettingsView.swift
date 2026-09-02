@@ -414,7 +414,7 @@ private struct AIProfileEditorView: View {
                 }
 
                 TextField("Model ID", text: $profile.model)
-                    .textInputAutapitalization(.never)
+                    .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 
                 Button {
