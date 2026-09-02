@@ -12,8 +12,6 @@ struct SettingsView: View {
     @State private var diagnosticsEnabled = false
     @State private var diagnosticsURL: URL?
     @State private var diagnosticsError: String?
-    @State private var confirmsRestart = false
-    @State private var confirmsFactoryReset = false
 
     var body: some View {
         NavigationStack {
@@ -21,21 +19,6 @@ struct SettingsView: View {
                 Section("Glasses") {
                     ForEach(glasses.providers) { provider in
                         LabeledContent(provider.displayName, value: provider.connectionState.settingsLabel)
-                    }
-
-                    if glasses.connectionState.isConnected,
-                       glasses.supportsDeviceManagement {
-                        Button("Restart AD Glasses", systemImage: "power") {
-                            confirmsRestart = true
-                        }
-
-                        Button(
-                            "Factory reset AD Glasses",
-                            systemImage: "arrow.counterclockwise",
-                            role: .destructive
-                        ) {
-                            confirmsFactoryReset = true
-                        }
                     }
 
                     if let error = glasses.errorMessage {
@@ -166,30 +149,6 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(diagnosticsError ?? "")
-            }
-            .confirmationDialog(
-                "Restart AD Glasses?",
-                isPresented: $confirmsRestart,
-                titleVisibility: .visible
-            ) {
-                Button("Restart") {
-                    Task { _ = await glasses.restartGlasses() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("The glasses will restart and Bluetooth may disconnect briefly.")
-            }
-            .confirmationDialog(
-                "Factory reset AD Glasses?",
-                isPresented: $confirmsFactoryReset,
-                titleVisibility: .visible
-            ) {
-                Button("Factory reset", role: .destructive) {
-                    Task { _ = await glasses.factoryResetGlasses() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This sends the verified factory-reset command. The glasses may clear pairing or settings and disconnect while resetting.")
             }
         }
         .presentationDetents([.large])
