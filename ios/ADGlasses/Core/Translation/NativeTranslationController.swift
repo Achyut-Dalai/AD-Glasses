@@ -226,14 +226,7 @@ final class LiveTranslationController: ObservableObject {
     private var finalizeTask: Task<Void, Never>?
     private var isProcessingTurn = false
     private var sessionID: UUID?
-#if compiler(>=6.2)
-    @available(iOS 26.0, *)
-    private var preparedSpeechLocale: Locale? {
-        get { storedPreparedSpeechLocale }
-        set { storedPreparedSpeechLocale = newValue }
-    }
-#endif
-    private var storedPreparedSpeechLocale: Locale?
+    private var preparedSpeechLocale: Locale?
 
     private let endOfUtteranceDelay: Duration = .milliseconds(1400)
 
@@ -251,7 +244,7 @@ final class LiveTranslationController: ObservableObject {
         lastSourceText = ""
         lastTranslation = ""
         inputRouteName = nil
-        storedPreparedSpeechLocale = nil
+        preparedSpeechLocale = nil
 
         guard languageBase(sourceLanguageCode) != languageBase(targetLanguageCode) else {
             errorMessage = "Choose two different languages for Live Translation."
@@ -327,7 +320,7 @@ final class LiveTranslationController: ObservableObject {
                 guard let self, sessionID == id, isRunning else { return }
                 statusMessage = message
             }
-            storedPreparedSpeechLocale = preparedLocale
+            preparedSpeechLocale = preparedLocale
             guard sessionID == id, isRunning else {
                 await transcriber.stop()
                 return false
@@ -493,7 +486,7 @@ final class LiveTranslationController: ObservableObject {
 #if compiler(>=6.2)
             if #available(iOS 26.0, *),
                let analyzer = transcriber as? SpeechAnalyzerTranscriber,
-               let preparedLocale = storedPreparedSpeechLocale {
+               let preparedLocale = preparedSpeechLocale {
                 // The locale/model was already prepared when the session began. Reusing it avoids
                 // another reservation/status/download pass after every translated sentence.
                 try await analyzer.start(preparedLocale: preparedLocale)
@@ -593,7 +586,10 @@ final class LiveTranslationController: ObservableObject {
     }
 
     private func languageBase(_ code: String) -> String {
-        code.lowercased().split(separator: "-").first.map(String.init) ?? code.lowercased()
+        let normalized = code
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
+        return normalized.split(separator: "-").first.map(String.init) ?? normalized
     }
 
     private func resetSessionState(keepError: Bool = false) {
@@ -605,7 +601,7 @@ final class LiveTranslationController: ObservableObject {
         speechOutput = nil
         sourceLanguageCode = ""
         targetLanguageCode = ""
-        storedPreparedSpeechLocale = nil
+        preparedSpeechLocale = nil
         currentTranscript = ""
         inputRouteName = nil
         isRunning = false
