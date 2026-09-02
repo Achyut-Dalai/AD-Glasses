@@ -7,7 +7,6 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
-    @EnvironmentObject private var phoneVoiceActivation: PhoneVoiceActivationController
     @Environment(\.dismiss) private var dismiss
     @StateObject private var grounding = GroundingSettingsStore()
     @State private var diagnosticsEnabled = false
@@ -23,7 +22,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Jarvis") {
+                Section("AD") {
                     NavigationLink {
                         CloudAISettingsView(store: app.aiProfiles)
                     } label: {
@@ -48,12 +47,6 @@ struct SettingsView: View {
                         SpeechVoiceSettingsView(controller: app.speechOutput)
                     } label: {
                         LabeledContent("Spoken voice", value: selectedSpeechVoiceName)
-                    }
-
-                    NavigationLink {
-                        PhoneVoiceActivationSettingsView(controller: phoneVoiceActivation)
-                    } label: {
-                        LabeledContent("Phone voice activation", value: phoneVoiceActivation.configurationState.label)
                     }
                 }
 
@@ -190,64 +183,6 @@ struct SettingsView: View {
 }
 
 @MainActor
-private struct PhoneVoiceActivationSettingsView: View {
-    @ObservedObject var controller: PhoneVoiceActivationController
-
-    var body: some View {
-        List {
-            Section("Voice activation") {
-                Toggle("Phone Voice Activation", isOn: voiceActivationBinding)
-                    .disabled(voiceActivationControlIsDisabled)
-                LabeledContent("Wake phrase", value: controller.phrase)
-                LabeledContent("Listening", value: controller.isListening ? "On" : "Off")
-                LabeledContent("Status", value: controller.configurationState.label)
-
-                if controller.configurationState == .missingModel {
-                    Text("This build does not contain the evaluated Jarvis classifier. Release builds use the Jarvis ONNX model bundled with AD Glasses; users are never asked to choose a model file.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text("Starts while AD Glasses is connected and the app is open, then stays available when you switch apps or lock your iPhone. It pauses for transcription and spoken responses; AI and Apple Speech do not start until the wake phrase is detected. It stops after a disconnect, when disabled, or if you force-quit the app.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("LiveKit WakeWord") {
-                LabeledContent("Engine", value: "LiveKit WakeWord")
-                Text("Wake-word detection runs locally on this iPhone. No account, API key, hosted wake-word service, or user-selected model file is required.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .navigationTitle("Phone voice activation")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Phone voice activation", isPresented: Binding(
-            get: { controller.errorMessage != nil },
-            set: { if !$0 { controller.errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(controller.errorMessage ?? "")
-        }
-    }
-
-    private var voiceActivationBinding: Binding<Bool> {
-        Binding(
-            get: { controller.isEnabled },
-            set: { controller.isEnabled = $0 }
-        )
-    }
-
-    private var voiceActivationControlIsDisabled: Bool {
-        switch controller.configurationState {
-        case .ready: return false
-        case .missingModel, .unavailable: return true
-        }
-    }
-}
-
-@MainActor
 private struct SpeechVoiceSettingsView: View {
     @ObservedObject var controller: SpeechOutputController
     @State private var errorMessage: String?
@@ -272,7 +207,7 @@ private struct SpeechVoiceSettingsView: View {
                     if controller.isSpeaking {
                         controller.stop()
                     } else {
-                        do { try controller.speak("Jarvis is ready when you need it.") }
+                        do { try controller.speak("AD is ready when you need it.") }
                         catch { errorMessage = error.localizedDescription }
                     }
                 }
@@ -473,7 +408,7 @@ private struct AIProfileEditorView: View {
                 }
                 .disabled(isTesting || isLoadingModels)
             } footer: {
-                Text("Saves this profile, then sends a short request through the same connection Jarvis uses.")
+                Text("Saves this profile, then sends a short request through the same connection AD uses.")
             }
         }
         .navigationTitle(store.profiles.contains(where: { $0.id == profile.id }) ? "Edit profile" : "New profile")
@@ -632,7 +567,7 @@ private struct SearchAndMapsSettingsView: View {
             } header: {
                 Text("Web search")
             } footer: {
-                Text("Tavily is retrieval-only. AD Glasses requests source snippets and URLs with Tavily answer generation disabled; your selected Cloud AI model remains the only model that writes Jarvis's answer.")
+                Text("Tavily is retrieval-only. AD Glasses requests source snippets and URLs with Tavily answer generation disabled; your selected Cloud AI model remains the only model that writes AD's answer.")
             }
 
             Section {
@@ -648,7 +583,7 @@ private struct SearchAndMapsSettingsView: View {
             } header: {
                 Text("Location")
             } footer: {
-                Text("Location is requested only from this Settings action. A Jarvis question never triggers the iOS permission prompt by itself.")
+                Text("Location is requested only from this Settings action. An AD question never triggers the iOS permission prompt by itself.")
             }
 
             Section {
@@ -812,7 +747,7 @@ private struct TransportGroundingSettingsView: View {
             } header: {
                 Text("Flights")
             } footer: {
-                Text("Used only when Jarvis recognizes an explicit flight-status request. The selected Cloud AI model summarizes the structured provider record; it does not invent live flight data.")
+                Text("Used only when AD recognizes an explicit flight-status request. The selected Cloud AI model summarizes the structured provider record; it does not invent live flight data.")
             }
 
             Section {
@@ -849,7 +784,7 @@ private struct TransportGroundingSettingsView: View {
             } header: {
                 Text("GTFS-Realtime feeds")
             } footer: {
-                Text("Add agency-provided GTFS-Realtime protobuf feeds for trip updates, service alerts, and nearby vehicle positions. Optional authentication headers are stored in Keychain. Feed URLs may contain query tokens; Jarvis strips query strings from source attribution.")
+                Text("Add agency-provided GTFS-Realtime protobuf feeds for trip updates, service alerts, and nearby vehicle positions. Optional authentication headers are stored in Keychain. Feed URLs may contain query tokens; AD strips query strings from source attribution.")
             }
 
             Section {
@@ -1003,7 +938,7 @@ private struct PrivacySettingsView: View {
         List {
             Section("On this iPhone") {
                 LabeledContent("Conversations", value: "\(app.conversations.count)")
-                Text("Conversation text is stored locally so Jarvis history survives app restarts.")
+                Text("Conversation text is stored locally so AD history survives app restarts.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -1068,7 +1003,7 @@ private struct PermissionsSettingsView: View {
                     UIApplication.shared.open(url)
                 }
             } footer: {
-                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Search & Maps settings; asking Jarvis a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
+                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Search & Maps settings; asking AD a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
             }
         }
         .navigationTitle("Permissions")
@@ -1115,7 +1050,7 @@ private struct AboutSettingsView: View {
                 LabeledContent("Minimum iOS", value: "17")
             }
             Section {
-                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, Jarvis, Lens, grounded search and maps, translation, and continuity when you need to continue on iPhone.")
+                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, AD, Lens, grounded search and maps, translation, and continuity when you need to continue on iPhone.")
                     .foregroundStyle(.secondary)
             }
         }
