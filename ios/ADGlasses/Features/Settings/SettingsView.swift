@@ -26,27 +26,25 @@ struct SettingsView: View {
                     NavigationLink {
                         CloudAISettingsView(store: app.aiProfiles)
                     } label: {
-                        LabeledContent("Cloud AI", value: cloudAIStatus)
+                        LabeledContent("AI & Models", value: cloudAIStatus)
                     }
 
                     NavigationLink {
-                        SearchAndMapsSettingsView(store: grounding)
+                        AssistantCapabilitiesSettingsView(
+                            grounding: grounding,
+                            transport: TransportGroundingSettingsStore.shared
+                        )
                     } label: {
-                        LabeledContent("Search & Maps", value: groundingStatus)
+                        LabeledContent("Capabilities", value: "Knowledge · live · maps · travel")
                     }
 
                     NavigationLink {
-                        TransportGroundingSettingsView(store: TransportGroundingSettingsStore.shared)
+                        VoiceAndLanguageSettingsView(
+                            speechEngineName: app.speechEngineName,
+                            controller: app.speechOutput
+                        )
                     } label: {
-                        LabeledContent("Travel & Transit", value: "Rail · flights · realtime")
-                    }
-
-                    LabeledContent("Speech engine", value: app.speechEngineName)
-
-                    NavigationLink {
-                        SpeechVoiceSettingsView(controller: app.speechOutput)
-                    } label: {
-                        LabeledContent("Spoken voice", value: selectedSpeechVoiceName)
+                        LabeledContent("Voice & Language", value: app.speechEngineName)
                     }
                 }
 
@@ -155,21 +153,6 @@ struct SettingsView: View {
         return app.aiProfiles.isConfigured ? profile.name : "Key required"
     }
 
-    private var groundingStatus: String {
-        if grounding.tavilyEnabled {
-            return grounding.hasTavilyAPIKey
-                ? "Knowledge · web · maps"
-                : "Knowledge · maps · web key needed"
-        }
-        return "Knowledge · maps"
-    }
-
-    private var selectedSpeechVoiceName: String {
-        app.speechOutput.voices.first {
-            $0.identifier == app.speechOutput.selectedVoiceIdentifier
-        }?.name ?? "System default"
-    }
-
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
@@ -181,6 +164,94 @@ struct SettingsView: View {
         } catch {
             diagnosticsError = error.localizedDescription
         }
+    }
+}
+
+@MainActor
+private struct AssistantCapabilitiesSettingsView: View {
+    @ObservedObject var grounding: GroundingSettingsStore
+    @ObservedObject var transport: TransportGroundingSettingsStore
+
+    var body: some View {
+        List {
+            Section {
+                LabeledContent("Knowledge", value: "Wikipedia · Dictionary · Books")
+                LabeledContent("Live information", value: "Weather · News · Sports · Currency")
+                LabeledContent("Places & routes", value: "OpenStreetMap")
+            } header: {
+                Text("Built in")
+            } footer: {
+                Text("These are structured capabilities, not generic AI guesses. AD selects the matching capability first and gives its evidence to the answer model. If the selected capability is unavailable, AD reports that instead of silently substituting web search.")
+            }
+
+            Section {
+                NavigationLink {
+                    SearchAndMapsSettingsView(store: grounding)
+                } label: {
+                    LabeledContent("Web & Maps", value: webStatus)
+                }
+
+                NavigationLink {
+                    TransportGroundingSettingsView(store: transport)
+                } label: {
+                    LabeledContent("Travel & Realtime", value: "Rail · flights · transit")
+                }
+            } header: {
+                Text("Services")
+            } footer: {
+                Text("General web retrieval is optional. Rail and flight status use their configured live-data providers; GTFS-Realtime uses agency feeds and may or may not require feed-specific authentication.")
+            }
+        }
+        .navigationTitle("Capabilities")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            grounding.reload()
+            transport.reload()
+        }
+    }
+
+    private var webStatus: String {
+        if grounding.tavilyEnabled {
+            return grounding.hasTavilyAPIKey ? "Web ready · maps built in" : "Maps built in · web key needed"
+        }
+        return "Maps built in · web off"
+    }
+}
+
+@MainActor
+private struct VoiceAndLanguageSettingsView: View {
+    let speechEngineName: String
+    @ObservedObject var controller: SpeechOutputController
+
+    var body: some View {
+        List {
+            Section("Speech recognition") {
+                LabeledContent("Engine", value: speechEngineName)
+            }
+
+            Section("Spoken output") {
+                NavigationLink {
+                    SpeechVoiceSettingsView(controller: controller)
+                } label: {
+                    LabeledContent("Voice", value: selectedSpeechVoiceName)
+                }
+            }
+
+            Section {
+                Text("On iOS 26, AD uses Apple SpeechAnalyzer as the runtime speech-recognition engine rather than silently switching to another recognizer when a model is unavailable. Translation language selection remains inside Live Translation because speech input, translation support, and spoken-output availability are separate capabilities.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Voice & Language")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { controller.refreshVoices() }
+    }
+
+    private var selectedSpeechVoiceName: String {
+        controller.voices.first {
+            $0.identifier == controller.selectedVoiceIdentifier
+        }?.name ?? "System default"
     }
 }
 
@@ -294,9 +365,9 @@ private struct CloudAISettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Cloud AI")
+        .navigationTitle("AI & Models")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Cloud AI", isPresented: Binding(
+        .alert("AI & Models", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -537,17 +608,6 @@ private struct SearchAndMapsSettingsView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("Wikipedia", value: "No key")
-                LabeledContent("Dictionary", value: "No key")
-                LabeledContent("Weather · currency · books", value: "No key")
-                LabeledContent("News · sports", value: "No key")
-            } header: {
-                Text("Built-in knowledge")
-            } footer: {
-                Text("These structured sources work without Tavily: Wikipedia, Free Dictionary, Open-Meteo, Frankfurter currency, Open Library, Google News RSS, and ESPN scoreboards. AD selects them automatically when a request matches. Tavily is optional general web retrieval.")
-            }
-
-            Section {
                 Toggle("Use Tavily for live web evidence", isOn: tavilyEnabledBinding)
                 LabeledContent("API key", value: store.hasTavilyAPIKey ? "Stored" : "Not configured")
                 SecureField(store.hasTavilyAPIKey ? "Replacement key (optional)" : "Tavily API key", text: $tavilyReplacement)
@@ -578,9 +638,9 @@ private struct SearchAndMapsSettingsView: View {
                     }
                 }
             } header: {
-                Text("Web search")
+                Text("General web")
             } footer: {
-                Text("Tavily is retrieval-only. AD Glasses requests source snippets and URLs with Tavily answer generation disabled; your selected Cloud AI model remains the only model that writes AD's answer.")
+                Text("Tavily is optional retrieval-only evidence for requests that genuinely need the open web. It is not used as a fallback when a structured capability such as weather, sports, currency, rail, or flight status fails. Your selected Cloud AI model remains the only model that writes AD's answer.")
             }
 
             Section {
@@ -634,10 +694,10 @@ private struct SearchAndMapsSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Search & Maps")
+        .navigationTitle("Web & Maps")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { store.reload() }
-        .alert("Search & Maps", isPresented: Binding(
+        .alert("Web & Maps", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -678,7 +738,7 @@ private struct SearchAndMapsSettingsView: View {
                 overpassEndpoint: store.overpassEndpoint,
                 osrmBaseURL: store.osrmBaseURL
             )
-            statusMessage = "Search & Maps endpoints saved."
+            statusMessage = "Web & Maps endpoints saved."
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -820,14 +880,14 @@ private struct TransportGroundingSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Travel & Transit")
+        .navigationTitle("Travel & Realtime")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             store.reload()
             railHost = store.railHost
             aviationBaseURL = store.aviationBaseURL
         }
-        .alert("Travel & Transit", isPresented: Binding(
+        .alert("Travel & Realtime", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -1007,8 +1067,8 @@ private struct PermissionsSettingsView: View {
                 LabeledContent("Microphone", value: microphoneStatus)
                 LabeledContent("Speech recognition", value: speechStatus)
             }
-            Section("Search & Maps") {
-                LabeledContent("Location", value: locationStatus)
+            Section("Location") {
+                LabeledContent("Nearby places & routes", value: locationStatus)
             }
             Section {
                 Button("Open iOS Settings") {
@@ -1016,7 +1076,7 @@ private struct PermissionsSettingsView: View {
                     UIApplication.shared.open(url)
                 }
             } footer: {
-                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Search & Maps settings; asking AD a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
+                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Web & Maps settings; asking AD a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
             }
         }
         .navigationTitle("Permissions")
@@ -1063,7 +1123,7 @@ private struct AboutSettingsView: View {
                 LabeledContent("Minimum iOS", value: "17")
             }
             Section {
-                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, AD, Lens, grounded search and maps, translation, and continuity when you need to continue on iPhone.")
+                Text("AD Glasses is the quiet companion for your glasses: connection, captured media, AD, Lens, structured knowledge and live information, maps, translation, and continuity when you continue on iPhone.")
                     .foregroundStyle(.secondary)
             }
         }
