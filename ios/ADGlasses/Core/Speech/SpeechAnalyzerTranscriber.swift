@@ -179,7 +179,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
         await stop()
-        let locale = explicitPreparedLocale ?? (try await prepareAssets())
+
+        let locale: Locale
+        if let explicitPreparedLocale {
+            locale = explicitPreparedLocale
+        } else {
+            locale = try await prepareAssets()
+        }
         _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
 
         do {
