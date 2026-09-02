@@ -34,11 +34,16 @@ protocol GlassesDeviceInformationProviding: AnyObject {
     func refreshDeviceInformation() async throws
 }
 
-/// Read-only roadmap metadata. This deliberately has no execute method: destructive or firmware
-/// operations become separate capability protocols only after their wire behavior is verified.
+/// Read-only roadmap metadata for operations that remain unavailable.
 @MainActor
 protocol GlassesDeviceManagementPlanning: AnyObject {
     var deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] { get }
+}
+
+@MainActor
+protocol GlassesDeviceManaging: AnyObject {
+    func restartGlasses() async throws
+    func factoryResetGlasses() async throws
 }
 
 @MainActor
