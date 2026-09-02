@@ -49,9 +49,6 @@ final class AppModel: ObservableObject {
     private var applicationIsActive = true
     private var phoneVoiceInputMode: PhoneVoiceInputMode?
 
-    // HeyCyan Opus packets represent 20 ms of 16-kHz mono audio. Keep up to ~30 seconds while
-    // SpeechAnalyzer performs a first/cold asset or pipeline start, matching Android Moonshine's
-    // bounded 30-second queue instead of dropping the first words after only ~2 seconds.
     private let maximumPendingGlassesPackets = 1_500
     private let glassesTranscriptSilenceDelay: Duration = .milliseconds(1_200)
     private let glassesMaximumListeningDuration: Duration = .seconds(8)
@@ -110,11 +107,20 @@ final class AppModel: ObservableObject {
                 noteGlassesTranscriptActivity(snapshot.transcript, sessionID: sessionID)
             }
 
-            // Phone microphone turns use Apple's own endpointing. Glasses turns are bounded here:
-            // hardware end wins when present, otherwise transcript stability or the absolute timeout
-            // finalizes exactly once.
-            if wasRunning, !snapshot.isRunning, !isStoppingTranscription, isManualTranscription {
-                finalizePhoneVoiceInput()
+            // The speech engine's bounded silence endpoint is a valid terminal event for both
+            // phone and glasses one-shot turns. Hardware Assistant-ended is another terminal event;
+            // glassesFinalizingSessionID makes the first one win and suppresses the other.
+            if wasRunning, !snapshot.isRunning, !isStoppingTranscription {
+                if isManualTranscription {
+                    finalizePhoneVoiceInput()
+                } else if let sessionID = glassesAssistantSessionID,
+                          isGlassesAssistantAudioActive,
+                          isGlassesSpeechReady,
+                          glassesFinalizingSessionID == nil {
+                    Task { [weak self] in
+                        await self?.finishGlassesAssistantSession(sessionID: sessionID)
+                    }
+                }
             }
         }
 
@@ -122,9 +128,6 @@ final class AppModel: ObservableObject {
             self?.speechError = error.localizedDescription
         }
 
-        // Forward nested speech-output state changes through AppModel so SwiftUI surfaces that
-        // observe AppModel redraw when TTS really starts/stops. Without this, Stop/Speaking could
-        // remain visually latched after AVSpeechSynthesizer had already finished.
         speechOutputCancellable = self.speechOutput.$isSpeaking
             .removeDuplicates()
             .sink { [weak self] isSpeaking in
@@ -152,9 +155,6 @@ final class AppModel: ObservableObject {
         await startPhoneVoiceInput(mode: .draft)
     }
 
-    /// Starts a complete Assistant turn. Silence endpointing or an explicit stop sends the final
-    /// transcript immediately, matching the glasses/Android Ask interaction instead of producing
-    /// an unsent composer draft.
     func startVoiceQuestion() async {
         await startPhoneVoiceInput(mode: .question)
     }
@@ -196,9 +196,7 @@ final class AppModel: ObservableObject {
         }
         speechError = nil
         isStoppingTranscription = true
-        defer {
-            isStoppingTranscription = false
-        }
+        defer { isStoppingTranscription = false }
         await transcriber.stop()
         finalizePhoneVoiceInput()
     }
@@ -213,8 +211,6 @@ final class AppModel: ObservableObject {
         await stopTranscription()
     }
 
-    /// Abandons a phone-microphone turn without dispatching its partial transcript. Normal voice
-    /// questions finish through silence endpointing; this is only the user's escape hatch.
     func cancelVoiceQuestion() async {
         guard isPhoneVoiceQuestionActive else { return }
         phoneVoiceInputMode = nil
@@ -258,9 +254,6 @@ final class AppModel: ObservableObject {
         speechOutput.stop()
         chatDraft = ""
 
-        // "click" is a hardware command, not a conversational turn. It must never enter Cloud AI,
-        // create an Assistant response/TTS utterance, or light up Thinking/Stop UI. The provider's
-        // verified BLE acknowledgement is the completion boundary; failures surface locally.
         if route == .capturePhoto {
             Task { [weak self] in
                 await self?.executePhotoCaptureCommand()
@@ -313,10 +306,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Product-level command policy sits after lexical routing and before execution. The glasses
-    /// use a compact "click" command for photo capture. Recording-stop commands are intentionally
-    /// not executable from voice because those recording modes already own the relevant audio path;
-    /// their physical/app buttons remain the deterministic controls.
     private func effectiveAssistantRoute(
         _ routed: AssistantRoute,
         text: String,
@@ -326,9 +315,6 @@ final class AppModel: ObservableObject {
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
 
-        // Recognition can occasionally duplicate a short command around a final-result boundary.
-        // A turn containing only one or more "click" tokens is one photo command, never N commands
-        // and never an AI prompt.
         if !words.isEmpty, words.allSatisfy({ $0 == "click" }) {
             return .capturePhoto
         }
@@ -1107,9 +1093,6 @@ final class AppModel: ObservableObject {
     }
 }
 
-/// Holds cumulative provider text until it is safe to expose. Structured reasoning is already
-/// excluded by provider parsers; this additionally blocks models that place `<think>` blocks or
-/// reasoning labels inside ordinary answer content.
 @MainActor
 private final class AssistantVisibleResponseBuffer {
     private var raw = ""
@@ -1138,7 +1121,6 @@ private final class AssistantVisibleResponseBuffer {
             }
         }
         guard inspected.text.hasPrefix(emitted) else {
-            // Never replace already displayed or spoken words with a contradictory sanitized form.
             throw AIConfigurationError.requestFailed("The AI returned an unstable response. Please try again.")
         }
         let remainder = String(inspected.text.dropFirst(emitted.count))
@@ -1147,8 +1129,6 @@ private final class AssistantVisibleResponseBuffer {
     }
 }
 
-/// Converts provider deltas into short, natural TTS units. It waits for punctuation when possible,
-/// but forces the first phrase at a bounded size so speech can begin before generation completes.
 @MainActor
 private final class AssistantStreamingSpeechBuffer {
     private var pending = ""
