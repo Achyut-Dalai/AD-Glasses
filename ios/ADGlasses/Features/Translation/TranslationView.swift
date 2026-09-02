@@ -589,14 +589,12 @@ private struct NativeTranslateExperience: View {
         app.speechOutput.stop()
         await app.stopTranscription()
 
-        let started = await liveTranslation.start(
+        _ = await liveTranslation.start(
             sourceLanguageCode: sourceLanguage,
             targetLanguageCode: targetLanguage,
             translation: translation,
             speechOutput: app.speechOutput
         )
-        if !started {
-        }
     }
 
     private func stopLiveTranslation() async {
