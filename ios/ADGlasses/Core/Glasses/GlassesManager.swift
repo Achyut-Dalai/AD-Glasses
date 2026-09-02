@@ -365,24 +365,16 @@ final class GlassesManager: ObservableObject {
             return nil
         }
 
-        var lastError: Error?
-        for attempt in 0 ..< 2 {
-            do {
-                let capture = try await provider.requestVisualCapture()
-                latestVisualCapture = capture
-                return capture
-            } catch is CancellationError {
-                return nil
-            } catch {
-                lastError = error
-                if attempt == 0 {
-                    try? await Task.sleep(for: .milliseconds(250))
-                }
-            }
+        do {
+            let capture = try await provider.requestVisualCapture()
+            latestVisualCapture = capture
+            return capture
+        } catch is CancellationError {
+            return nil
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
         }
-
-        errorMessage = lastError?.localizedDescription ?? "Visual capture failed."
-        return nil
     }
 
     var supportsMediaTransfer: Bool {
