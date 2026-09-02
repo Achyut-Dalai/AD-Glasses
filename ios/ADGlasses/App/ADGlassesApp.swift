@@ -303,8 +303,7 @@ struct AdaptiveAIClient: AIResponding {
             throw CancellationError()
         } catch {
             if Self.canUseLocalFallback(after: error),
-               let answer = try? await AppleOnDeviceModelResponder.response(to: messages),
-               let answer {
+               let answer = try? await AppleOnDeviceModelResponder.response(to: messages) {
                 return answer
             }
             throw error
@@ -333,8 +332,7 @@ struct AdaptiveAIClient: AIResponding {
             let didStream = await MainActor.run { streamState.didStream }
             if !didStream,
                Self.canUseLocalFallback(after: error),
-               let answer = try? await AppleOnDeviceModelResponder.response(to: messages),
-               let answer {
+               let answer = try? await AppleOnDeviceModelResponder.response(to: messages) {
                 await onDelta(answer)
                 return answer
             }
