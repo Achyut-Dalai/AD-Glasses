@@ -41,8 +41,6 @@ enum HeyCyanMediaTransferError: LocalizedError, Sendable {
 ///
 /// Credentials come only from the work-type 0x04 response and the device address comes only from
 /// the asynchronous 0x73/0x08 notification. This layer never derives or hard-codes either value.
-/// The AP transfer command remains behind the HeyCyan provider's hardware-validation boundary
-/// until the physical glasses confirm this firmware's AP acknowledgement/readiness sequence.
 @MainActor
 final class HeyCyanMediaTransferCoordinator {
     var onStateChange: ((HeyCyanMediaTransferState) -> Void)?
@@ -95,26 +93,9 @@ final class HeyCyanMediaTransferCoordinator {
             reportedDeviceIPv4Address = nil
             reportedNetworkError = nil
 
-            // Keep the cheap inventory check on BLE. A single non-zero result is not enough to
-            // wake the glasses Wi-Fi: some firmware can briefly expose a stale count after a
-            // delete, capture, or reconnect. Only enter transfer mode after two non-zero reads.
-            state = .checkingMediaCounts
-            let firstCountsResponse = try await session.send(.readMediaCounts)
-            let firstCounts = try responseDecoder.decodeMediaCounts(firstCountsResponse)
-            if firstCounts.total == 0 {
-                state = .ready(items: [])
-                return []
-            }
-
-            try await Task.sleep(for: .milliseconds(250))
-            try ensureOperationIsActive(operationID)
-            let confirmedCountsResponse = try await session.send(.readMediaCounts)
-            let confirmedCounts = try responseDecoder.decodeMediaCounts(confirmedCountsResponse)
-            if confirmedCounts.total == 0 {
-                state = .ready(items: [])
-                return []
-            }
-
+            // Preserve the physically validated sync path: ask the glasses to enter their media
+            // AP mode first, then move to Wi-Fi and inspect media.config over HTTP. A speculative
+            // BLE inventory read here previously changed first-attempt behavior on the real device.
             state = .preparingBluetooth
             didIssueBluetoothPrepare = true
             let response = try await session.send(.prepareMediaTransfer(mode: .accessPoint))
@@ -130,10 +111,10 @@ final class HeyCyanMediaTransferCoordinator {
             state = .joiningNetwork(ssid: credentials.ssid)
             let deviceAddress: String
 #if AD_PERSONAL_TEAM_BUILD
-            // Personal Team builds cannot provision Hotspot Configuration. Open Settings as a
-            // convenience, keep this BLE transfer session alive while the user joins the glasses
-            // AP, then perform one bounded verification. The validated Personal-build route opens
-            // the Settings root; iOS intentionally provides no supported Wi-Fi deep link.
+            // Personal Team builds cannot use Hotspot Configuration. Keep the BLE session alive,
+            // copy the current glasses password, and use the same legacy Wi-Fi Settings handoff
+            // that was physically validated on this sideloaded build. The HTTP/IP checks below are
+            // still the authority for whether the user actually joined the glasses network.
             if let reportedDeviceIPv4Address {
                 deviceAddress = reportedDeviceIPv4Address
             } else {
@@ -168,8 +149,8 @@ final class HeyCyanMediaTransferCoordinator {
                 operationID: operationID
             )
             if items.isEmpty {
-                // A successfully read empty manifest still needs to leave transfer mode, but it
-                // is a completed empty check rather than an error for the UI.
+                // An empty manifest is a successful check. Immediately return the glasses to their
+                // normal transport state rather than leaving an empty transfer session alive.
                 recoverTransferMode(sendBluetoothFinish: true)
             }
             state = .ready(items: items)
@@ -252,8 +233,7 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
     /// Cancels an in-flight or prepared transfer and returns both transports to their normal
-    /// state. The exit command is a confirmed, non-destructive cleanup command; no reset, delete,
-    /// factory, or firmware operation is performed.
+    /// state. The exit command is a confirmed, non-destructive cleanup command.
     func cancel() {
         activeOperationID = nil
         finishAddressWait(with: .failure(CancellationError()))
@@ -267,8 +247,6 @@ final class HeyCyanMediaTransferCoordinator {
         case .wifiAddress(let address):
             reportedDeviceIPv4Address = address
             if case .awaitingManualNetworkJoin = state {
-                // This is the protocol-confirmed success signal. It lets the Personal/manual flow
-                // continue automatically even if the address arrives while Settings is visible.
                 finishManualNetworkJoin(with: .success(()))
             }
             finishAddressWait(with: .success(address))
@@ -282,9 +260,8 @@ final class HeyCyanMediaTransferCoordinator {
         }
     }
 
-    /// Continues the Personal Team flow after the user has joined the temporary
-    /// glasses network in iOS Settings. The following BLE/IP and HTTP checks verify the association;
-    /// this signal alone is never treated as proof that the network is ready.
+    /// Continues the Personal Team flow after the user returns from Settings. This signal merely
+    /// resumes the bounded verification; BLE-reported IP + the HTTP media server prove readiness.
     func continueAfterManualNetworkJoin() {
         guard case .awaitingManualNetworkJoin = state else { return }
         finishManualNetworkJoin(with: .success(()))
@@ -311,17 +288,15 @@ final class HeyCyanMediaTransferCoordinator {
                 return try await media.mediaList(on: accessPoint)
             } catch let error as HeyCyanMediaError {
                 if case .httpStatus(404) = error {
-                    // Some firmware does not create media.config when storage has no supported
-                    // media. Allow a short server-startup grace period, then treat a stable 404 as
-                    // an empty library instead of leaving the UI in a retry loop.
+                    // Empty storage can legitimately omit media.config. Give the server time to
+                    // finish booting, then treat a stable 404 as an empty Library rather than an
+                    // endless/retry-style sync failure.
                     consecutiveMissingManifestResponses += 1
                     if consecutiveMissingManifestResponses >= 6 {
                         return []
                     }
                 } else {
                     consecutiveMissingManifestResponses = 0
-                    // A different HTTP 4xx proves we reached the glasses server and the request
-                    // itself was rejected. Repeating that deterministic failure is not useful.
                     if case .httpStatus(let status) = error,
                        (400 ..< 500).contains(status) {
                         throw error
@@ -403,8 +378,6 @@ final class HeyCyanMediaTransferCoordinator {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
-                // The BLE address event may arrive between opening Settings and installing this
-                // continuation. Re-check here so that event cannot strand the transfer waiting.
                 if reportedDeviceIPv4Address != nil {
                     manualJoinWaitID = nil
                     continuation.resume()
@@ -428,18 +401,15 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
-    /// iOS exposes no supported URL that opens the Settings root or Wi-Fi pane. This legacy root
-    /// route is retained only as a sideloaded Personal-build convenience and requires physical-
-    /// device validation after iOS updates. The open callback cannot reveal which pane appeared,
-    /// so do not chain another route based on its success value.
+    /// This is an unsupported legacy Settings route used only by the sideloaded Personal Team
+    /// build because Hotspot Configuration is unavailable there. It is intentionally restored to
+    /// the exact Wi-Fi route that was physically validated for this project; the app still verifies
+    /// the BLE IP event and HTTP server after the user returns.
     private func openSettingsForManualWiFiJoin() {
-        guard let url = URL(string: "App-Prefs:") else { return }
+        guard let url = URL(string: "prefs:root=WIFI") else { return }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 
-    /// Keep the verified glasses passphrase available if iOS asks for it during the handoff.
-    /// Normally iOS reuses the saved network and does not prompt. The value remains on this
-    /// iPhone only and expires shortly after the handoff.
     private func copyNetworkPassword(_ passphrase: String) {
         UIPasteboard.general.setItems(
             [[UIPasteboard.typeAutomatic: passphrase]],
@@ -449,7 +419,6 @@ final class HeyCyanMediaTransferCoordinator {
             ]
         )
     }
-
 #endif
 
     private func beginOperation() throws -> UUID {
@@ -478,8 +447,6 @@ final class HeyCyanMediaTransferCoordinator {
         activeAccessPoint = nil
 
         guard sendBluetoothFinish, session.state.isReady else { return }
-        // Recovery must not wait for a response: the failed HTTP/Wi-Fi task may already be
-        // cancelled, while the glasses still need the verified transfer-exit command.
         try? session.writeForCleanup(.finishMediaTransfer)
     }
 }
