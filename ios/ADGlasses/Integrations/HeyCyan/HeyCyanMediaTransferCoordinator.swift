@@ -95,12 +95,22 @@ final class HeyCyanMediaTransferCoordinator {
             reportedDeviceIPv4Address = nil
             reportedNetworkError = nil
 
-            // The supplied SDK and official app expose this read-only inventory request. Avoid
-            // waking the Wi-Fi chip or sending the user to Settings when every count is zero.
+            // Keep the cheap inventory check on BLE. A single non-zero result is not enough to
+            // wake the glasses Wi-Fi: some firmware can briefly expose a stale count after a
+            // delete, capture, or reconnect. Only enter transfer mode after two non-zero reads.
             state = .checkingMediaCounts
-            let countsResponse = try await session.send(.readMediaCounts)
-            let counts = try responseDecoder.decodeMediaCounts(countsResponse)
-            if counts.total == 0 {
+            let firstCountsResponse = try await session.send(.readMediaCounts)
+            let firstCounts = try responseDecoder.decodeMediaCounts(firstCountsResponse)
+            if firstCounts.total == 0 {
+                state = .ready(items: [])
+                return []
+            }
+
+            try await Task.sleep(for: .milliseconds(250))
+            try ensureOperationIsActive(operationID)
+            let confirmedCountsResponse = try await session.send(.readMediaCounts)
+            let confirmedCounts = try responseDecoder.decodeMediaCounts(confirmedCountsResponse)
+            if confirmedCounts.total == 0 {
                 state = .ready(items: [])
                 return []
             }
