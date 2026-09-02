@@ -22,6 +22,7 @@ enum HeyCyanSessionError: LocalizedError, Sendable {
     case commandFamilyBusy(UInt8)
     case responseTimedOut(UInt8)
     case disconnectedWhileAwaitingResponse(UInt8)
+    case assistantSessionDidNotEnd
 
     var errorDescription: String? {
         switch self {
@@ -42,6 +43,8 @@ enum HeyCyanSessionError: LocalizedError, Sendable {
                 format: "The glasses disconnected while request 0x%02X was waiting for a response.",
                 family
             )
+        case .assistantSessionDidNotEnd:
+            return "The glasses did not finish their voice session, so the hardware command was not sent."
         }
     }
 }
@@ -76,6 +79,7 @@ final class HeyCyanSession {
     private let logger = Logger(subsystem: "com.achyutdalai.ADGlasses", category: "HeyCyanSession")
     private var streamDecoder: HeyCyanFrameStreamDecoder
     private var pendingRequests = [UInt8: PendingRequest]()
+    private var isAssistantListening = false
 
     init(
         transport: any HeyCyanByteTransport,
@@ -97,6 +101,10 @@ final class HeyCyanSession {
     }
 
     func send(_ command: HeyCyanCommand) async throws -> HeyCyanFrame {
+        guard state.isReady else {
+            throw HeyCyanSessionError.notReady
+        }
+        try await waitForAssistantSessionToEndIfNeeded(for: command)
         guard state.isReady else {
             throw HeyCyanSessionError.notReady
         }
@@ -161,6 +169,20 @@ final class HeyCyanSession {
         try transport.write(frame, to: command.channel)
     }
 
+    private func waitForAssistantSessionToEndIfNeeded(for command: HeyCyanCommand) async throws {
+        guard command.requiresAssistantIdle, isAssistantListening else { return }
+
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(3))
+        while isAssistantListening {
+            try Task.checkCancellation()
+            guard clock.now < deadline else {
+                throw HeyCyanSessionError.assistantSessionDidNotEnd
+            }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+    }
+
     private func finishRequest(
         family: UInt8,
         id: UUID? = nil,
@@ -187,6 +209,7 @@ final class HeyCyanSession {
         switch transportState {
         case .idle, .disconnecting:
             streamDecoder.reset()
+            isAssistantListening = false
             failPendingRequests()
             state = .disconnected
         case .scanning:
@@ -199,6 +222,7 @@ final class HeyCyanSession {
             state = .ready(name: name)
         case .reconnecting(let name, let attempt, let maximumAttempts):
             streamDecoder.reset()
+            isAssistantListening = false
             failPendingRequests()
             state = .reconnecting(
                 name: name,
@@ -207,10 +231,12 @@ final class HeyCyanSession {
             )
         case .unavailable(let reason):
             streamDecoder.reset()
+            isAssistantListening = false
             failPendingRequests()
             state = .unavailable(reason: reason)
         case .failed(let reason):
             streamDecoder.reset()
+            isAssistantListening = false
             failPendingRequests()
             state = .failed(reason: reason)
         }
@@ -226,6 +252,7 @@ final class HeyCyanSession {
         for event in streamDecoder.append(data) {
             switch event {
             case .frame(let frame):
+                updateAssistantListeningState(from: frame)
                 if let pending = pendingRequests[frame.command],
                    pending.command.matchesResponse(frame) {
                     finishRequest(
@@ -245,6 +272,27 @@ final class HeyCyanSession {
                 onDiagnostic?(message)
                 onUnparsedNotification?(channel, rawData)
             }
+        }
+    }
+
+    private func updateAssistantListeningState(from frame: HeyCyanFrame) {
+        guard frame.command == 0x73, frame.payload.count >= 2 else { return }
+        let bytes = [UInt8](frame.payload)
+        if bytes[0] == 0x03, bytes[1] == 0x01 {
+            isAssistantListening = true
+        } else if bytes[0] == 0x0A, bytes[1] == 0x01 {
+            isAssistantListening = false
+        }
+    }
+}
+
+private extension HeyCyanCommand {
+    var requiresAssistantIdle: Bool {
+        switch self {
+        case .takePhoto, .startVideoRecording, .startAudioRecording, .requestAIPhoto:
+            return true
+        default:
+            return false
         }
     }
 }
