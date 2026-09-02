@@ -45,6 +45,16 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         )
     }
 
+    static func supportedSpeechLocales() async -> [Locale] {
+        guard SpeechTranscriber.isAvailable else { return [] }
+        return await SpeechTranscriber.supportedLocales
+    }
+
+    static func installedSpeechLocales() async -> [Locale] {
+        guard SpeechTranscriber.isAvailable else { return [] }
+        return await SpeechTranscriber.installedLocales
+    }
+
     func prepareAssets(statusUpdate: ((String) -> Void)? = nil) async throws -> Locale {
         guard SpeechTranscriber.isAvailable else {
             throw SpeechAnalyzerAssetError.moduleUnavailable
@@ -55,8 +65,24 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         let languageName = languageDisplayName(locale)
-        let status = await AssetInventory.status(forModules: [module])
 
+        // Locale-dependent SpeechAnalyzer modules use app-scoped asset reservations. Keep a single
+        // active reservation because AD never runs Assistant speech and Live Translation at the
+        // same time. This avoids stale regional reservations (for example en-IN) consuming the
+        // app's allocation while a different locale is being prepared.
+        statusUpdate?("Preparing \(languageName) speech model…")
+        do {
+            try await reserveOnly(locale)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw SpeechAnalyzerAssetError.reservationFailed(
+                languageName,
+                error.localizedDescription
+            )
+        }
+
+        let status = await AssetInventory.status(forModules: [module])
         switch status {
         case .installed:
             statusUpdate?("\(languageName) speech model ready")
@@ -86,20 +112,25 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
 
         let finalStatus = await AssetInventory.status(forModules: [module])
-        switch finalStatus {
-        case .installed:
+        if finalStatus == .installed {
             statusUpdate?("\(languageName) speech model ready")
             return locale
-        case .unsupported:
-            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
-        case .supported, .downloading:
-            throw SpeechAnalyzerAssetError.installationIncomplete(languageName)
-        @unknown default:
-            throw SpeechAnalyzerAssetError.installationFailed(
-                languageName,
-                "Apple Speech returned an unknown asset state after installation."
-            )
         }
+        if finalStatus == .unsupported {
+            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
+        }
+
+        let installedLocales = await SpeechTranscriber.installedLocales
+        let installedList = installedLocales
+            .map(\.identifier)
+            .sorted()
+            .joined(separator: ", ")
+        throw SpeechAnalyzerAssetError.installationIncomplete(
+            languageName,
+            locale.identifier,
+            String(describing: finalStatus),
+            installedList.isEmpty ? "none" : installedList
+        )
     }
 
     func start() async throws {
@@ -294,7 +325,16 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let locale = try await prepareAssets()
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         guard await AssetInventory.status(forModules: [module]) == .installed else {
-            throw SpeechAnalyzerAssetError.installationIncomplete(languageDisplayName(locale))
+            let installed = await SpeechTranscriber.installedLocales
+                .map(\.identifier)
+                .sorted()
+                .joined(separator: ", ")
+            throw SpeechAnalyzerAssetError.installationIncomplete(
+                languageDisplayName(locale),
+                locale.identifier,
+                "not installed before analyzer start",
+                installed.isEmpty ? "none" : installed
+            )
         }
         guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw SpeechTranscriptionError.failedToCreateAudioInput
@@ -323,6 +363,24 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             analyzerInputContinuation.finish()
         }
         return analyzerFormat
+    }
+
+    private func reserveOnly(_ locale: Locale) async throws {
+        let normalizedRequested = Self.normalizedIdentifier(locale)
+        let reservations = await AssetInventory.reservedLocales
+
+        for reservedLocale in reservations
+        where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
+            _ = await AssetInventory.release(reservedLocale: reservedLocale)
+        }
+
+        _ = try await AssetInventory.reserve(locale: locale)
+    }
+
+    private static func normalizedIdentifier(_ locale: Locale) -> String {
+        locale.identifier
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
     }
 
     private func languageDisplayName(_ locale: Locale) -> String {
@@ -357,8 +415,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 private enum SpeechAnalyzerAssetError: LocalizedError {
     case moduleUnavailable
     case unsupportedLanguage(String)
+    case reservationFailed(String, String)
     case installationFailed(String, String)
-    case installationIncomplete(String)
+    case installationIncomplete(String, String, String, String)
 
     var errorDescription: String? {
         switch self {
@@ -366,10 +425,12 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
             return "Apple SpeechAnalyzer is not available on this iPhone."
         case .unsupportedLanguage(let language):
             return "Apple SpeechAnalyzer does not support \(language) on this iPhone."
+        case .reservationFailed(let language, let reason):
+            return "Apple could not reserve the \(language) SpeechAnalyzer model. \(reason)"
         case .installationFailed(let language, let reason):
             return "The \(language) speech model could not be installed. \(reason)"
-        case .installationIncomplete(let language):
-            return "The \(language) speech model is still not installed. Keep this iPhone online and try the download again."
+        case .installationIncomplete(let language, let locale, let status, let installedLocales):
+            return "Apple did not finish installing the \(language) SpeechAnalyzer model (\(locale)). Asset status: \(status). Installed SpeechTranscriber locales: \(installedLocales)."
         }
     }
 }
