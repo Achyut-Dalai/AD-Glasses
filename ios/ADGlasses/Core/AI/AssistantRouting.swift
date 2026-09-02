@@ -20,30 +20,85 @@ enum AssistantRoute: Equatable, Sendable {
     case clarify
     case conversation
     case visualQuestion
+    case readVisibleText
     case capturePhoto
+    case startVideo
+    case stopVideo
+    case startAudio
+    case stopAudio
+    case stopRecording
 }
 
+/// Owns deterministic Assistant shortcuts. Hardware, OCR, and visual-capture commands are resolved
+/// here before any conversational model is called. Keep phrase recognition in this one boundary so
+/// chat, phone voice, and glasses voice cannot drift into separate command vocabularies.
 struct AssistantRequestRouter: Sendable {
     func route(_ request: AssistantRequest) -> AssistantRoute {
         let text = request.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return .clarify }
         if request.hasImage { return .visualQuestion }
-        if Self.isPhotoCaptureCommand(text) { return .capturePhoto }
+
+        let normalized = Self.normalizedCommand(text)
+        guard !normalized.isEmpty else { return .clarify }
+        if Self.isMetaQuestion(normalized) { return .conversation }
+
+        let words = Set(normalized.split(separator: " ").map(String.init))
+        // Never execute a local action from an explicitly negated command. The conversational model
+        // can answer the sentence normally instead of the app guessing what part was negated.
+        guard words.isDisjoint(with: ["not", "dont", "never"]) else { return .conversation }
+
+        let captureVerb = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
+        let photoSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
+        if captureVerb && photoSubject { return .capturePhoto }
+
+        if Self.containsAny(normalized, [
+            "stop video", "stop recording video", "end video", "finish video", "end video recording"
+        ]) { return .stopVideo }
+        if Self.containsAny(normalized, [
+            "start video", "record video", "record a video", "start recording video", "begin video", "begin video recording"
+        ]) { return .startVideo }
+
+        if Self.containsAny(normalized, [
+            "stop audio", "stop audio recording", "stop recording audio", "end audio recording", "finish audio recording"
+        ]) { return .stopAudio }
+        if Self.containsAny(normalized, [
+            "start audio", "record audio", "record some audio", "start audio recording", "start recording audio", "begin audio recording"
+        ]) { return .startAudio }
+
+        if Self.containsAny(normalized, [
+            "read this", "read that", "read the text", "read this text", "read this sign", "read the sign",
+            "read what i see", "read whats in front of me", "what does this say", "scan this text"
+        ]) { return .readVisibleText }
+
+        if Self.containsAny(normalized, [
+            "what am i looking at", "what do you see", "tell me what you see", "describe what i see", "describe the scene",
+            "describe what is in front of me", "what is in front of me", "whats in front of me", "what is this object",
+            "identify this object", "identify this", "what is this", "explain what i am looking at", "anything important here",
+            "translate what i see", "translate this sign", "translate this text"
+        ]) { return .visualQuestion }
+
+        if Self.containsAny(normalized, ["stop recording", "end recording", "finish recording"]) {
+            return .stopRecording
+        }
+
         return .conversation
     }
 
-    private static func isPhotoCaptureCommand(_ text: String) -> Bool {
-        let normalized = text
-            .lowercased()
+    private static func normalizedCommand(_ value: String) -> String {
+        value.lowercased()
+            .replacingOccurrences(of: "’", with: "'")
             .replacingOccurrences(of: "'", with: "")
-            .replacingOccurrences(of: "’", with: "")
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
-        let words = Set(normalized)
-        guard words.isDisjoint(with: ["not", "dont", "never"]), !words.contains("how") else { return false }
-        let hasAction = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
-        let hasSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
-        return hasAction && hasSubject
+            .joined(separator: " ")
+    }
+
+    private static func isMetaQuestion(_ text: String) -> Bool {
+        containsAny(text, ["how do i", "how to", "can you explain", "what happens if", "how does"])
+    }
+
+    private static func containsAny(_ text: String, _ phrases: [String]) -> Bool {
+        phrases.contains(where: text.contains)
     }
 }
 
@@ -270,14 +325,15 @@ struct GroundingIntentRouter: Sendable {
         ])
     }
 
+    /// General web retrieval is an intentional capability, not a rescue path for structured tools.
+    /// Weather, news, sports scores, currency, rail, flights, and transit are owned by the structured
+    /// grounding layer and therefore do not appear in this list.
     private static func isLiveWebRequest(_ text: String) -> Bool {
         if containsAny(text, [
-            "search the web", "search online", "look it up", "look this up", "web search", "find online",
-            "check online", "latest news", "breaking news", "news today", "what's happening", "whats happening",
-            "what happened today", "as of today", "right now", "currently happening", "latest update", "most recent",
-            "today's", "todays", "live score", "score right now", "current score", "stock price", "share price",
-            "current price", "exchange rate", "weather today", "weather tomorrow", "forecast today",
-            "forecast tomorrow", "is it raining", "open now"
+            "search the web", "search online", "look it up online", "look this up online", "web search", "find online",
+            "check online", "what's happening", "whats happening", "what happened today", "as of today",
+            "right now", "currently happening", "latest update", "most recent", "today's", "todays",
+            "stock price", "share price", "current price", "open now"
         ]) { return true }
         return containsAny(text, [
             "current president", "current prime minister", "current ceo", "current governor", "current mayor",
