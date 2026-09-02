@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 struct AssistantView: View {
     @EnvironmentObject private var app: AppModel
@@ -325,21 +326,29 @@ private struct ConversationBubble: View {
                 AssistantAvatar(size: 28)
             }
 
-            Text(message.text)
-                .font(.body)
-                .foregroundStyle(message.role == .user ? .white : .primary)
-                .textSelection(.enabled)
-                .padding(.horizontal, 15)
-                .padding(.vertical, 11)
-                .background(bubbleBackground)
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 18,
-                        bottomLeadingRadius: message.role == .assistant ? 5 : 18,
-                        bottomTrailingRadius: message.role == .user ? 5 : 18,
-                        topTrailingRadius: 18
-                    )
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
+                if let attachment = message.imageAttachment {
+                    ConversationImagePreview(attachment: attachment)
+                }
+
+                if !message.text.isEmpty {
+                    Text(message.text)
+                        .font(.body)
+                        .foregroundStyle(message.role == .user ? .white : .primary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 11)
+            .background(bubbleBackground)
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 18,
+                    bottomLeadingRadius: message.role == .assistant ? 5 : 18,
+                    bottomTrailingRadius: message.role == .user ? 5 : 18,
+                    topTrailingRadius: 18
                 )
+            )
 
             if message.role == .assistant {
                 Spacer(minLength: 42)
@@ -357,6 +366,45 @@ private struct ConversationBubble: View {
             LinearGradient(colors: [.blue, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
         } else {
             Color(uiColor: .secondarySystemGroupedBackground)
+        }
+    }
+}
+
+private struct ConversationImagePreview: View {
+    @EnvironmentObject private var app: AppModel
+
+    let attachment: ConversationImageAttachment
+
+    @State private var image: UIImage?
+    @State private var didFinishLoading = false
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 240, maxHeight: 240)
+            } else if didFinishLoading {
+                Image(systemName: "photo")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 180, height: 120)
+                    .background(Color(uiColor: .tertiarySystemFill))
+            } else {
+                ProgressView()
+                    .frame(width: 180, height: 120)
+                    .background(Color(uiColor: .tertiarySystemFill))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityLabel("Captured view")
+        .task(id: attachment.id) {
+            image = nil
+            didFinishLoading = false
+            defer { didFinishLoading = true }
+            guard let data = await app.conversationImageData(for: attachment) else { return }
+            image = UIImage(data: data)
         }
     }
 }
