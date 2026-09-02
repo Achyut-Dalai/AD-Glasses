@@ -19,6 +19,39 @@ final class HeyCyanProtocolTests: XCTestCase {
         XCTAssertEqual(frame, Data([0xBC, 0x41, 0x03, 0x00, 0xD0, 0x56, 0x02, 0x01, 0x08]))
     }
 
+    func testVerifiedRestartAndFactoryResetVectors() throws {
+        XCTAssertEqual(HeyCyanCommand.restartGlasses.family, 0x41)
+        XCTAssertEqual(HeyCyanCommand.restartGlasses.payload, Data([0x02, 0x01, 0x0E]))
+        XCTAssertEqual(
+            try codec.encode(
+                command: HeyCyanCommand.restartGlasses.family,
+                payload: HeyCyanCommand.restartGlasses.payload
+            ),
+            Data([0xBC, 0x41, 0x03, 0x00, 0x50, 0x54, 0x02, 0x01, 0x0E])
+        )
+
+        XCTAssertEqual(HeyCyanCommand.factoryResetGlasses.family, 0x41)
+        XCTAssertEqual(HeyCyanCommand.factoryResetGlasses.payload, Data([0x02, 0x01, 0x0A]))
+        XCTAssertEqual(
+            try codec.encode(
+                command: HeyCyanCommand.factoryResetGlasses.family,
+                payload: HeyCyanCommand.factoryResetGlasses.payload
+            ),
+            Data([0xBC, 0x41, 0x03, 0x00, 0x51, 0x97, 0x02, 0x01, 0x0A])
+        )
+
+        let restartResponse = try codec.decode(
+            codec.encode(command: 0x41, payload: Data([0x02, 0x01, 0x0E, 0x00]))
+        )
+        let factoryResetResponse = try codec.decode(
+            codec.encode(command: 0x41, payload: Data([0x02, 0x01, 0x0A, 0x00]))
+        )
+        XCTAssertTrue(HeyCyanCommand.restartGlasses.matchesResponse(restartResponse))
+        XCTAssertFalse(HeyCyanCommand.restartGlasses.matchesResponse(factoryResetResponse))
+        XCTAssertTrue(HeyCyanCommand.factoryResetGlasses.matchesResponse(factoryResetResponse))
+        XCTAssertFalse(HeyCyanCommand.factoryResetGlasses.matchesResponse(restartResponse))
+    }
+
     func testOfficialAccessPointTransferVector() throws {
         let frame = try codec.encode(command: 0x41, payload: Data([0x02, 0x01, 0x04, 0x02]))
         XCTAssertEqual(
