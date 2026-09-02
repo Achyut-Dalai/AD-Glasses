@@ -54,7 +54,6 @@ final class AppModel: ObservableObject {
     private var speechOutputCancellable: AnyCancellable?
 
     private enum LocalAssistantAction {
-        case capturePhoto
         case startVideo
         case stopVideo
         case startAudio
@@ -97,18 +96,11 @@ final class AppModel: ObservableObject {
             isTranscribing = snapshot.isRunning
             speechEngineName = snapshot.engineName
 
-            // Apple recognition now endpoints itself after transcript stability. Convert that engine
-            // transition into product semantics: manual dictation becomes a draft; a glasses-button
-            // voice turn is finalized and dispatched even if the firmware's trailing ended event is
-            // delayed.
-            if wasRunning, !snapshot.isRunning, !isStoppingTranscription {
-                if isManualTranscription {
-                    finalizePhoneVoiceInput()
-                } else if let sessionID = glassesAssistantSessionID, isGlassesSpeechReady {
-                    Task { [weak self] in
-                        await self?.finishGlassesAssistantSession(sessionID: sessionID)
-                    }
-                }
+            // Phone microphone turns use Apple's transcript-stability endpoint. Glasses microphone
+            // turns do not: the hardware's verified 0x73/0x0A end event owns that boundary and is
+            // the only event allowed to dispatch a glasses voice command/question.
+            if wasRunning, !snapshot.isRunning, !isStoppingTranscription, isManualTranscription {
+                finalizePhoneVoiceInput()
             }
         }
 
@@ -116,13 +108,15 @@ final class AppModel: ObservableObject {
             self?.speechError = error.localizedDescription
         }
 
-        // A spoken glasses response is asynchronous: AVSpeechSynthesizer returns as soon as the
-        // utterance is queued. Keep the finite background task alive until playback really ends so
-        // locking the phone or switching apps does not silence a response between queue and speech.
+        // Forward nested speech-output state changes through AppModel so SwiftUI surfaces that
+        // observe AppModel redraw when TTS really starts/stops. Without this, Stop/Speaking could
+        // remain visually latched after AVSpeechSynthesizer had already finished.
         speechOutputCancellable = self.speechOutput.$isSpeaking
             .removeDuplicates()
             .sink { [weak self] isSpeaking in
-                guard let self, !isSpeaking, generationTask == nil else { return }
+                guard let self else { return }
+                objectWillChange.send()
+                guard !isSpeaking, generationTask == nil else { return }
                 endVoiceResponseBackgroundTask()
             }
 
@@ -248,6 +242,16 @@ final class AppModel: ObservableObject {
         speechOutput.stop()
         chatDraft = ""
 
+        // "click" is a hardware command, not a conversational turn. It must never enter Cloud AI,
+        // create an Assistant response/TTS utterance, or light up Thinking/Stop UI. The provider's
+        // verified BLE acknowledgement is the completion boundary; failures surface locally.
+        if route == .capturePhoto {
+            Task { [weak self] in
+                await self?.executePhotoCaptureCommand()
+            }
+            return
+        }
+
         let id = UUID()
         generationID = id
         isGenerating = true
@@ -258,7 +262,7 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             switch route {
             case .capturePhoto:
-                await executeLocalAction(.capturePhoto, text: text, generationID: id, speakResponse: speakResponse)
+                finishGeneration(id)
             case .startVideo:
                 await executeLocalAction(.startVideo, text: text, generationID: id, speakResponse: speakResponse)
             case .stopVideo:
@@ -278,6 +282,18 @@ final class AppModel: ObservableObject {
             case .clarify:
                 finishGeneration(id)
             }
+        }
+    }
+
+    private func executePhotoCaptureCommand() async {
+        conversationNotice = nil
+        guard let glassesManager else {
+            conversationNotice = "Connect AD Glasses first."
+            return
+        }
+        guard await glassesManager.requestPhotoCapture() else {
+            conversationNotice = glassesManager.errorMessage ?? "The photo could not be taken."
+            return
         }
     }
 
@@ -614,14 +630,6 @@ final class AppModel: ObservableObject {
         }
 
         switch action {
-        case .capturePhoto:
-            let succeeded = await glassesManager.requestPhotoCapture()
-            return LocalAssistantResult(
-                answer: succeeded
-                    ? "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
-                    : (glassesManager.errorMessage ?? "The photo could not be taken.")
-            )
-
         case .startVideo:
             if glassesManager.isVideoRecording {
                 return LocalAssistantResult(answer: "Video is already recording.")
@@ -739,7 +747,7 @@ final class AppModel: ObservableObject {
                     generationID: generationID,
                     userMessageID: userMessageID,
                     userMessageText: originalText,
-                    userMessageDate: userMessageDate
+                    userMessageDate: userMessageMessageDate
                 )
                 do {
                     let answer = try await visualAI.answer(
