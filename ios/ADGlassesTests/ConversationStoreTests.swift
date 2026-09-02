@@ -22,6 +22,33 @@ final class ConversationStoreTests: XCTestCase {
         XCTAssertEqual(loaded, [thread])
     }
 
+    func testImageAttachmentRoundTripsAndDeletes() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ADGlasses-ConversationTests-\(UUID().uuidString)", isDirectory: true)
+        let fileURL = root.appendingPathComponent("conversations.json")
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        let store = ConversationStore(fileURL: fileURL)
+        let jpegData = Data([0xFF, 0xD8, 0xFF, 0xD9])
+
+        let attachment = try await store.saveImageAttachment(
+            jpegData,
+            pixelWidth: 640,
+            pixelHeight: 480
+        )
+
+        XCTAssertEqual(attachment.pixelWidth, 640)
+        XCTAssertEqual(attachment.pixelHeight, 480)
+        XCTAssertEqual(try await store.loadImageAttachment(attachment), jpegData)
+
+        try await store.deleteImageAttachments([attachment])
+        do {
+            _ = try await store.loadImageAttachment(attachment)
+            XCTFail("Deleted conversation image should no longer be readable")
+        } catch {
+            // Expected: the attachment file was deleted.
+        }
+    }
+
     func testDeleteAllRemovesSavedConversations() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("ADGlasses-ConversationTests-\(UUID().uuidString)", isDirectory: true)
