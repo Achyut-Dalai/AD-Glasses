@@ -252,7 +252,7 @@ final class GlassesAssistantPipelineTests: XCTestCase {
             conversationStore: ConversationStore(fileURL: storeURL)
         )
         app.attach(to: manager)
-        app.chatDraft = "Click a photo"
+        app.chatDraft = "click"
 
         app.sendChatMessage(source: .glassesVoice, speakResponse: false)
         for _ in 0 ..< 200 where app.isGenerating {
