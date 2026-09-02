@@ -11,6 +11,7 @@ final class GlassesManager: ObservableObject {
     @Published private(set) var assistantInputState: GlassesAssistantInputState = .idle
     @Published private(set) var isPassiveDiagnosticsScanRunning = false
     @Published private(set) var mediaTransferState: GlassesMediaTransferState = .idle
+    @Published private(set) var mediaInventory: GlassesMediaInventory?
     @Published private(set) var latestVisualCapture: GlassesVisualCapture?
     @Published private(set) var isVideoRecording = false
     @Published private(set) var isAudioRecording = false
@@ -72,6 +73,11 @@ final class GlassesManager: ObservableObject {
     var supportsDeviceManagement: Bool {
         let providerID = activeProviderID ?? selectedProviderID
         return providerInstances[providerID] is any GlassesDeviceManaging
+    }
+
+    var supportsMediaInventory: Bool {
+        guard let activeProviderID else { return false }
+        return providerInstances[activeProviderID] is any GlassesMediaInventoryProviding
     }
 
     var deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] {
@@ -182,6 +188,7 @@ final class GlassesManager: ObservableObject {
         scanRequestID = UUID()
         selectedProviderID = providerID
         devices.removeAll()
+        mediaInventory = nil
         errorMessage = nil
     }
 
@@ -207,6 +214,7 @@ final class GlassesManager: ObservableObject {
 
     func connect(to device: GlassesDevice) async {
         errorMessage = nil
+        mediaInventory = nil
         guard let provider = providerInstances[device.providerID] else {
             errorMessage = GlassesProviderError.deviceNotFound.localizedDescription
             return
@@ -232,6 +240,7 @@ final class GlassesManager: ObservableObject {
 
     func disconnect() async {
         errorMessage = nil
+        mediaInventory = nil
         let providerID = activeProviderID ?? selectedProviderID
         await providerInstances[providerID]?.disconnect()
         if activeProviderID == providerID {
@@ -241,6 +250,7 @@ final class GlassesManager: ObservableObject {
 
     func forgetLastDevice() async {
         errorMessage = nil
+        mediaInventory = nil
         let providerID = activeProviderID ?? selectedProviderID
         guard let provider = providerInstances[providerID] as? any GlassesForgettable else { return }
         await provider.forgetLastDevice()
@@ -252,6 +262,7 @@ final class GlassesManager: ObservableObject {
 
     func reconnectLastDevice() async -> Bool {
         errorMessage = nil
+        mediaInventory = nil
         if connectionState.isConnected { return true }
 
         let orderedProviderIDs = [selectedProviderID] + providers
@@ -304,8 +315,26 @@ final class GlassesManager: ObservableObject {
         }
     }
 
+    func refreshMediaInventory() async {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesMediaInventoryProviding else {
+            mediaInventory = nil
+            return
+        }
+        do {
+            mediaInventory = try await provider.mediaInventory()
+        } catch is CancellationError {
+            return
+        } catch {
+            mediaInventory = nil
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func restartGlasses() async -> Bool {
         errorMessage = nil
+        mediaInventory = nil
         guard let activeProviderID,
               let provider = providerInstances[activeProviderID] as? any GlassesDeviceManaging else {
             errorMessage = "Connect AD Glasses before restarting them."
@@ -324,6 +353,7 @@ final class GlassesManager: ObservableObject {
 
     func factoryResetGlasses() async -> Bool {
         errorMessage = nil
+        mediaInventory = nil
         guard let activeProviderID,
               let provider = providerInstances[activeProviderID] as? any GlassesDeviceManaging else {
             errorMessage = "Connect AD Glasses before factory resetting them."
@@ -610,6 +640,7 @@ final class GlassesManager: ObservableObject {
             deviceInformationByProvider.removeValue(forKey: providerID)
             volumeProfiles.removeValue(forKey: providerID)
             mediaTransferState = .idle
+            mediaInventory = nil
             if activeProviderID == nil || activeProviderID == providerID {
                 assistantInputState = .idle
                 latestVisualCapture = nil
