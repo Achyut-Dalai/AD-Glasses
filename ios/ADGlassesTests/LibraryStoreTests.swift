@@ -43,11 +43,12 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: enhancedURL.path))
 
         let remaining = try await store.delete(itemID: imported.id)
+        let reloaded = try await store.load()
 
         XCTAssertTrue(remaining.isEmpty)
         XCTAssertFalse(FileManager.default.fileExists(atPath: originalURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: enhancedURL.path))
-        XCTAssertTrue(try await store.load().isEmpty)
+        XCTAssertTrue(reloaded.isEmpty)
     }
 
     func testImportRejectsUnexpectedExtension() async throws {
