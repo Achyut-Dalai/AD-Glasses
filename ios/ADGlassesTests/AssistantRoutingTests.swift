@@ -5,7 +5,7 @@ import AVFoundation
 final class AssistantRoutingTests: XCTestCase {
     private let router = AssistantRequestRouter()
 
-    func testRoutingUsesActualInputShapeInsteadOfKeywordGuessing() {
+    func testDeterministicAssistantRouterSeparatesCommandsFromConversation() {
         XCTAssertEqual(
             router.route(AssistantRequest(text: "Find a cafe", source: .chat, hasImage: false)),
             .conversation
@@ -21,6 +21,34 @@ final class AssistantRoutingTests: XCTestCase {
         XCTAssertEqual(
             router.route(AssistantRequest(text: "Click a photo", source: .glassesVoice, hasImage: false)),
             .capturePhoto
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Record a video", source: .glassesVoice, hasImage: false)),
+            .startVideo
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Stop video", source: .phoneVoice, hasImage: false)),
+            .stopVideo
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Record audio", source: .glassesVoice, hasImage: false)),
+            .startAudio
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Stop audio", source: .phoneVoice, hasImage: false)),
+            .stopAudio
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Stop recording", source: .glassesVoice, hasImage: false)),
+            .stopRecording
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Read this sign", source: .glassesVoice, hasImage: false)),
+            .readVisibleText
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "What am I looking at?", source: .phoneVoice, hasImage: false)),
+            .visualQuestion
         )
         XCTAssertEqual(
             router.route(AssistantRequest(text: "How do I take a photo?", source: .chat, hasImage: false)),
@@ -66,10 +94,13 @@ final class AssistantRoutingTests: XCTestCase {
 final class GroundingPolicyTests: XCTestCase {
     private let router = GroundingIntentRouter()
 
-    func testExplicitFreshnessRequestsUseWebGrounding() {
+    func testGeneralWebRouterOnlyOwnsExplicitOrUnstructuredFreshness() {
         XCTAssertEqual(router.route("Search the web for the latest OpenAI update").intent, .search)
-        XCTAssertEqual(router.route("What is the current score right now?").intent, .search)
-        XCTAssertEqual(router.route("What's the weather today?").intent, .search)
+        XCTAssertEqual(router.route("Who is the current president of France?").intent, .search)
+        // Score and weather prompts are owned by StructuredGroundingService. Keeping them direct
+        // here prevents Tavily from becoming a hidden fallback for a deterministic capability.
+        XCTAssertEqual(router.route("What is the current score right now?").intent, .direct)
+        XCTAssertEqual(router.route("What's the weather today?").intent, .direct)
     }
 
     func testSpatialRequestsRequireHighConfidenceLanguage() {
