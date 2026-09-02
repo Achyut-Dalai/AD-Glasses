@@ -23,12 +23,14 @@ private final class ResilientAppleSpeechTranscriber: ExternalAudioSpeechTranscri
         didSet { onUpdate?(snapshot) }
     }
 
+    private let locale: Locale
     private let analyzer: SpeechAnalyzerTranscriber
     private let legacy: LegacySpeechTranscriber
     private var activeBackend: Backend?
     private var preferLegacyForSession = false
 
     init(locale: Locale) {
+        self.locale = locale
         analyzer = SpeechAnalyzerTranscriber(locale: locale)
         legacy = LegacySpeechTranscriber(locale: locale)
         snapshot = SpeechTranscriptionSnapshot(
@@ -116,6 +118,18 @@ private final class ResilientAppleSpeechTranscriber: ExternalAudioSpeechTranscri
             return
         }
 
+        // Do not turn an interactive Assistant request into a SpeechAnalyzer asset-install job.
+        // Apple can report a supported locale before its on-device model is installed; calling the
+        // analyzer setup path in that state starts a system-managed download and makes otherwise
+        // healthy Ask/glasses turns appear broken after a few requests. Use SpeechAnalyzer only
+        // when the requested model is already installed. Otherwise choose the legacy Apple Speech
+        // backend once for this app session so phone and glasses input keep identical behavior.
+        guard await analyzerModelIsInstalled() else {
+            preferLegacyForSession = true
+            try await startLegacy(input)
+            return
+        }
+
         activeBackend = .speechAnalyzer
         do {
             switch input {
@@ -128,19 +142,31 @@ private final class ResilientAppleSpeechTranscriber: ExternalAudioSpeechTranscri
             activeBackend = nil
             throw CancellationError()
         } catch {
-            // SpeechAnalyzer's language assets are system-managed and may temporarily report
-            // supported/downloading even after earlier turns succeeded. Voice input must not become
-            // unusable just because that optional on-device backend is being repaired or fetched.
-            // Fall back to the already-supported SFSpeechRecognizer path for the remainder of this
-            // app session so phone Ask and glasses PCM keep the same Assistant behavior.
+            // SpeechAnalyzer's language assets are system-managed and can become temporarily
+            // unavailable even after earlier turns succeeded. Fall back for the remainder of the
+            // app session rather than repeatedly preparing/downloading the model on later turns.
             preferLegacyForSession = true
             activeBackend = nil
             NSLog(
                 "%@",
-                "[AD Speech] SpeechAnalyzer setup failed; using Apple Speech for this session: \(error.localizedDescription)"
+                "[AD Speech] SpeechAnalyzer unavailable; using Apple Speech for this session: \(error.localizedDescription)"
             )
             try await startLegacy(input)
         }
+    }
+
+    private func analyzerModelIsInstalled() async -> Bool {
+        let requested = Self.normalizedLocaleIdentifier(locale.identifier)
+        let installed = await SpeechAnalyzerTranscriber.installedSpeechLocales()
+        return installed.contains {
+            Self.normalizedLocaleIdentifier($0.identifier) == requested
+        }
+    }
+
+    private static func normalizedLocaleIdentifier(_ identifier: String) -> String {
+        identifier
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
     }
 
     private func startLegacy(_ input: InputKind) async throws {
@@ -188,9 +214,9 @@ enum AppleSpeechTranscriber {
     static func make(locale: Locale = assistantLocale) -> any SpeechTranscribing {
 #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
-            // Prefer SpeechAnalyzer when its system-managed model is ready, but do not make a
-            // transient asset download/state failure fatal. The fallback supports both phone mic
-            // and provider-decoded external PCM, so every Assistant entry point stays functional.
+            // Prefer SpeechAnalyzer only when its on-device model is already installed. Interactive
+            // Assistant turns never initiate a model download; the fallback supports both phone mic
+            // and provider-decoded external PCM, keeping every Assistant entry point functional.
             return ResilientAppleSpeechTranscriber(locale: locale)
         }
 #endif
