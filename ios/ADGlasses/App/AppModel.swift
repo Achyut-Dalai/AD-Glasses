@@ -59,6 +59,7 @@ final class AppModel: ObservableObject {
         case stopVideo
         case startAudio
         case stopAudio
+        case stopRecording
         case readVisibleText
         case visualQuestion
     }
@@ -239,11 +240,10 @@ final class AppModel: ObservableObject {
         speakResponse: Bool = true
     ) {
         let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let localAction = localAssistantAction(for: text)
         let route = requestRouter.route(
             AssistantRequest(text: text, source: source, hasImage: false)
         )
-        guard (!text.isEmpty && (localAction != nil || route != .clarify)), generationTask == nil else { return }
+        guard !text.isEmpty, route != .clarify, generationTask == nil else { return }
         speechOutput.stop()
         chatDraft = ""
 
@@ -255,17 +255,25 @@ final class AppModel: ObservableObject {
         }
         generationTask = Task { [weak self] in
             guard let self else { return }
-            if let localAction {
-                await executeLocalAction(localAction, text: text, generationID: id, speakResponse: speakResponse)
-                return
-            }
             switch route {
             case .capturePhoto:
-                await executePhotoCapture(text, generationID: id, speakResponse: speakResponse)
-            case .conversation:
-                await send(text, generationID: id, speakResponse: speakResponse)
+                await executeLocalAction(.capturePhoto, text: text, generationID: id, speakResponse: speakResponse)
+            case .startVideo:
+                await executeLocalAction(.startVideo, text: text, generationID: id, speakResponse: speakResponse)
+            case .stopVideo:
+                await executeLocalAction(.stopVideo, text: text, generationID: id, speakResponse: speakResponse)
+            case .startAudio:
+                await executeLocalAction(.startAudio, text: text, generationID: id, speakResponse: speakResponse)
+            case .stopAudio:
+                await executeLocalAction(.stopAudio, text: text, generationID: id, speakResponse: speakResponse)
+            case .stopRecording:
+                await executeLocalAction(.stopRecording, text: text, generationID: id, speakResponse: speakResponse)
+            case .readVisibleText:
+                await executeLocalAction(.readVisibleText, text: text, generationID: id, speakResponse: speakResponse)
             case .visualQuestion:
                 await executeLocalAction(.visualQuestion, text: text, generationID: id, speakResponse: speakResponse)
+            case .conversation:
+                await send(text, generationID: id, speakResponse: speakResponse)
             case .clarify:
                 finishGeneration(id)
             }
@@ -522,14 +530,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func executePhotoCapture(
-        _ text: String,
-        generationID: UUID,
-        speakResponse: Bool
-    ) async {
-        await executeLocalAction(.capturePhoto, text: text, generationID: generationID, speakResponse: speakResponse)
-    }
-
     private func executeLocalAction(
         _ action: LocalAssistantAction,
         text: String,
@@ -636,6 +636,25 @@ final class AppModel: ObservableObject {
                     ? "Audio recording stopped."
                     : (glassesManager.errorMessage ?? "Audio recording could not stop.")
             )
+
+        case .stopRecording:
+            if glassesManager.isVideoRecording {
+                let succeeded = await glassesManager.toggleVideoRecording()
+                return LocalAssistantResult(
+                    answer: succeeded
+                        ? "Video recording stopped."
+                        : (glassesManager.errorMessage ?? "Video recording could not stop.")
+                )
+            }
+            if glassesManager.isAudioRecording {
+                let succeeded = await glassesManager.toggleAudioRecording()
+                return LocalAssistantResult(
+                    answer: succeeded
+                        ? "Audio recording stopped."
+                        : (glassesManager.errorMessage ?? "Audio recording could not stop.")
+                )
+            }
+            return LocalAssistantResult(answer: "Nothing is recording.")
 
         case .readVisibleText:
             guard let capture = await glassesManager.requestVisualCapture() else {
@@ -744,65 +763,6 @@ final class AppModel: ObservableObject {
         } catch {
             conversationNotice = "Image captured, but its chat preview could not be saved: \(error.localizedDescription)"
         }
-    }
-
-    private func localAssistantAction(for rawText: String) -> LocalAssistantAction? {
-        let text = Self.normalizedCommand(rawText)
-        guard !text.isEmpty,
-              !text.contains("how do i"),
-              !text.contains("how to"),
-              !text.contains("can you explain") else { return nil }
-
-        let words = Set(text.split(separator: " ").map(String.init))
-        if words.isDisjoint(with: ["not", "dont", "never"]) {
-            let captureVerb = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
-            let photoSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
-            if captureVerb && photoSubject { return .capturePhoto }
-        }
-
-        if Self.containsAny(text, ["stop video", "stop recording video", "end video", "finish video"]) {
-            return .stopVideo
-        }
-        if Self.containsAny(text, ["start video", "record video", "start recording video", "begin video"]) {
-            return .startVideo
-        }
-        if Self.containsAny(text, ["stop audio", "stop audio recording", "stop recording audio", "end audio recording"]) {
-            return .stopAudio
-        }
-        if Self.containsAny(text, ["start audio", "record audio", "start audio recording", "start recording audio", "begin audio recording"]) {
-            return .startAudio
-        }
-
-        if Self.containsAny(text, [
-            "read this", "read the text", "read this text", "read this sign", "read what i see",
-            "what does this say", "scan this text"
-        ]) {
-            return .readVisibleText
-        }
-
-        if Self.containsAny(text, [
-            "what am i looking at", "what do you see", "describe what i see", "describe the scene",
-            "describe what is in front of me", "what is in front of me", "what is this object",
-            "identify this object", "what is this", "explain what i am looking at", "anything important here",
-            "translate what i see", "translate this sign", "translate this text"
-        ]) {
-            return .visualQuestion
-        }
-
-        return nil
-    }
-
-    private static func normalizedCommand(_ value: String) -> String {
-        value.lowercased()
-            .replacingOccurrences(of: "’", with: "'")
-            .replacingOccurrences(of: "'", with: "")
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
-    private static func containsAny(_ text: String, _ phrases: [String]) -> Bool {
-        phrases.contains(where: text.contains)
     }
 
     private func finishGeneration(_ id: UUID) {
