@@ -23,8 +23,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var audioContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
     private var audioTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
+    private var endpointTask: Task<Void, Never>?
     private var finalizedTranscript = ""
+    private var lastEndpointTranscript = ""
     private var inputSource: InputSource?
+
+    private let transcriptSilenceDelay: Duration = .milliseconds(1_200)
+    private let initialNoSpeechDelay: Duration = .seconds(6)
 
     private enum InputSource {
         case phoneMicrophone
@@ -94,9 +99,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
             }
 
-            // Apple's initial installation request can return while the system is still retrying
-            // the download. Keep observing the official AssetInventory state instead of trying to
-            // start SpeechAnalyzer against an asset that is not installed yet.
             for _ in 0 ..< 45 {
                 try Task.checkCancellation()
                 try await Task.sleep(for: .seconds(1))
@@ -110,8 +112,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 case .unsupported:
                     throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
                 case .supported:
-                    // The system is no longer actively downloading. Let the outer loop request
-                    // another consolidated installation attempt.
                     break
                 @unknown default:
                     break
@@ -138,14 +138,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         await stop()
         _ = try await prepareAnalyzerPipeline()
 
-        let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .spokenAudio,
-                options: [.duckOthers, .allowBluetoothHFP]
-            )
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            try SpeechInputAudioSession.activate()
         } catch {
             await cancelPreparedPipeline()
             throw error
@@ -155,15 +149,19 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
             await cancelPreparedPipeline()
+            SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
         guard let audioContinuation else {
             await cancelPreparedPipeline()
+            SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+        // A smaller tap keeps partial-result cadence close to Android's 50 ms Moonshine capture
+        // instead of handing SpeechAnalyzer quarter-second-scale Bluetooth chunks.
+        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in
             audioContinuation.yield(buffer)
         }
 
@@ -172,15 +170,21 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             try audioEngine.start()
             inputSource = .phoneMicrophone
             snapshot.isRunning = true
+            armInitialEndpoint()
         } catch {
             inputNode.removeTap(onBus: 0)
             audioContinuation.finish()
             await cancelPreparedPipeline()
+            SpeechInputAudioSession.deactivate()
             throw error
         }
     }
 
     func stop() async {
+        endpointTask?.cancel()
+        endpointTask = nil
+        lastEndpointTranscript = ""
+
         let wasUsingPhoneMicrophone = inputSource == .phoneMicrophone
         if wasUsingPhoneMicrophone {
             if audioEngine.isRunning {
@@ -211,7 +215,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         inputSource = nil
         snapshot.isRunning = false
         if wasUsingPhoneMicrophone {
-            VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
+            SpeechInputAudioSession.deactivate()
         }
     }
 
@@ -221,6 +225,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline()
         inputSource = .externalPCM
         snapshot.isRunning = true
+        armInitialEndpoint()
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -235,6 +240,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     func resetTranscript() {
         finalizedTranscript = ""
+        lastEndpointTranscript = ""
         snapshot.transcript = ""
     }
 
@@ -248,12 +254,14 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 for try await result in module.results {
                     let text = String(result.text.characters)
                     if result.isFinal {
-                        finalizedTranscript += text
+                        finalizedTranscript = Self.join(finalizedTranscript, text)
                         volatileTranscript = ""
                     } else {
                         volatileTranscript = text
                     }
-                    snapshot.transcript = finalizedTranscript + volatileTranscript
+                    let combined = Self.join(finalizedTranscript, volatileTranscript)
+                    snapshot.transcript = combined
+                    noteTranscriptActivity(combined)
                 }
             } catch is CancellationError {
                 return
@@ -261,6 +269,55 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 onError?(error)
             }
         }
+    }
+
+    /// Mirrors the Android Moonshine endpoint policy: six seconds for a completely silent turn,
+    /// then 1.2 seconds of transcript stability after speech begins. This is transcript-driven,
+    /// so normal Bluetooth noise does not keep recognition alive forever.
+    private func armInitialEndpoint() {
+        endpointTask?.cancel()
+        endpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(6))
+            } catch {
+                return
+            }
+            guard let self,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            await stop()
+        }
+    }
+
+    private func noteTranscriptActivity(_ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
+        lastEndpointTranscript = clean
+        endpointTask?.cancel()
+        endpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.transcriptSilenceDelay ?? .milliseconds(1_200))
+            } catch {
+                return
+            }
+            guard let self,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                return
+            }
+            await stop()
+        }
+    }
+
+    private static func join(_ prefix: String, _ suffix: String) -> String {
+        guard !prefix.isEmpty else { return suffix }
+        guard !suffix.isEmpty else { return prefix }
+        if prefix.last?.isWhitespace == true || suffix.first?.isWhitespace == true {
+            return prefix + suffix
+        }
+        return prefix + " " + suffix
     }
 
     private func prepareAnalyzerPipeline() async throws -> AVAudioFormat {
@@ -305,6 +362,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func cancelPreparedPipeline() async {
+        endpointTask?.cancel()
+        endpointTask = nil
         audioContinuation?.finish()
         await audioTask?.value
         audioTask = nil
