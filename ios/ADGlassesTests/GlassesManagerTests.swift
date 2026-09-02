@@ -258,7 +258,7 @@ final class GlassesManagerTests: XCTestCase {
         XCTAssertEqual(publishedCapture, result)
     }
 
-    func testVisualCaptureRetriesOneTransientFailure() async {
+    func testVisualCaptureFailureIsNotRetried() async {
         let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
         let manager = GlassesManager(providers: [provider])
         let device = GlassesDevice(
@@ -274,9 +274,9 @@ final class GlassesManagerTests: XCTestCase {
 
         let capture = await manager.requestVisualCapture()
 
-        XCTAssertNotNil(capture)
-        XCTAssertEqual(provider.visualCaptureRequestCount, 2)
-        XCTAssertNil(manager.errorMessage)
+        XCTAssertNil(capture)
+        XCTAssertEqual(provider.visualCaptureRequestCount, 1)
+        XCTAssertNotNil(manager.errorMessage)
     }
 
     func testProviderDeviceStatusFlowsWithoutVendorBranchingAndClearsOnDisconnect() async {
