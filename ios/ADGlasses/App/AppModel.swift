@@ -63,6 +63,16 @@ final class AppModel: ObservableObject {
         case visualQuestion
     }
 
+    private struct LocalAssistantResult {
+        let answer: String
+        let imageAttachment: ConversationImageAttachment?
+
+        init(answer: String, imageAttachment: ConversationImageAttachment? = nil) {
+            self.answer = answer
+            self.imageAttachment = imageAttachment
+        }
+    }
+
     private enum PhoneVoiceInputMode {
         case draft
         case question
@@ -359,13 +369,24 @@ final class AppModel: ObservableObject {
         if currentConversationID == id {
             cancelResponse()
         }
+        let attachments = conversations
+            .first(where: { $0.id == id })?
+            .messages
+            .compactMap(\.imageAttachment) ?? []
         conversations.removeAll { $0.id == id }
         if currentConversationID == id {
             currentConversationID = UUID()
             conversation.removeAll()
             conversationNotice = nil
         }
-        await saveConversations()
+        do {
+            try await conversationStore.save(conversations)
+            if !attachments.isEmpty {
+                try await conversationStore.deleteImageAttachments(attachments)
+            }
+        } catch {
+            conversationNotice = "Could not delete this conversation: \(error.localizedDescription)"
+        }
     }
 
     func deleteAllConversations() async {
@@ -384,6 +405,10 @@ final class AppModel: ObservableObject {
         } catch {
             conversationNotice = "Could not clear local conversations: \(error.localizedDescription)"
         }
+    }
+
+    func conversationImageData(for attachment: ConversationImageAttachment) async -> Data? {
+        try? await conversationStore.loadImageAttachment(attachment)
     }
 
     private func send(_ text: String, generationID: UUID, speakResponse: Bool) async {
@@ -521,92 +546,176 @@ final class AppModel: ObservableObject {
         await loadConversationsIfNeeded()
         guard self.generationID == generationID, !Task.isCancelled else { return }
 
-        conversation.append(ConversationMessage(role: .user, text: text))
+        let userMessageID = UUID()
+        let userMessageDate = Date()
+        conversation.append(
+            ConversationMessage(
+                id: userMessageID,
+                role: .user,
+                text: text,
+                createdAt: userMessageDate
+            )
+        )
         await persistCurrentConversation()
 
-        let answer = await localActionAnswer(action, originalText: text)
+        let result = await localActionResult(action, originalText: text)
         guard self.generationID == generationID, !Task.isCancelled else { return }
-        conversation.append(ConversationMessage(role: .assistant, text: answer))
+        if let imageAttachment = result.imageAttachment,
+           let index = conversation.firstIndex(where: { $0.id == userMessageID }) {
+            conversation[index] = ConversationMessage(
+                id: userMessageID,
+                role: .user,
+                text: text,
+                createdAt: userMessageDate,
+                imageAttachment: imageAttachment
+            )
+        }
+        conversation.append(ConversationMessage(role: .assistant, text: result.answer))
         await persistCurrentConversation()
         conversationNotice = nil
 
         if speakResponse {
             do {
-                try speechOutput.speak(answer)
+                try speechOutput.speak(result.answer)
             } catch {
                 conversationNotice = "The result is saved, but it could not be spoken: \(error.localizedDescription)"
             }
         }
     }
 
-    private func localActionAnswer(_ action: LocalAssistantAction, originalText: String) async -> String {
+    private func localActionResult(
+        _ action: LocalAssistantAction,
+        originalText: String
+    ) async -> LocalAssistantResult {
         guard let glassesManager else {
-            return "Connect AD Glasses first."
+            return LocalAssistantResult(answer: "Connect AD Glasses first.")
         }
 
         switch action {
         case .capturePhoto:
             let succeeded = await glassesManager.requestPhotoCapture()
-            return succeeded
-                ? "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
-                : (glassesManager.errorMessage ?? "The photo could not be taken.")
+            return LocalAssistantResult(
+                answer: succeeded
+                    ? "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
+                    : (glassesManager.errorMessage ?? "The photo could not be taken.")
+            )
 
         case .startVideo:
-            if glassesManager.isVideoRecording { return "Video is already recording." }
+            if glassesManager.isVideoRecording {
+                return LocalAssistantResult(answer: "Video is already recording.")
+            }
             let succeeded = await glassesManager.toggleVideoRecording()
-            return succeeded ? "Video recording started." : (glassesManager.errorMessage ?? "Video recording could not start.")
+            return LocalAssistantResult(
+                answer: succeeded
+                    ? "Video recording started."
+                    : (glassesManager.errorMessage ?? "Video recording could not start.")
+            )
 
         case .stopVideo:
-            if !glassesManager.isVideoRecording { return "Video recording is already stopped." }
+            if !glassesManager.isVideoRecording {
+                return LocalAssistantResult(answer: "Video recording is already stopped.")
+            }
             let succeeded = await glassesManager.toggleVideoRecording()
-            return succeeded ? "Video recording stopped." : (glassesManager.errorMessage ?? "Video recording could not stop.")
+            return LocalAssistantResult(
+                answer: succeeded
+                    ? "Video recording stopped."
+                    : (glassesManager.errorMessage ?? "Video recording could not stop.")
+            )
 
         case .startAudio:
-            if glassesManager.isAudioRecording { return "Audio is already recording." }
+            if glassesManager.isAudioRecording {
+                return LocalAssistantResult(answer: "Audio is already recording.")
+            }
             let succeeded = await glassesManager.toggleAudioRecording()
-            return succeeded ? "Audio recording started." : (glassesManager.errorMessage ?? "Audio recording could not start.")
+            return LocalAssistantResult(
+                answer: succeeded
+                    ? "Audio recording started."
+                    : (glassesManager.errorMessage ?? "Audio recording could not start.")
+            )
 
         case .stopAudio:
-            if !glassesManager.isAudioRecording { return "Audio recording is already stopped." }
+            if !glassesManager.isAudioRecording {
+                return LocalAssistantResult(answer: "Audio recording is already stopped.")
+            }
             let succeeded = await glassesManager.toggleAudioRecording()
-            return succeeded ? "Audio recording stopped." : (glassesManager.errorMessage ?? "Audio recording could not stop.")
+            return LocalAssistantResult(
+                answer: succeeded
+                    ? "Audio recording stopped."
+                    : (glassesManager.errorMessage ?? "Audio recording could not stop.")
+            )
 
         case .readVisibleText:
             guard let capture = await glassesManager.requestVisualCapture() else {
-                return glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+                return LocalAssistantResult(
+                    answer: glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+                )
             }
             do {
                 let prepared = try await lensProcessor.prepare(capture.jpegData)
-                let text = try await lensProcessor.recognizeText(in: prepared)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return text.isEmpty ? "I could not find readable text in front of you." : text
+                let attachment = try? await conversationStore.saveImageAttachment(
+                    prepared.jpegData,
+                    pixelWidth: prepared.pixelWidth,
+                    pixelHeight: prepared.pixelHeight
+                )
+                do {
+                    let recognizedText = try await lensProcessor.recognizeText(in: prepared)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    return LocalAssistantResult(
+                        answer: recognizedText.isEmpty
+                            ? "I could not find readable text in front of you."
+                            : recognizedText,
+                        imageAttachment: attachment
+                    )
+                } catch {
+                    return LocalAssistantResult(
+                        answer: error.localizedDescription,
+                        imageAttachment: attachment
+                    )
+                }
             } catch {
-                return error.localizedDescription
+                return LocalAssistantResult(answer: error.localizedDescription)
             }
 
         case .visualQuestion:
             guard let profile = aiProfiles.activeProfile else {
-                return "Configure Cloud AI in Settings before asking visual questions."
+                return LocalAssistantResult(
+                    answer: "Configure Cloud AI in Settings before asking visual questions."
+                )
             }
             let credential: String
             do {
                 credential = try aiProfiles.credential(for: profile.id)
             } catch {
-                return error.localizedDescription
+                return LocalAssistantResult(answer: error.localizedDescription)
             }
             guard let capture = await glassesManager.requestVisualCapture() else {
-                return glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+                return LocalAssistantResult(
+                    answer: glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+                )
             }
             do {
                 let prepared = try await lensProcessor.prepare(capture.jpegData)
-                return try await visualAI.answer(
-                    question: originalText,
-                    imageJPEGData: prepared.jpegData,
-                    profile: profile,
-                    credential: credential
+                let attachment = try? await conversationStore.saveImageAttachment(
+                    prepared.jpegData,
+                    pixelWidth: prepared.pixelWidth,
+                    pixelHeight: prepared.pixelHeight
                 )
+                do {
+                    let answer = try await visualAI.answer(
+                        question: originalText,
+                        imageJPEGData: prepared.jpegData,
+                        profile: profile,
+                        credential: credential
+                    )
+                    return LocalAssistantResult(answer: answer, imageAttachment: attachment)
+                } catch {
+                    return LocalAssistantResult(
+                        answer: error.localizedDescription,
+                        imageAttachment: attachment
+                    )
+                }
             } catch {
-                return error.localizedDescription
+                return LocalAssistantResult(answer: error.localizedDescription)
             }
         }
     }
