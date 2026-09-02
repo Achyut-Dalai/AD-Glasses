@@ -160,11 +160,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
     func stop() {
         queuedUtterances.removeAll()
         synthesizer.stopSpeaking(at: .immediate)
-        isSpeaking = false
-        if ownsAudioSession {
-            deactivateAudioSession()
-        }
-        ownsAudioSession = false
+        settleIdleState()
     }
 
     func preferredVoice(languageCode: String?) -> SpeechVoiceOption? {
@@ -214,10 +210,33 @@ final class SpeechOutputController: NSObject, ObservableObject {
         synthesizer.speak(utterance)
     }
 
-    private func finish(_ utterance: AVSpeechUtterance) {
-        guard let index = queuedUtterances.firstIndex(where: { $0 === utterance }) else { return }
-        queuedUtterances.remove(at: index)
+    private func finish(_ utterance: AVSpeechUtterance, allowContentMatch: Bool) {
+        var index = queuedUtterances.firstIndex(where: { $0 === utterance })
+
+        // AVSpeechSynthesizer normally returns the same utterance object to its delegate. If an
+        // engine/OS version instead bridges a different object for a successful completion, match
+        // the serial queue by speech content so the product cannot remain stuck in "Speaking".
+        // Cancellation callbacks deliberately do not use this fallback because a stale didCancel
+        // from an interrupted reply must never consume a newly queued utterance with similar text.
+        if index == nil, allowContentMatch {
+            index = queuedUtterances.firstIndex(where: { $0.speechString == utterance.speechString })
+        }
+
+        if let index {
+            queuedUtterances.remove(at: index)
+        } else {
+            // A callback can arrive after stop()/replacement cleared the old queue. Leave a new
+            // active queue alone; if the synthesizer itself is now idle, reconcile our published
+            // state as well so Stop/Ask UI cannot stay latched forever.
+            guard !synthesizer.isSpeaking, !synthesizer.isPaused else { return }
+            queuedUtterances.removeAll()
+        }
+
         guard queuedUtterances.isEmpty else { return }
+        settleIdleState()
+    }
+
+    private func settleIdleState() {
         isSpeaking = false
         if ownsAudioSession {
             deactivateAudioSession()
@@ -275,7 +294,8 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didStart utterance: AVSpeechUtterance
     ) {
-        guard queuedUtterances.contains(where: { $0 === utterance }) else { return }
+        guard queuedUtterances.contains(where: { $0 === utterance }) ||
+                queuedUtterances.contains(where: { $0.speechString == utterance.speechString }) else { return }
         isSpeaking = true
     }
 
@@ -283,13 +303,13 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
-        finish(utterance)
+        finish(utterance, allowContentMatch: true)
     }
 
     func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didCancel utterance: AVSpeechUtterance
     ) {
-        finish(utterance)
+        finish(utterance, allowContentMatch: false)
     }
 }
