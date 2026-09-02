@@ -38,10 +38,14 @@ final class AppModel: ObservableObject {
     private var didLoadConversations = false
     private var userChangedConversationBeforeLoad = false
     private var glassesSpeechStartTask: Task<Void, Never>?
+    private var glassesEndpointTask: Task<Void, Never>?
+    private var glassesHardTimeoutTask: Task<Void, Never>?
     private var glassesAssistantSessionID: UUID?
+    private var glassesFinalizingSessionID: UUID?
     private var pendingGlassesAudio = [AVAudioPCMBuffer]()
     private var isGlassesSpeechReady = false
     private var glassesStreamDidEnd = false
+    private var lastGlassesEndpointTranscript = ""
     private var applicationIsActive = true
     private var phoneVoiceInputMode: PhoneVoiceInputMode?
 
@@ -49,6 +53,8 @@ final class AppModel: ObservableObject {
     // SpeechAnalyzer performs a first/cold asset or pipeline start, matching Android Moonshine's
     // bounded 30-second queue instead of dropping the first words after only ~2 seconds.
     private let maximumPendingGlassesPackets = 1_500
+    private let glassesTranscriptSilenceDelay: Duration = .milliseconds(1_200)
+    private let glassesMaximumListeningDuration: Duration = .seconds(8)
     private weak var glassesManager: GlassesManager?
     private var glassesConnectionCancellable: AnyCancellable?
     private var speechOutputCancellable: AnyCancellable?
@@ -96,9 +102,17 @@ final class AppModel: ObservableObject {
             isTranscribing = snapshot.isRunning
             speechEngineName = snapshot.engineName
 
-            // Phone microphone turns use Apple's transcript-stability endpoint. Glasses microphone
-            // turns do not: the hardware's verified 0x73/0x0A end event owns that boundary and is
-            // the only event allowed to dispatch a glasses voice command/question.
+            if let sessionID = glassesAssistantSessionID,
+               isGlassesAssistantAudioActive,
+               isGlassesSpeechReady,
+               glassesFinalizingSessionID == nil,
+               snapshot.isRunning {
+                noteGlassesTranscriptActivity(snapshot.transcript, sessionID: sessionID)
+            }
+
+            // Phone microphone turns use Apple's own endpointing. Glasses turns are bounded here:
+            // hardware end wins when present, otherwise transcript stability or the absolute timeout
+            // finalizes exactly once.
             if wasRunning, !snapshot.isRunning, !isStoppingTranscription, isManualTranscription {
                 finalizePhoneVoiceInput()
             }
@@ -128,6 +142,8 @@ final class AppModel: ObservableObject {
         generationTask?.cancel()
         conversationLoadTask?.cancel()
         glassesSpeechStartTask?.cancel()
+        glassesEndpointTask?.cancel()
+        glassesHardTimeoutTask?.cancel()
         glassesConnectionCancellable?.cancel()
         speechOutputCancellable?.cancel()
     }
@@ -306,12 +322,16 @@ final class AppModel: ObservableObject {
         text: String,
         source: AssistantRequestSource
     ) -> AssistantRoute {
-        let normalized = text.lowercased()
+        let words = text.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
-            .joined(separator: " ")
 
-        if normalized == "click" { return .capturePhoto }
+        // Recognition can occasionally duplicate a short command around a final-result boundary.
+        // A turn containing only one or more "click" tokens is one photo command, never N commands
+        // and never an AI prompt.
+        if !words.isEmpty, words.allSatisfy({ $0 == "click" }) {
+            return .capturePhoto
+        }
         if routed == .capturePhoto { return .conversation }
 
         switch source {
@@ -852,12 +872,17 @@ final class AppModel: ObservableObject {
         speechOutput.stop()
         speechError = nil
         glassesSpeechStartTask?.cancel()
+        glassesEndpointTask?.cancel()
+        glassesHardTimeoutTask?.cancel()
         let sessionID = UUID()
         glassesAssistantSessionID = sessionID
+        glassesFinalizingSessionID = nil
         isGlassesAssistantAudioActive = true
         pendingGlassesAudio.removeAll(keepingCapacity: true)
         isGlassesSpeechReady = false
         glassesStreamDidEnd = false
+        lastGlassesEndpointTranscript = ""
+        armGlassesHardTimeout(sessionID: sessionID)
 
         glassesSpeechStartTask = Task { [weak self] in
             guard let self else { return }
@@ -894,7 +919,9 @@ final class AppModel: ObservableObject {
     }
 
     private func consumeGlassesAudio(_ buffer: AVAudioPCMBuffer) {
-        guard glassesAssistantSessionID != nil, !glassesStreamDidEnd,
+        guard glassesAssistantSessionID != nil,
+              glassesFinalizingSessionID == nil,
+              !glassesStreamDidEnd,
               let streamingTranscriber = transcriber as? any ExternalAudioSpeechTranscribing else {
             return
         }
@@ -910,7 +937,8 @@ final class AppModel: ObservableObject {
     }
 
     private func endGlassesAssistantSession() {
-        guard let sessionID = glassesAssistantSessionID else { return }
+        guard let sessionID = glassesAssistantSessionID,
+              glassesFinalizingSessionID == nil else { return }
         glassesStreamDidEnd = true
         guard isGlassesSpeechReady else { return }
         Task { [weak self] in
@@ -918,20 +946,71 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func noteGlassesTranscriptActivity(_ text: String, sessionID: UUID) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard glassesAssistantSessionID == sessionID,
+              glassesFinalizingSessionID == nil,
+              !clean.isEmpty,
+              clean != lastGlassesEndpointTranscript else { return }
+        lastGlassesEndpointTranscript = clean
+        glassesEndpointTask?.cancel()
+        glassesEndpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.glassesTranscriptSilenceDelay ?? .milliseconds(1_200))
+            } catch {
+                return
+            }
+            guard let self,
+                  glassesAssistantSessionID == sessionID,
+                  glassesFinalizingSessionID == nil,
+                  isGlassesSpeechReady,
+                  transcriber.snapshot.isRunning,
+                  transcriber.snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                return
+            }
+            await finishGlassesAssistantSession(sessionID: sessionID)
+        }
+    }
+
+    private func armGlassesHardTimeout(sessionID: UUID) {
+        glassesHardTimeoutTask?.cancel()
+        glassesHardTimeoutTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.glassesMaximumListeningDuration ?? .seconds(8))
+            } catch {
+                return
+            }
+            guard let self,
+                  glassesAssistantSessionID == sessionID,
+                  glassesFinalizingSessionID == nil else { return }
+            await finishGlassesAssistantSession(sessionID: sessionID)
+        }
+    }
+
     private func finishGlassesAssistantSession(sessionID: UUID) async {
         guard glassesAssistantSessionID == sessionID,
+              glassesFinalizingSessionID == nil,
               let streamingTranscriber = transcriber as? any ExternalAudioSpeechTranscribing else {
             return
         }
+        glassesFinalizingSessionID = sessionID
+        glassesEndpointTask?.cancel()
+        glassesEndpointTask = nil
+        glassesHardTimeoutTask?.cancel()
+        glassesHardTimeoutTask = nil
+        let wasSpeechReady = isGlassesSpeechReady
         isGlassesSpeechReady = false
         await streamingTranscriber.finishExternalAudio()
-        guard glassesAssistantSessionID == sessionID else { return }
+        guard glassesAssistantSessionID == sessionID,
+              glassesFinalizingSessionID == sessionID else { return }
 
         let text = transcriber.snapshot.transcript
             .trimmingCharacters(in: .whitespacesAndNewlines)
         resetGlassesAssistantState()
         guard !text.isEmpty else {
-            speechError = "I didn’t hear a question from the glasses. Try again."
+            speechError = wasSpeechReady
+                ? "I didn’t hear a question from the glasses. Try again."
+                : "Glasses voice input was not ready before this turn ended. Try again."
             return
         }
         let preservedDraft = chatDraft
@@ -942,7 +1021,10 @@ final class AppModel: ObservableObject {
 
     private func cancelGlassesAssistantSession() async {
         glassesSpeechStartTask?.cancel()
-        if let streamingTranscriber = transcriber as? any ExternalAudioSpeechTranscribing {
+        glassesEndpointTask?.cancel()
+        glassesHardTimeoutTask?.cancel()
+        if glassesFinalizingSessionID == nil,
+           let streamingTranscriber = transcriber as? any ExternalAudioSpeechTranscribing {
             await streamingTranscriber.finishExternalAudio()
         }
         resetGlassesAssistantState()
@@ -951,10 +1033,16 @@ final class AppModel: ObservableObject {
     private func resetGlassesAssistantState() {
         glassesSpeechStartTask?.cancel()
         glassesSpeechStartTask = nil
+        glassesEndpointTask?.cancel()
+        glassesEndpointTask = nil
+        glassesHardTimeoutTask?.cancel()
+        glassesHardTimeoutTask = nil
         glassesAssistantSessionID = nil
+        glassesFinalizingSessionID = nil
         pendingGlassesAudio.removeAll(keepingCapacity: true)
         isGlassesSpeechReady = false
         glassesStreamDidEnd = false
+        lastGlassesEndpointTranscript = ""
         isGlassesAssistantAudioActive = false
     }
 
