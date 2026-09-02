@@ -67,9 +67,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         let languageName = languageDisplayName(locale)
 
-        // Locale-dependent SpeechAnalyzer modules use app-scoped asset reservations. Keep existing
-        // useful reservations when the device permits it, but free stale reservations only when the
-        // app has reached Apple's per-device reservation limit.
         statusUpdate?("Preparing \(languageName) speech model…")
         do {
             try await reserve(locale)
@@ -138,8 +135,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 error: error,
                 stage: "downloadAndInstall"
             )
-            // Apple documents that a failed initial attempt can remain in `.downloading` while the
-            // system retries later. Do not turn that state into an immediate fatal UI error.
             guard state == .downloading else {
                 throw SpeechAnalyzerAssetError.installationFailed(
                     languageName,
@@ -192,8 +187,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        // A smaller tap keeps partial-result cadence close to Android's 50 ms Moonshine capture
-        // instead of handing SpeechAnalyzer quarter-second-scale Bluetooth chunks.
         inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in
             audioContinuation.yield(buffer)
         }
@@ -258,9 +251,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline()
         inputSource = .externalPCM
         snapshot.isRunning = true
-        // Glasses turns remain finite even if the firmware's trailing Assistant-ended event is
-        // delayed or missed. The first terminal condition wins: six seconds of no speech or 1.2
-        // seconds of stable transcript silence. AppModel de-duplicates this against hardware end.
         armInitialEndpoint()
     }
 
@@ -307,9 +297,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    /// Every one-shot speech turn is bounded: six seconds when nothing is recognized, then 1.2
-    /// seconds of transcript stability after speech begins. For glasses audio, the firmware-ended
-    /// event is an additional terminal signal; AppModel ensures only one of them can dispatch.
     private func armInitialEndpoint() {
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
@@ -464,7 +451,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         if reservations.count >= AssetInventory.maximumReservedLocales {
             for reservedLocale in reservations
-            where Self.normalizedIdentifier($0) != normalizedRequested {
+            where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
                 _ = await AssetInventory.release(reservedLocale: reservedLocale)
             }
             reservations = await AssetInventory.reservedLocales
