@@ -21,6 +21,35 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertTrue(loaded.first?.isFavorite == true)
     }
 
+    func testDeleteRemovesOriginalEnhancedCopyAndIndexEntry() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ADGlasses-LibraryTests-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("capture.jpg")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data([0xFF, 0xD8, 0xFF, 0xD9]).write(to: source)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        let store = LibraryStore(rootURL: root.appendingPathComponent("Library", isDirectory: true))
+
+        let imported = try await store.importFile(
+            from: source,
+            title: "Capture",
+            kind: .photo,
+            sourceProviderID: "provider",
+            sourceReference: "DCIM_0001.jpg"
+        )
+        let originalURL = store.fileURL(for: imported)
+        let enhancedURL = try await store.saveEnhancedPhoto(Data([0xFF, 0xD8, 0xFF, 0xD9]), for: imported)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: originalURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: enhancedURL.path))
+
+        let remaining = try await store.delete(itemID: imported.id)
+
+        XCTAssertTrue(remaining.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: originalURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: enhancedURL.path))
+        XCTAssertTrue(try await store.load().isEmpty)
+    }
+
     func testImportRejectsUnexpectedExtension() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("ADGlasses-LibraryTests-\(UUID().uuidString)", isDirectory: true)
