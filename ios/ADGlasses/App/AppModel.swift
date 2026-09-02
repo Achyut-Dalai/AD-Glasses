@@ -65,12 +65,6 @@ final class AppModel: ObservableObject {
 
     private struct LocalAssistantResult {
         let answer: String
-        let imageAttachment: ConversationImageAttachment?
-
-        init(answer: String, imageAttachment: ConversationImageAttachment? = nil) {
-            self.answer = answer
-            self.imageAttachment = imageAttachment
-        }
     }
 
     private enum PhoneVoiceInputMode {
@@ -557,22 +551,18 @@ final class AppModel: ObservableObject {
             )
         )
         await persistCurrentConversation()
+        conversationNotice = nil
 
-        let result = await localActionResult(action, originalText: text)
+        let result = await localActionResult(
+            action,
+            originalText: text,
+            generationID: generationID,
+            userMessageID: userMessageID,
+            userMessageDate: userMessageDate
+        )
         guard self.generationID == generationID, !Task.isCancelled else { return }
-        if let imageAttachment = result.imageAttachment,
-           let index = conversation.firstIndex(where: { $0.id == userMessageID }) {
-            conversation[index] = ConversationMessage(
-                id: userMessageID,
-                role: .user,
-                text: text,
-                createdAt: userMessageDate,
-                imageAttachment: imageAttachment
-            )
-        }
         conversation.append(ConversationMessage(role: .assistant, text: result.answer))
         await persistCurrentConversation()
-        conversationNotice = nil
 
         if speakResponse {
             do {
@@ -585,7 +575,10 @@ final class AppModel: ObservableObject {
 
     private func localActionResult(
         _ action: LocalAssistantAction,
-        originalText: String
+        originalText: String,
+        generationID: UUID,
+        userMessageID: UUID,
+        userMessageDate: Date
     ) async -> LocalAssistantResult {
         guard let glassesManager else {
             return LocalAssistantResult(answer: "Connect AD Glasses first.")
@@ -652,10 +645,12 @@ final class AppModel: ObservableObject {
             }
             do {
                 let prepared = try await lensProcessor.prepare(capture.jpegData)
-                let attachment = try? await conversationStore.saveImageAttachment(
-                    prepared.jpegData,
-                    pixelWidth: prepared.pixelWidth,
-                    pixelHeight: prepared.pixelHeight
+                await attachPreparedImage(
+                    prepared,
+                    generationID: generationID,
+                    userMessageID: userMessageID,
+                    userMessageText: originalText,
+                    userMessageDate: userMessageDate
                 )
                 do {
                     let recognizedText = try await lensProcessor.recognizeText(in: prepared)
@@ -663,14 +658,10 @@ final class AppModel: ObservableObject {
                     return LocalAssistantResult(
                         answer: recognizedText.isEmpty
                             ? "I could not find readable text in front of you."
-                            : recognizedText,
-                        imageAttachment: attachment
+                            : recognizedText
                     )
                 } catch {
-                    return LocalAssistantResult(
-                        answer: error.localizedDescription,
-                        imageAttachment: attachment
-                    )
+                    return LocalAssistantResult(answer: error.localizedDescription)
                 }
             } catch {
                 return LocalAssistantResult(answer: error.localizedDescription)
@@ -695,10 +686,12 @@ final class AppModel: ObservableObject {
             }
             do {
                 let prepared = try await lensProcessor.prepare(capture.jpegData)
-                let attachment = try? await conversationStore.saveImageAttachment(
-                    prepared.jpegData,
-                    pixelWidth: prepared.pixelWidth,
-                    pixelHeight: prepared.pixelHeight
+                await attachPreparedImage(
+                    prepared,
+                    generationID: generationID,
+                    userMessageID: userMessageID,
+                    userMessageText: originalText,
+                    userMessageDate: userMessageDate
                 )
                 do {
                     let answer = try await visualAI.answer(
@@ -707,16 +700,49 @@ final class AppModel: ObservableObject {
                         profile: profile,
                         credential: credential
                     )
-                    return LocalAssistantResult(answer: answer, imageAttachment: attachment)
+                    return LocalAssistantResult(answer: answer)
                 } catch {
-                    return LocalAssistantResult(
-                        answer: error.localizedDescription,
-                        imageAttachment: attachment
-                    )
+                    return LocalAssistantResult(answer: error.localizedDescription)
                 }
             } catch {
                 return LocalAssistantResult(answer: error.localizedDescription)
             }
+        }
+    }
+
+    private func attachPreparedImage(
+        _ prepared: LensPreparedImage,
+        generationID: UUID,
+        userMessageID: UUID,
+        userMessageText: String,
+        userMessageDate: Date
+    ) async {
+        do {
+            let attachment = try await conversationStore.saveImageAttachment(
+                prepared.jpegData,
+                pixelWidth: prepared.pixelWidth,
+                pixelHeight: prepared.pixelHeight
+            )
+
+            guard self.generationID == generationID,
+                  !Task.isCancelled,
+                  let index = conversation.firstIndex(where: { $0.id == userMessageID }) else {
+                try? await conversationStore.deleteImageAttachments([attachment])
+                return
+            }
+
+            conversation[index] = ConversationMessage(
+                id: userMessageID,
+                role: .user,
+                text: userMessageText,
+                createdAt: userMessageDate,
+                imageAttachment: attachment
+            )
+            await persistCurrentConversation()
+        } catch is CancellationError {
+            return
+        } catch {
+            conversationNotice = "Image captured, but its chat preview could not be saved: \(error.localizedDescription)"
         }
     }
 
