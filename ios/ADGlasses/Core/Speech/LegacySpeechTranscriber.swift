@@ -17,6 +17,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var inputSource: InputSource?
+    private var microphoneTapInstalled = false
     private var externalRecognitionDidFinish = false
     private var externalFinishContinuation: CheckedContinuation<Void, Never>?
     private var externalFinishTimeoutTask: Task<Void, Never>?
@@ -70,6 +71,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         inputNode.installTap(onBus: 0, bufferSize: 1_024, format: recordingFormat) { [weak request] buffer, _ in
             request?.append(buffer)
         }
+        microphoneTapInstalled = true
 
         audioEngine.prepare()
         do {
@@ -78,7 +80,11 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
             snapshot.isRunning = true
             armInitialEndpoint()
         } catch {
-            inputNode.removeTap(onBus: 0)
+            if microphoneTapInstalled {
+                inputNode.removeTap(onBus: 0)
+                microphoneTapInstalled = false
+            }
+            audioEngine.reset()
             clearRecognition()
             SpeechInputAudioSession.deactivate()
             throw error
@@ -96,9 +102,15 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         }
 
         let wasUsingMicrophone = inputSource == .phoneMicrophone
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
+        if wasUsingMicrophone {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+            }
+            if microphoneTapInstalled {
+                audioEngine.inputNode.removeTap(onBus: 0)
+                microphoneTapInstalled = false
+            }
+            audioEngine.reset()
         }
         recognitionRequest?.endAudio()
         recognitionTask?.finish()
@@ -117,7 +129,9 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         try prepareRecognition()
         inputSource = .externalPCM
         snapshot.isRunning = true
-        armInitialEndpoint()
+        // External PCM has an authoritative provider lifecycle. For HeyCyan, the verified 0x73
+        // start/end notifications own the turn boundary, so do not apply phone-microphone endpoint
+        // timers here and accidentally terminate a glasses turn during a natural pause.
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -151,7 +165,10 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         externalRecognitionDidFinish = false
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        // Do not require the legacy recognizer to use an on-device model. Requiring local
+        // recognition can trigger the same en-US asset preparation/download state we are avoiding
+        // in SpeechAnalyzer. Let Apple choose the available recognition path for this finite turn.
+        request.requiresOnDeviceRecognition = false
         recognitionRequest = request
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -180,8 +197,9 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    /// Mirrors the Android Moonshine turn policy: after speech begins, 1.2 seconds without a
-    /// transcript change ends capture; a completely silent turn ends after six seconds.
+    /// Mirrors the Android Moonshine turn policy for phone microphone input: after speech begins,
+    /// 1.2 seconds without a transcript change ends capture; a completely silent turn ends after
+    /// six seconds. Provider-owned external PCM uses the provider's explicit start/end lifecycle.
     private func armInitialEndpoint() {
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
@@ -191,6 +209,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
@@ -200,6 +219,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func noteTranscriptActivity(_ text: String) {
+        guard inputSource == .phoneMicrophone else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
         lastEndpointTranscript = clean
@@ -211,6 +231,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                 return
