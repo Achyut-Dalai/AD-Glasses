@@ -69,6 +69,11 @@ final class GlassesManager: ObservableObject {
         voiceWakeStates[activeProviderID ?? selectedProviderID] ?? false
     }
 
+    var supportsDeviceManagement: Bool {
+        let providerID = activeProviderID ?? selectedProviderID
+        return providerInstances[providerID] is any GlassesDeviceManaging
+    }
+
     var deviceManagementPlaceholders: [GlassesDeviceManagementPlaceholder] {
         let providerID = activeProviderID ?? selectedProviderID
         return (providerInstances[providerID] as? any GlassesDeviceManagementPlanning)?
@@ -110,7 +115,6 @@ final class GlassesManager: ObservableObject {
                     self?.updateProvider(providerID, deviceInformation: information)
                 }
             }
-
 
             if let volumeProvider = provider as? any GlassesVolumeProviding {
                 updateProvider(providerID, volumeProfile: volumeProvider.volumeProfile)
@@ -159,7 +163,6 @@ final class GlassesManager: ObservableObject {
                     self?.isAudioRecording = isRecording
                 }
             }
-
 
             if let wakeProvider = provider as? any GlassesVoiceWakeProviding {
                 voiceWakeStates[providerID] = wakeProvider.glassesVoiceWakeEnabled
@@ -295,6 +298,42 @@ final class GlassesManager: ObservableObject {
         do {
             try await provider.requestPhotoCapture()
             return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func restartGlasses() async -> Bool {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesDeviceManaging else {
+            errorMessage = "Connect AD Glasses before restarting them."
+            return false
+        }
+        do {
+            try await provider.restartGlasses()
+            return true
+        } catch is CancellationError {
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func factoryResetGlasses() async -> Bool {
+        errorMessage = nil
+        guard let activeProviderID,
+              let provider = providerInstances[activeProviderID] as? any GlassesDeviceManaging else {
+            errorMessage = "Connect AD Glasses before factory resetting them."
+            return false
+        }
+        do {
+            try await provider.factoryResetGlasses()
+            return true
+        } catch is CancellationError {
+            return false
         } catch {
             errorMessage = error.localizedDescription
             return false
@@ -584,7 +623,6 @@ final class GlassesManager: ObservableObject {
             devices.removeAll()
         }
     }
-
 
     private static func consumerProviderName(id: String, technicalName: String) -> String {
         id == "heycyan" ? "AD Glasses" : technicalName
