@@ -35,10 +35,11 @@ final class ConversationStoreTests: XCTestCase {
             pixelWidth: 640,
             pixelHeight: 480
         )
+        let loadedData = try await store.loadImageAttachment(attachment)
 
         XCTAssertEqual(attachment.pixelWidth, 640)
         XCTAssertEqual(attachment.pixelHeight, 480)
-        XCTAssertEqual(try await store.loadImageAttachment(attachment), jpegData)
+        XCTAssertEqual(loadedData, jpegData)
 
         try await store.deleteImageAttachments([attachment])
         do {
