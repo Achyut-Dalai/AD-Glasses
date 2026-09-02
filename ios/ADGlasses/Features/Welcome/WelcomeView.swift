@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 struct AppRootView: View {
@@ -41,16 +42,19 @@ struct AppRootView: View {
     }
 }
 
+@MainActor
 private struct WelcomeView: View {
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @ObservedObject private var location = GroundingLocationProvider.shared
 
     let onConnected: () -> Void
     let onConnectManually: () -> Void
     let onContinue: () -> Void
 
     @State private var phase: WelcomePhase = .connecting
+    @State private var isWaitingForLocationChoice = false
 
     var body: some View {
         ZStack {
@@ -74,6 +78,12 @@ private struct WelcomeView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .task { await attemptAutomaticConnection() }
+        .onChange(of: location.authorizationStatus) { _, status in
+            guard case .locationPermission(let completion) = phase,
+                  status != .notDetermined else { return }
+            isWaitingForLocationChoice = false
+            finishWelcome(completion)
+        }
     }
 
     private var background: some View {
@@ -174,7 +184,9 @@ private struct WelcomeView: View {
 
         case .needsChoice:
             VStack(spacing: 12) {
-                Button(action: onConnectManually) {
+                Button {
+                    advanceToLocationSetup(.connectManually)
+                } label: {
                     Text("Connect glasses")
                         .foregroundStyle(Color(uiColor: .systemBackground))
                         .frame(maxWidth: .infinity)
@@ -183,7 +195,9 @@ private struct WelcomeView: View {
                     .tint(Color(uiColor: .label))
                     .controlSize(.large)
 
-                Button(action: onContinue) {
+                Button {
+                    advanceToLocationSetup(.continueWithoutGlasses)
+                } label: {
                     Text("Continue without glasses")
                         .frame(maxWidth: .infinity)
                 }
@@ -191,6 +205,56 @@ private struct WelcomeView: View {
                     .controlSize(.large)
             }
             .buttonBorderShape(.roundedRectangle(radius: 15))
+
+        case .locationPermission(let completion):
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    Image(systemName: "location.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(.blue)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Location for nearby answers")
+                            .font(.headline)
+                        Text("Allow location now so AD can answer nearby-place, current-location, and directions questions without interrupting you later.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Text("Your location is requested only when a location-based feature needs a current fix. You can change access later in iOS Settings.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    isWaitingForLocationChoice = true
+                    location.requestPermission()
+                } label: {
+                    HStack {
+                        if isWaitingForLocationChoice {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isWaitingForLocationChoice ? "Waiting for iOS…" : "Allow Location")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isWaitingForLocationChoice)
+
+                Button("Not now") {
+                    finishWelcome(completion)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonBorderShape(.roundedRectangle(radius: 15))
+            .padding(18)
+            .welcomeSurface(reduceTransparency: reduceTransparency, cornerRadius: 22)
         }
     }
 
@@ -206,7 +270,7 @@ private struct WelcomeView: View {
 
         if glasses.connectionState.isConnected {
             await minimumDisplay.value
-            onConnected()
+            advanceToLocationSetup(.connected)
             return
         }
 
@@ -218,16 +282,43 @@ private struct WelcomeView: View {
             if !reduceMotion {
                 try? await Task.sleep(for: .milliseconds(280))
             }
-            onConnected()
+            advanceToLocationSetup(.connected)
         } else {
             phase = .needsChoice("We couldn't connect automatically. Choose how you would like to continue.")
         }
     }
+
+    private func advanceToLocationSetup(_ completion: WelcomeCompletion) {
+        if location.authorizationStatus == .notDetermined {
+            isWaitingForLocationChoice = false
+            phase = .locationPermission(completion)
+        } else {
+            finishWelcome(completion)
+        }
+    }
+
+    private func finishWelcome(_ completion: WelcomeCompletion) {
+        switch completion {
+        case .connected:
+            onConnected()
+        case .connectManually:
+            onConnectManually()
+        case .continueWithoutGlasses:
+            onContinue()
+        }
+    }
+}
+
+private enum WelcomeCompletion: Equatable {
+    case connected
+    case connectManually
+    case continueWithoutGlasses
 }
 
 private enum WelcomePhase: Equatable {
     case connecting
     case needsChoice(String)
+    case locationPermission(WelcomeCompletion)
 }
 
 private extension View {
