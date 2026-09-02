@@ -41,7 +41,7 @@ struct AssistantView: View {
                                     Spacer()
                                 }
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Jarvis is preparing a response")
+                                .accessibilityLabel("AD is preparing a response")
                             }
 
                             if let notice = app.conversationNotice {
@@ -139,7 +139,7 @@ struct AssistantView: View {
         HStack(spacing: 10) {
             AssistantAvatar(size: 34)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Jarvis")
+                Text("AD")
                     .font(.subheadline.weight(.semibold))
                 Text("Current conversation")
                     .font(.caption)
@@ -270,7 +270,7 @@ private struct AssistantSignalVisual: View {
             .frame(maxWidth: .infinity, minHeight: 238)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isListening ? "Listening" : "Jarvis ready")
+        .accessibilityLabel(isListening ? "Listening" : "AD ready")
     }
 
     private func normalizedWave(time: TimeInterval, speed: Double) -> Double {
@@ -356,7 +356,7 @@ private struct ConversationBubble: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(message.role == .user ? "You" : "Jarvis")
+        .accessibilityLabel(message.role == .user ? "You" : "AD")
         .accessibilityValue(message.text)
     }
 
@@ -455,7 +455,7 @@ private struct AssistantComposer: View {
                 }
                 .accessibilityLabel("Add attachment")
 
-                TextField("Message Jarvis", text: $app.chatDraft, axis: .vertical)
+                TextField("Message AD", text: $app.chatDraft, axis: .vertical)
                     .focused(focused)
                     .lineLimit(1...5)
                     .submitLabel(.send)
