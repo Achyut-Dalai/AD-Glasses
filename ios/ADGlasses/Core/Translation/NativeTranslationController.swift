@@ -226,6 +226,14 @@ final class LiveTranslationController: ObservableObject {
     private var finalizeTask: Task<Void, Never>?
     private var isProcessingTurn = false
     private var sessionID: UUID?
+#if compiler(>=6.2)
+    @available(iOS 26.0, *)
+    private var preparedSpeechLocale: Locale? {
+        get { storedPreparedSpeechLocale }
+        set { storedPreparedSpeechLocale = newValue }
+    }
+#endif
+    private var storedPreparedSpeechLocale: Locale?
 
     private let endOfUtteranceDelay: Duration = .milliseconds(1400)
 
@@ -243,6 +251,7 @@ final class LiveTranslationController: ObservableObject {
         lastSourceText = ""
         lastTranslation = ""
         inputRouteName = nil
+        storedPreparedSpeechLocale = nil
 
         guard languageBase(sourceLanguageCode) != languageBase(targetLanguageCode) else {
             errorMessage = "Choose two different languages for Live Translation."
@@ -318,6 +327,7 @@ final class LiveTranslationController: ObservableObject {
                 guard let self, sessionID == id, isRunning else { return }
                 statusMessage = message
             }
+            storedPreparedSpeechLocale = preparedLocale
             guard sessionID == id, isRunning else {
                 await transcriber.stop()
                 return false
@@ -370,6 +380,7 @@ final class LiveTranslationController: ObservableObject {
                 await transcriber.stop()
             }
         }
+        SpeechInputAudioSession.deactivate()
         resetSessionState(keepError: true)
         statusMessage = "Ready"
     }
@@ -419,6 +430,7 @@ final class LiveTranslationController: ObservableObject {
             speechOutput.stop()
             transcriber.onUpdate = nil
             transcriber.onError = nil
+            SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
             statusMessage = "Ready"
             return
@@ -448,9 +460,15 @@ final class LiveTranslationController: ObservableObject {
 
             lastTranslation = result.translatedText
             statusMessage = "Speaking \(languageName(targetLanguageCode))…"
+
+            // Keep one communication-style audio route for the whole Live Translation session.
+            // Switching to `.playback` for every utterance makes iOS bounce between media-volume
+            // and Bluetooth HFP/call-volume domains and can surface the system volume HUD.
+            try SpeechInputAudioSession.activate()
             try speechOutput.speak(
                 result.translatedText,
-                languageCode: result.targetLanguage
+                languageCode: result.targetLanguage,
+                audioSessionPolicy: .reuseCurrentSession
             )
 
             while speechOutput.isSpeaking {
@@ -472,7 +490,19 @@ final class LiveTranslationController: ObservableObject {
         transcriber.resetTranscript()
         currentTranscript = ""
         do {
+#if compiler(>=6.2)
+            if #available(iOS 26.0, *),
+               let analyzer = transcriber as? SpeechAnalyzerTranscriber,
+               let preparedLocale = storedPreparedSpeechLocale {
+                // The locale/model was already prepared when the session began. Reusing it avoids
+                // another reservation/status/download pass after every translated sentence.
+                try await analyzer.start(preparedLocale: preparedLocale)
+            } else {
+                try await transcriber.start()
+            }
+#else
             try await transcriber.start()
+#endif
             updateInputRoute()
             statusMessage = listeningStatus
         } catch is CancellationError {
@@ -484,6 +514,7 @@ final class LiveTranslationController: ObservableObject {
             transcriber.onUpdate = nil
             transcriber.onError = nil
             await transcriber.stop()
+            SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
         }
     }
@@ -574,6 +605,7 @@ final class LiveTranslationController: ObservableObject {
         speechOutput = nil
         sourceLanguageCode = ""
         targetLanguageCode = ""
+        storedPreparedSpeechLocale = nil
         currentTranscript = ""
         inputRouteName = nil
         isRunning = false
