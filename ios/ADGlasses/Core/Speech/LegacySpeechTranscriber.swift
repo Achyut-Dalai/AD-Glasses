@@ -20,6 +20,11 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
     private var externalRecognitionDidFinish = false
     private var externalFinishContinuation: CheckedContinuation<Void, Never>?
     private var externalFinishTimeoutTask: Task<Void, Never>?
+    private var endpointTask: Task<Void, Never>?
+    private var lastEndpointTranscript = ""
+
+    private let transcriptSilenceDelay: Duration = .milliseconds(1_200)
+    private let initialNoSpeechDelay: Duration = .seconds(6)
 
     private enum InputSource {
         case phoneMicrophone
@@ -42,24 +47,27 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
 
         try prepareRecognition()
 
-        let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .allowBluetoothHFP])
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        do {
+            try SpeechInputAudioSession.activate()
+        } catch {
+            clearRecognition()
+            throw error
+        }
 
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         guard recordingFormat.sampleRate > 0 else {
             clearRecognition()
-            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
         guard let request = recognitionRequest else {
             clearRecognition()
-            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.recognizerUnavailable
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: recordingFormat) { [weak request] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: recordingFormat) { [weak request] buffer, _ in
             request?.append(buffer)
         }
 
@@ -68,19 +76,26 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
             try audioEngine.start()
             inputSource = .phoneMicrophone
             snapshot.isRunning = true
+            armInitialEndpoint()
         } catch {
             inputNode.removeTap(onBus: 0)
             clearRecognition()
-            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            SpeechInputAudioSession.deactivate()
             throw error
         }
     }
 
     func stop() async {
+        endpointTask?.cancel()
+        endpointTask = nil
+        lastEndpointTranscript = ""
+
         if inputSource == .externalPCM {
             await finishExternalAudio()
             return
         }
+
+        let wasUsingMicrophone = inputSource == .phoneMicrophone
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
@@ -91,7 +106,9 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         clearRecognition()
         inputSource = nil
         snapshot.isRunning = false
-        VoiceAudioSessionContinuity.shared.deactivateIfAllowed()
+        if wasUsingMicrophone {
+            SpeechInputAudioSession.deactivate()
+        }
     }
 
     func startExternalAudio() async throws {
@@ -100,6 +117,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
         try prepareRecognition()
         inputSource = .externalPCM
         snapshot.isRunning = true
+        armInitialEndpoint()
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -108,6 +126,9 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     func finishExternalAudio() async {
+        endpointTask?.cancel()
+        endpointTask = nil
+        lastEndpointTranscript = ""
         guard inputSource == .externalPCM else { return }
         recognitionRequest?.endAudio()
         recognitionTask?.finish()
@@ -119,6 +140,7 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
 
     func resetTranscript() {
         snapshot.transcript = ""
+        lastEndpointTranscript = ""
     }
 
     private func prepareRecognition() throws {
@@ -136,7 +158,9 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
             Task { @MainActor in
                 guard let self else { return }
                 if let result {
-                    self.snapshot.transcript = result.bestTranscription.formattedString
+                    let text = result.bestTranscription.formattedString
+                    self.snapshot.transcript = text
+                    self.noteTranscriptActivity(text)
                     if result.isFinal {
                         self.externalRecognitionDidFinish = true
                         self.completeExternalFinishWait()
@@ -146,8 +170,52 @@ final class LegacySpeechTranscriber: ExternalAudioSpeechTranscribing {
                     self.onError?(error)
                     self.externalRecognitionDidFinish = true
                     self.completeExternalFinishWait()
+                    if self.snapshot.isRunning {
+                        Task { @MainActor [weak self] in
+                            await self?.stop()
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    /// Mirrors the Android Moonshine turn policy: after speech begins, 1.2 seconds without a
+    /// transcript change ends capture; a completely silent turn ends after six seconds.
+    private func armInitialEndpoint() {
+        endpointTask?.cancel()
+        endpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(6))
+            } catch {
+                return
+            }
+            guard let self,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            await stop()
+        }
+    }
+
+    private func noteTranscriptActivity(_ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
+        lastEndpointTranscript = clean
+        endpointTask?.cancel()
+        endpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.transcriptSilenceDelay ?? .milliseconds(1_200))
+            } catch {
+                return
+            }
+            guard let self,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                return
+            }
+            await stop()
         }
     }
 
