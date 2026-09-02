@@ -359,6 +359,8 @@ enum HeyCyanCommand: Equatable, Sendable {
     case stopVideoRecording
     case startAudioRecording
     case stopAudioRecording
+    case restartGlasses
+    case factoryResetGlasses
     case requestAIPhoto(quality: HeyCyanAIPhotoQuality)
     case readMediaCounts
     case prepareMediaTransfer(mode: HeyCyanNetworkMode)
@@ -408,6 +410,10 @@ enum HeyCyanCommand: Equatable, Sendable {
             return Data([0x02, 0x01, 0x08])
         case .stopAudioRecording:
             return Data([0x02, 0x01, 0x0C])
+        case .restartGlasses:
+            return Data([0x02, 0x01, 0x0E])
+        case .factoryResetGlasses:
+            return Data([0x02, 0x01, 0x0A])
         case .requestAIPhoto(let quality):
             return Data([0x02, 0x01, 0x06, quality.rawValue, quality.rawValue])
         case .readMediaCounts:
@@ -480,10 +486,14 @@ enum HeyCyanCommand: Equatable, Sendable {
             return frame.payload.count >= 8 && frame.payload[frame.payload.startIndex + 1] == 0x04
         case .startAudioRecording:
             return frame.matchesControlAcknowledgement(workType: 0x08)
+        case .factoryResetGlasses:
+            return frame.matchesControlAcknowledgement(workType: 0x0A)
         case .finishMediaTransfer:
             return frame.matchesControlAcknowledgement(workType: 0x09)
         case .stopAudioRecording:
             return frame.matchesControlAcknowledgement(workType: 0x0C)
+        case .restartGlasses:
+            return frame.matchesControlAcknowledgement(workType: 0x0E)
         case .resetPeerToPeerState:
             return frame.matchesControlAcknowledgement(workType: 0x0F)
         case .requestPictureThumbnail, .synchronizeBattery, .synchronizeDeviceInfo:
