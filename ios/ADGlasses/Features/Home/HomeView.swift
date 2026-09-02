@@ -1252,6 +1252,8 @@ private struct DeviceCenterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("setup.iphoneAudioReviewed.v1") private var didReviewIPhoneAudioSetup = false
     @State private var confirmsForget = false
+    @State private var confirmsRestart = false
+    @State private var confirmsFactoryReset = false
     @State private var showsIPhoneAudioSetup = false
 
     var body: some View {
@@ -1314,6 +1316,21 @@ private struct DeviceCenterSheet: View {
                     if glasses.hasRememberedDevice {
                         Button("Forget saved glasses", systemImage: "trash", role: .destructive) {
                             confirmsForget = true
+                        }
+                    }
+
+                    if glasses.connectionState.isConnected,
+                       glasses.supportsDeviceManagement {
+                        Button("Restart AD Glasses", systemImage: "power") {
+                            confirmsRestart = true
+                        }
+
+                        Button(
+                            "Factory reset AD Glasses",
+                            systemImage: "arrow.counterclockwise",
+                            role: .destructive
+                        ) {
+                            confirmsFactoryReset = true
                         }
                     }
                 }
@@ -1417,7 +1434,7 @@ private struct DeviceCenterSheet: View {
                     } header: {
                         Text("Device controls")
                     } footer: {
-                        Text("These controls remain unavailable until their complete recovery behavior is validated on your physical pair.")
+                        Text("Firmware update remains unavailable until its update and recovery behavior is validated on your physical pair.")
                     }
                 }
 
@@ -1448,6 +1465,30 @@ private struct DeviceCenterSheet: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("AD Glasses will disconnect and stop reconnecting automatically. You can scan and connect again at any time.")
+            }
+            .confirmationDialog(
+                "Restart AD Glasses?",
+                isPresented: $confirmsRestart,
+                titleVisibility: .visible
+            ) {
+                Button("Restart") {
+                    Task { _ = await glasses.restartGlasses() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The glasses will restart and Bluetooth may disconnect briefly.")
+            }
+            .confirmationDialog(
+                "Factory reset AD Glasses?",
+                isPresented: $confirmsFactoryReset,
+                titleVisibility: .visible
+            ) {
+                Button("Factory reset", role: .destructive) {
+                    Task { _ = await glasses.factoryResetGlasses() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This sends the verified factory-reset command. The glasses will restart and reinitialize; which stored settings, pairing state, or media are cleared is determined by the glasses firmware.")
             }
             .onAppear { offerIPhoneAudioSetupIfNeeded() }
             .onChange(of: glasses.connectionState) { _, state in
