@@ -266,6 +266,28 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertFalse(speechOutput.isSpeaking)
     }
 
+    func testRepeatedClickTokensExecuteOneDirectPhotoCommand() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: FakeExternalAudioTranscriber(finalTranscript: ""),
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.attach(to: manager)
+        app.chatDraft = "click click"
+
+        app.sendChatMessage(source: .glassesVoice, speakResponse: true)
+        for _ in 0 ..< 200 where provider.photoRequestCount == 0 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(provider.photoRequestCount, 1)
+        XCTAssertFalse(app.isGenerating)
+        XCTAssertTrue(app.conversation.isEmpty)
+    }
+
     func testDecodedProviderAudioBecomesOneGlassesVoiceConversationTurn() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let transcriber = FakeExternalAudioTranscriber(finalTranscript: "What can I see?")
@@ -304,6 +326,75 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(transcriber.externalFinishCount, 1)
         XCTAssertEqual(app.conversation.last?.role, .user)
         XCTAssertEqual(app.conversation.last?.text, "What can I see?")
+    }
+
+    func testTranscriptStabilityFinalizesGlassesTurnWithoutHardwareEndEvent() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "click")
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: transcriber,
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.attach(to: manager)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
+
+        provider.emit(.started(format: format))
+        for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
+            await Task.yield()
+        }
+        transcriber.emitExternalTranscript("click")
+
+        try await Task.sleep(for: .milliseconds(1_350))
+        for _ in 0 ..< 200 where provider.photoRequestCount == 0 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(transcriber.externalFinishCount, 1)
+        XCTAssertEqual(provider.photoRequestCount, 1)
+        XCTAssertFalse(app.isGlassesAssistantAudioActive)
+        XCTAssertTrue(app.conversation.isEmpty)
+    }
+
+    func testDuplicateHardwareEndEventsFinalizeOneGlassesTurnOnly() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let transcriber = FakeExternalAudioTranscriber(finalTranscript: "What can I see?")
+        let provider = FakeAssistantAudioProvider()
+        let manager = GlassesManager(providers: [provider])
+        let app = AppModel(
+            transcriber: transcriber,
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.attach(to: manager)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false
+        ))
+
+        provider.emit(.started(format: format))
+        for _ in 0 ..< 100 where transcriber.externalStartCount == 0 {
+            await Task.yield()
+        }
+        provider.emit(.ended)
+        provider.emit(.ended)
+
+        for _ in 0 ..< 200 where transcriber.externalFinishCount == 0 {
+            await Task.yield()
+        }
+        for _ in 0 ..< 20 { await Task.yield() }
+
+        XCTAssertEqual(transcriber.externalFinishCount, 1)
+        XCTAssertFalse(app.isGlassesAssistantAudioActive)
     }
 
     func testGlassesVoiceTurnPreservesExistingTypedDraft() async throws {
@@ -508,6 +599,12 @@ private final class FakeExternalAudioTranscriber: ExternalAudioSpeechTranscribin
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
         appendCount += 1
+    }
+
+    func emitExternalTranscript(_ text: String) {
+        guard snapshot.isRunning else { return }
+        snapshot.transcript = text
+        onUpdate?(snapshot)
     }
 
     func finishExternalAudio() async {
