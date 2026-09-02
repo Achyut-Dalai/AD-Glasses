@@ -314,7 +314,7 @@ final class LiveTranslationController: ObservableObject {
         isRunning = true
 
         do {
-            _ = try await transcriber.prepareAssets { [weak self] message in
+            let preparedLocale = try await transcriber.prepareAssets { [weak self] message in
                 guard let self, sessionID == id, isRunning else { return }
                 statusMessage = message
             }
@@ -324,7 +324,7 @@ final class LiveTranslationController: ObservableObject {
             }
 
             statusMessage = "Opening microphone…"
-            try await transcriber.start()
+            try await transcriber.start(preparedLocale: preparedLocale)
             guard sessionID == id, isRunning else {
                 await transcriber.stop()
                 return false

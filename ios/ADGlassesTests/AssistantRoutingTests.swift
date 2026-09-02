@@ -360,10 +360,14 @@ final class GlassesAssistantPipelineTests: XCTestCase {
             finalTranscript: "",
             phoneFinalTranscript: "What is in front of me?"
         )
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("conversations.json")
         let app = AppModel(
             transcriber: transcriber,
             aiProfiles: AIProfileStore(defaults: defaults),
-            speechOutput: SpeechOutputController(defaults: defaults)
+            speechOutput: SpeechOutputController(defaults: defaults),
+            conversationStore: ConversationStore(fileURL: storeURL)
         )
         app.chatDraft = "Keep this typed draft"
 

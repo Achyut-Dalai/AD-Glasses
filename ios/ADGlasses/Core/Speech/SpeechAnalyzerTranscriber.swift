@@ -66,19 +66,18 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         let languageName = languageDisplayName(locale)
 
-        // Locale-dependent SpeechAnalyzer modules use app-scoped asset reservations. Keep a single
-        // active reservation because AD never runs Assistant speech and Live Translation at the
-        // same time. This avoids stale regional reservations (for example en-IN) consuming the
-        // app's allocation while a different locale is being prepared.
+        // Locale-dependent SpeechAnalyzer modules use app-scoped asset reservations. Keep existing
+        // useful reservations when the device permits it, but free stale reservations if the app is
+        // already at Apple's per-device reservation limit.
         statusUpdate?("Preparing \(languageName) speech model…")
         do {
-            try await reserveOnly(locale)
+            try await reserve(locale)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             throw SpeechAnalyzerAssetError.reservationFailed(
                 languageName,
-                error.localizedDescription
+                Self.diagnosticDescription(for: error)
             )
         }
 
@@ -107,7 +106,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         } catch {
             throw SpeechAnalyzerAssetError.installationFailed(
                 languageName,
-                error.localizedDescription
+                Self.diagnosticDescription(for: error)
             )
         }
 
@@ -134,10 +133,18 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     func start() async throws {
+        try await startWithPreparedLocale(nil)
+    }
+
+    func start(preparedLocale: Locale) async throws {
+        try await startWithPreparedLocale(preparedLocale)
+    }
+
+    private func startWithPreparedLocale(_ preparedLocale: Locale?) async throws {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
         await stop()
-        _ = try await prepareAnalyzerPipeline()
+        _ = try await prepareAnalyzerPipeline(preparedLocale: preparedLocale)
 
         do {
             try SpeechInputAudioSession.activate()
@@ -321,8 +328,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         return prefix + " " + suffix
     }
 
-    private func prepareAnalyzerPipeline() async throws -> AVAudioFormat {
-        let locale = try await prepareAssets()
+    private func prepareAnalyzerPipeline(preparedLocale: Locale? = nil) async throws -> AVAudioFormat {
+        let locale: Locale
+        if let preparedLocale {
+            locale = preparedLocale
+        } else {
+            locale = try await prepareAssets()
+        }
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         guard await AssetInventory.status(forModules: [module]) == .installed else {
             let installed = await SpeechTranscriber.installedLocales
@@ -365,13 +377,23 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         return analyzerFormat
     }
 
-    private func reserveOnly(_ locale: Locale) async throws {
+    private func reserve(_ locale: Locale) async throws {
         let normalizedRequested = Self.normalizedIdentifier(locale)
-        let reservations = await AssetInventory.reservedLocales
+        var reservations = await AssetInventory.reservedLocales
 
-        for reservedLocale in reservations
-        where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
-            _ = await AssetInventory.release(reservedLocale: reservedLocale)
+        if reservations.contains(where: { Self.normalizedIdentifier($0) == normalizedRequested }) {
+            return
+        }
+
+        if reservations.count >= AssetInventory.maximumReservedLocales {
+            for reservedLocale in reservations
+            where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
+                _ = await AssetInventory.release(reservedLocale: reservedLocale)
+            }
+            reservations = await AssetInventory.reservedLocales
+            if reservations.contains(where: { Self.normalizedIdentifier($0) == normalizedRequested }) {
+                return
+            }
         }
 
         _ = try await AssetInventory.reserve(locale: locale)
@@ -387,6 +409,17 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         Locale.current.localizedString(forIdentifier: locale.identifier)
             ?? locale.localizedString(forIdentifier: locale.identifier)
             ?? locale.identifier
+    }
+
+    private static func diagnosticDescription(for error: Error) -> String {
+        let nsError = error as NSError
+        let userInfo = nsError.userInfo
+            .map { key, value in "\(key): \(value)" }
+            .sorted()
+            .joined(separator: ", ")
+        let formattedUserInfo = userInfo.isEmpty ? "[:]" : "[\(userInfo)]"
+        return "NSError(domain: \(nsError.domain), code: \(nsError.code), " +
+            "localizedDescription: \(nsError.localizedDescription), userInfo: \(formattedUserInfo))"
     }
 
     private func cancelPreparedPipeline() async {
