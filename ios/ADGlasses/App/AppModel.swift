@@ -7,6 +7,7 @@ import UIKit
 final class AppModel: ObservableObject {
     @Published private(set) var transcript = ""
     @Published private(set) var isTranscribing = false
+    @Published private(set) var isPreparingTranscription = false
     @Published private(set) var isManualTranscription = false
     @Published private(set) var isStoppingTranscription = false
     @Published private(set) var speechEngineName = "Apple Speech"
@@ -27,6 +28,8 @@ final class AppModel: ObservableObject {
     private let conversationStore: ConversationStore
     private let aiClient: any AIResponding
     private let requestRouter: AssistantRequestRouter
+    private let lensProcessor = LensImageProcessor()
+    private let visualAI = ADVisualAIClient()
     private var generationTask: Task<Void, Never>?
     private var generationID: UUID?
     private var responseBackgroundTaskID: UIBackgroundTaskIdentifier = .invalid
@@ -39,9 +42,23 @@ final class AppModel: ObservableObject {
     private var isGlassesSpeechReady = false
     private var glassesStreamDidEnd = false
     private var applicationIsActive = true
-    private let maximumPendingGlassesPackets = 100
+
+    // HeyCyan Opus packets represent 20 ms of 16-kHz mono audio. Keep up to ~30 seconds while
+    // SpeechAnalyzer performs a first/cold asset or pipeline start, matching Android Moonshine's
+    // bounded 30-second queue instead of dropping the first words after only ~2 seconds.
+    private let maximumPendingGlassesPackets = 1_500
     private weak var glassesManager: GlassesManager?
     private var glassesConnectionCancellable: AnyCancellable?
+
+    private enum LocalAssistantAction {
+        case capturePhoto
+        case startVideo
+        case stopVideo
+        case startAudio
+        case stopAudio
+        case readVisibleText
+        case visualQuestion
+    }
 
     init(
         transcriber: (any SpeechTranscribing)? = nil,
@@ -62,9 +79,25 @@ final class AppModel: ObservableObject {
 
         selectedTranscriber.onUpdate = { [weak self] snapshot in
             guard let self else { return }
+            let wasRunning = isTranscribing
             transcript = snapshot.transcript
             isTranscribing = snapshot.isRunning
             speechEngineName = snapshot.engineName
+
+            // Apple recognition now endpoints itself after transcript stability. Convert that engine
+            // transition into product semantics: manual dictation becomes a draft; a glasses-button
+            // voice turn is finalized and dispatched even if the firmware's trailing ended event is
+            // delayed.
+            if wasRunning, !snapshot.isRunning, !isStoppingTranscription {
+                if isManualTranscription {
+                    isManualTranscription = false
+                    useTranscriptAsDraft()
+                } else if let sessionID = glassesAssistantSessionID, isGlassesSpeechReady {
+                    Task { [weak self] in
+                        await self?.finishGlassesAssistantSession(sessionID: sessionID)
+                    }
+                }
+            }
         }
 
         selectedTranscriber.onError = { [weak self] error in
@@ -83,15 +116,19 @@ final class AppModel: ObservableObject {
     }
 
     func startTranscription() async {
-        guard !isStoppingTranscription,
+        guard !isPreparingTranscription,
+              !isStoppingTranscription,
               !transcriber.snapshot.isRunning,
               generationTask == nil,
               !isGlassesAssistantAudioActive else { return }
         speechError = nil
-        isManualTranscription = true
+        isPreparingTranscription = true
         speechOutput.stop()
+        defer { isPreparingTranscription = false }
+
         do {
             try await transcriber.start()
+            isManualTranscription = transcriber.snapshot.isRunning
         } catch {
             isManualTranscription = false
             speechError = error.localizedDescription
@@ -99,9 +136,6 @@ final class AppModel: ObservableObject {
     }
 
     func stopTranscription() async {
-        // Multiple foreground features share this transcriber. If another caller is already
-        // finalizing recognition, wait for that handoff instead of returning while audio teardown
-        // is still in progress and allowing a competing feature to open its microphone early.
         if isStoppingTranscription {
             while isStoppingTranscription {
                 await Task.yield()
@@ -131,6 +165,7 @@ final class AppModel: ObservableObject {
     }
 
     func toggleTranscription() async {
+        guard !isPreparingTranscription else { return }
         if transcriber.snapshot.isRunning {
             await stopTranscription()
         } else {
@@ -153,10 +188,11 @@ final class AppModel: ObservableObject {
         speakResponse: Bool = false
     ) {
         let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let localAction = localAssistantAction(for: text)
         let route = requestRouter.route(
             AssistantRequest(text: text, source: source, hasImage: false)
         )
-        guard route != .clarify, generationTask == nil else { return }
+        guard (!text.isEmpty && (localAction != nil || route != .clarify)), generationTask == nil else { return }
         chatDraft = ""
 
         let id = UUID()
@@ -167,18 +203,17 @@ final class AppModel: ObservableObject {
         }
         generationTask = Task { [weak self] in
             guard let self else { return }
+            if let localAction {
+                await executeLocalAction(localAction, text: text, generationID: id, speakResponse: speakResponse)
+                return
+            }
             switch route {
             case .capturePhoto:
-                await executePhotoCapture(
-                    text,
-                    generationID: id,
-                    speakResponse: speakResponse
-                )
+                await executePhotoCapture(text, generationID: id, speakResponse: speakResponse)
             case .conversation:
                 await send(text, generationID: id, speakResponse: speakResponse)
             case .visualQuestion:
-                conversationNotice = "Lens needs an image before it can answer that question."
-                finishGeneration(id)
+                await executeLocalAction(.visualQuestion, text: text, generationID: id, speakResponse: speakResponse)
             case .clarify:
                 finishGeneration(id)
             }
@@ -327,6 +362,15 @@ final class AppModel: ObservableObject {
         generationID: UUID,
         speakResponse: Bool
     ) async {
+        await executeLocalAction(.capturePhoto, text: text, generationID: generationID, speakResponse: speakResponse)
+    }
+
+    private func executeLocalAction(
+        _ action: LocalAssistantAction,
+        text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
         defer { finishGeneration(generationID) }
         await loadConversationsIfNeeded()
         guard self.generationID == generationID, !Task.isCancelled else { return }
@@ -334,20 +378,11 @@ final class AppModel: ObservableObject {
         conversation.append(ConversationMessage(role: .user, text: text))
         await persistCurrentConversation()
 
-        let didCapture = await glassesManager?.requestPhotoCapture() == true
-        try? Task.checkCancellation()
+        let answer = await localActionAnswer(action, originalText: text)
         guard self.generationID == generationID, !Task.isCancelled else { return }
-
-        let answer: String
-        if didCapture {
-            answer = "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
-            conversationNotice = nil
-        } else {
-            answer = glassesManager?.errorMessage ?? "Connect AD Glasses before taking a photo."
-            conversationNotice = answer
-        }
         conversation.append(ConversationMessage(role: .assistant, text: answer))
         await persistCurrentConversation()
+        conversationNotice = nil
 
         if speakResponse {
             do {
@@ -358,6 +393,137 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func localActionAnswer(_ action: LocalAssistantAction, originalText: String) async -> String {
+        guard let glassesManager else {
+            return "Connect AD Glasses first."
+        }
+
+        switch action {
+        case .capturePhoto:
+            let succeeded = await glassesManager.requestPhotoCapture()
+            return succeeded
+                ? "Photo taken. It is saved on AD Glasses and will appear after your next Library sync."
+                : (glassesManager.errorMessage ?? "The photo could not be taken.")
+
+        case .startVideo:
+            if glassesManager.isVideoRecording { return "Video is already recording." }
+            let succeeded = await glassesManager.toggleVideoRecording()
+            return succeeded ? "Video recording started." : (glassesManager.errorMessage ?? "Video recording could not start.")
+
+        case .stopVideo:
+            if !glassesManager.isVideoRecording { return "Video recording is already stopped." }
+            let succeeded = await glassesManager.toggleVideoRecording()
+            return succeeded ? "Video recording stopped." : (glassesManager.errorMessage ?? "Video recording could not stop.")
+
+        case .startAudio:
+            if glassesManager.isAudioRecording { return "Audio is already recording." }
+            let succeeded = await glassesManager.toggleAudioRecording()
+            return succeeded ? "Audio recording started." : (glassesManager.errorMessage ?? "Audio recording could not start.")
+
+        case .stopAudio:
+            if !glassesManager.isAudioRecording { return "Audio recording is already stopped." }
+            let succeeded = await glassesManager.toggleAudioRecording()
+            return succeeded ? "Audio recording stopped." : (glassesManager.errorMessage ?? "Audio recording could not stop.")
+
+        case .readVisibleText:
+            guard let capture = await glassesManager.requestVisualCapture() else {
+                return glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+            }
+            do {
+                let prepared = try await lensProcessor.prepare(capture.jpegData)
+                let text = try await lensProcessor.recognizeText(in: prepared)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return text.isEmpty ? "I could not find readable text in front of you." : text
+            } catch {
+                return error.localizedDescription
+            }
+
+        case .visualQuestion:
+            guard let profile = aiProfiles.activeProfile else {
+                return "Configure Cloud AI in Settings before asking visual questions."
+            }
+            let credential: String
+            do {
+                credential = try aiProfiles.credential(for: profile.id)
+            } catch {
+                return error.localizedDescription
+            }
+            guard let capture = await glassesManager.requestVisualCapture() else {
+                return glassesManager.errorMessage ?? "Lens could not capture what you are looking at."
+            }
+            do {
+                let prepared = try await lensProcessor.prepare(capture.jpegData)
+                return try await visualAI.answer(
+                    question: originalText,
+                    imageJPEGData: prepared.jpegData,
+                    profile: profile,
+                    credential: credential
+                )
+            } catch {
+                return error.localizedDescription
+            }
+        }
+    }
+
+    private func localAssistantAction(for rawText: String) -> LocalAssistantAction? {
+        let text = Self.normalizedCommand(rawText)
+        guard !text.isEmpty,
+              !text.contains("how do i"),
+              !text.contains("how to"),
+              !text.contains("can you explain") else { return nil }
+
+        let words = Set(text.split(separator: " ").map(String.init))
+        if words.isDisjoint(with: ["not", "dont", "never"]) {
+            let captureVerb = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
+            let photoSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
+            if captureVerb && photoSubject { return .capturePhoto }
+        }
+
+        if Self.containsAny(text, ["stop video", "stop recording video", "end video", "finish video"]) {
+            return .stopVideo
+        }
+        if Self.containsAny(text, ["start video", "record video", "start recording video", "begin video"]) {
+            return .startVideo
+        }
+        if Self.containsAny(text, ["stop audio", "stop audio recording", "stop recording audio", "end audio recording"]) {
+            return .stopAudio
+        }
+        if Self.containsAny(text, ["start audio", "record audio", "start audio recording", "start recording audio", "begin audio recording"]) {
+            return .startAudio
+        }
+
+        if Self.containsAny(text, [
+            "read this", "read the text", "read this text", "read this sign", "read what i see",
+            "what does this say", "scan this text"
+        ]) {
+            return .readVisibleText
+        }
+
+        if Self.containsAny(text, [
+            "what am i looking at", "what do you see", "describe what i see", "describe the scene",
+            "describe what is in front of me", "what is in front of me", "what is this object",
+            "identify this object", "what is this", "explain what i am looking at", "anything important here",
+            "translate what i see", "translate this sign", "translate this text"
+        ]) {
+            return .visualQuestion
+        }
+
+        return nil
+    }
+
+    private static func normalizedCommand(_ value: String) -> String {
+        value.lowercased()
+            .replacingOccurrences(of: "’", with: "'")
+            .replacingOccurrences(of: "'", with: "")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private static func containsAny(_ text: String, _ phrases: [String]) -> Bool {
+        phrases.contains(where: text.contains)
+    }
+
     private func finishGeneration(_ id: UUID) {
         guard generationID == id else { return }
         generationID = nil
@@ -366,9 +532,6 @@ final class AppModel: ObservableObject {
         endVoiceResponseBackgroundTask()
     }
 
-    /// Gives a glasses voice turn a finite opportunity to finish its network response and persist
-    /// it when the user locks the screen or changes apps. Spoken output then continues under the
-    /// app's background-audio mode; this is not used as an indefinite execution claim.
     private func beginVoiceResponseBackgroundTask() {
         endVoiceResponseBackgroundTask()
         responseBackgroundTaskID = UIApplication.shared.beginBackgroundTask(
@@ -419,9 +582,6 @@ final class AppModel: ObservableObject {
         glassesSpeechStartTask = Task { [weak self] in
             guard let self else { return }
             do {
-                // Manual dictation and decoded glasses PCM share the AppModel transcriber. Finalize
-                // the previous source before clearing its transcript so a late final callback cannot
-                // leak old text into this glasses turn.
                 if transcriber.snapshot.isRunning || isStoppingTranscription {
                     await stopTranscription()
                     guard glassesAssistantSessionID == sessionID, !Task.isCancelled else { return }
