@@ -160,6 +160,72 @@ final class GlassesManagerTests: XCTestCase {
         XCTAssertEqual(provider.stopAudioCount, 1)
     }
 
+    func testStartingVideoStopsActiveAudioRecording() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        XCTAssertTrue(await manager.toggleAudioRecording())
+        XCTAssertTrue(manager.isAudioRecording)
+
+        XCTAssertTrue(await manager.toggleVideoRecording())
+        XCTAssertTrue(manager.isVideoRecording)
+        XCTAssertFalse(manager.isAudioRecording)
+        XCTAssertEqual(provider.stopAudioCount, 1)
+    }
+
+    func testStartingAudioStopsActiveVideoRecording() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        XCTAssertTrue(await manager.toggleVideoRecording())
+        XCTAssertTrue(manager.isVideoRecording)
+
+        XCTAssertTrue(await manager.toggleAudioRecording())
+        XCTAssertTrue(manager.isAudioRecording)
+        XCTAssertFalse(manager.isVideoRecording)
+        XCTAssertEqual(provider.stopVideoCount, 1)
+    }
+
+    func testDisconnectClearsPublishedRecordingState() async {
+        let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
+        let manager = GlassesManager(providers: [provider])
+        let device = GlassesDevice(
+            id: UUID(),
+            name: "Glasses",
+            providerID: provider.id,
+            signalStrength: nil
+        )
+        provider.scanResult = [device]
+        await manager.scan()
+        await manager.connect(to: device)
+
+        XCTAssertTrue(await manager.toggleVideoRecording())
+        XCTAssertTrue(manager.isVideoRecording)
+
+        await manager.disconnect()
+        XCTAssertFalse(manager.isVideoRecording)
+        XCTAssertFalse(manager.isAudioRecording)
+        XCTAssertNil(manager.latestVisualCapture)
+    }
+
     func testVisualCaptureFlowsThroughProviderBoundaryAndPublishesLatestCapture() async throws {
         let provider = FakeGlassesProvider(id: "provider", displayName: "Provider")
         let manager = GlassesManager(providers: [provider])
