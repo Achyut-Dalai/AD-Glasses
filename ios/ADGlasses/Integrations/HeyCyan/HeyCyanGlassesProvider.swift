@@ -675,7 +675,6 @@ final class HeyCyanGlassesProvider: NSObject,
     }
 
     private func beginAssistantAudioStream() {
-        guard !isAssistantAudioStreaming else { return }
         guard let opusDecoder else {
             let reason = opusDecoderStartupError ?? "native decoder unavailable"
             Task {
@@ -685,6 +684,14 @@ final class HeyCyanGlassesProvider: NSObject,
             }
             return
         }
+
+        // A verified hardware start is a session boundary. If a prior firmware end notification was
+        // missed, close the stale local stream first so one bad turn cannot poison every later press.
+        if isAssistantAudioStreaming {
+            isAssistantAudioStreaming = false
+            onAssistantAudioEvent?(.ended)
+        }
+
         opusDecoder.reset()
         isAssistantAudioStreaming = true
         onAssistantAudioEvent?(.started(format: opusDecoder.outputFormat))
