@@ -6,7 +6,7 @@ import Speech
 @available(iOS 26.0, *)
 @MainActor
 final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
-    let engineName = "Apple SpeechAnalyzer (on-device)"
+    let engineName = "SpeechAnalyzer (on-device)"
     var onUpdate: ((SpeechTranscriptionSnapshot) -> Void)?
     var onError: ((Error) -> Void)?
 
@@ -18,26 +18,51 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private let audioEngine = AVAudioEngine()
     private let bufferConverter = SpeechBufferConverter()
     private var analyzer: SpeechAnalyzer?
-    private var transcriber: SpeechTranscriber?
+    private var transcriber: DictationTranscriber?
     private var analyzerInputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var audioContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
     private var audioTask: Task<Void, Never>?
     private var resultTask: Task<Void, Never>?
-    private var endpointTask: Task<Void, Never>?
+    private var phoneEndpointTask: Task<Void, Never>?
+    private var externalEndpointTask: Task<Void, Never>?
     private var finalizedTranscript = ""
-    private var lastEndpointTranscript = ""
+    private var lastPhoneEndpointTranscript = ""
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
 
     private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_200)
-    private let externalTranscriptSilenceDelay: Duration = .milliseconds(900)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_100)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
+
+    // Deliberately forgiving. If the environment is noisier than this, the logical early endpoint
+    // simply stays disabled and the verified glasses 0x73/0x0A end event remains the fallback. This
+    // is safer than cutting quiet or distant speech because a fixed transcript stopped changing.
+    private let externalSilencePeakThresholdDBFS: Float = -56
 
     private enum InputSource {
         case phoneMicrophone
         case externalPCM
     }
+
+    private static let assistantContextualStrings = [
+        "AD Glasses",
+        "click",
+        "photo",
+        "picture",
+        "take photo",
+        "video",
+        "record",
+        "recording",
+        "start recording",
+        "stop recording",
+        "stop",
+        "read",
+        "read text",
+        "Lens",
+        "translate",
+        "translation"
+    ]
 
     init(locale: Locale) {
         requestedLocale = locale
@@ -49,35 +74,27 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     static func supportedSpeechLocales() async -> [Locale] {
-        guard SpeechTranscriber.isAvailable else { return [] }
-        return await SpeechTranscriber.supportedLocales
+        await DictationTranscriber.supportedLocales
     }
 
     static func installedSpeechLocales() async -> [Locale] {
-        guard SpeechTranscriber.isAvailable else { return [] }
-        return await SpeechTranscriber.installedLocales
+        await DictationTranscriber.installedLocales
     }
 
     /// Ensures the requested SpeechAnalyzer language asset is ready once per transcriber lifetime.
-    ///
-    /// A successful preparation is cached. Later Assistant turns reuse that prepared locale and go
-    /// straight to analyzer construction instead of repeatedly asking AssetInventory to reserve,
-    /// install, or re-evaluate the same en-US model. This keeps multi-turn Ask/glasses sessions on
-    /// SpeechAnalyzer without spuriously returning to a "model downloading" state after a few turns.
+    /// A successful preparation is cached so later Assistant turns do not repeatedly re-enter the
+    /// installation/status path for the same en-US model.
     func prepareAssets(statusUpdate: ((String) -> Void)? = nil) async throws -> Locale {
         if let preparedLocale {
             statusUpdate?("\(languageDisplayName(preparedLocale)) speech model ready")
             return preparedLocale
         }
 
-        guard SpeechTranscriber.isAvailable else {
-            throw SpeechAnalyzerAssetError.moduleUnavailable
-        }
-        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
             throw SpeechAnalyzerAssetError.unsupportedLanguage(languageDisplayName(requestedLocale))
         }
 
-        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        let module = makeTranscriber(locale: locale)
         let languageName = languageDisplayName(locale)
 
         statusUpdate?("Preparing \(languageName) speech model…")
@@ -108,7 +125,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         @unknown default:
             throw SpeechAnalyzerAssetError.installationFailed(
                 languageName,
-                "Apple Speech returned an unknown asset state."
+                "SpeechAnalyzer returned an unknown asset state."
             )
         }
 
@@ -219,7 +236,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             try audioEngine.start()
             inputSource = .phoneMicrophone
             snapshot.isRunning = true
-            armInitialEndpoint()
+            armInitialPhoneEndpoint()
         } catch {
             inputNode.removeTap(onBus: 0)
             audioContinuation.finish()
@@ -230,9 +247,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     func stop() async {
-        endpointTask?.cancel()
-        endpointTask = nil
-        lastEndpointTranscript = ""
+        cancelEndpointTasks()
+        lastPhoneEndpointTranscript = ""
 
         let wasUsingPhoneMicrophone = inputSource == .phoneMicrophone
         if wasUsingPhoneMicrophone {
@@ -281,6 +297,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
         guard inputSource == .externalPCM else { return }
         audioContinuation?.yield(buffer)
+        noteExternalAudioActivity(buffer)
     }
 
     func finishExternalAudio() async {
@@ -290,11 +307,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     func resetTranscript() {
         finalizedTranscript = ""
-        lastEndpointTranscript = ""
+        lastPhoneEndpointTranscript = ""
+        externalEndpointTask?.cancel()
+        externalEndpointTask = nil
         snapshot.transcript = ""
     }
 
-    private func startResultTask(for module: SpeechTranscriber) {
+    private func startResultTask(for module: DictationTranscriber) {
         finalizedTranscript = ""
         resultTask = Task { [weak self] in
             guard let self else { return }
@@ -321,9 +340,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    private func armInitialEndpoint() {
-        endpointTask?.cancel()
-        endpointTask = Task { @MainActor [weak self] in
+    private func armInitialPhoneEndpoint() {
+        phoneEndpointTask?.cancel()
+        phoneEndpointTask = Task { @MainActor [weak self] in
             do {
                 try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(6))
             } catch {
@@ -340,39 +359,115 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func noteTranscriptActivity(_ text: String) {
-        guard let source = inputSource else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
-        lastEndpointTranscript = clean
+        guard !clean.isEmpty else { return }
 
-        let silenceDelay: Duration
-        switch source {
+        switch inputSource {
         case .phoneMicrophone:
-            silenceDelay = phoneTranscriptSilenceDelay
+            guard clean != lastPhoneEndpointTranscript else { return }
+            lastPhoneEndpointTranscript = clean
+            phoneEndpointTask?.cancel()
+            phoneEndpointTask = Task { @MainActor [weak self] in
+                do {
+                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_200))
+                } catch {
+                    return
+                }
+                guard let self,
+                      inputSource == .phoneMicrophone,
+                      snapshot.isRunning,
+                      snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                    return
+                }
+                await stop()
+            }
+
         case .externalPCM:
-            // The glasses firmware can hold its 0x73 voice transport open noticeably longer than
-            // the user's actual utterance. End SpeechAnalyzer promptly once recognized text has
-            // been stable, while leaving the provider/BLE layer free to receive the real 0x73/0x0A
-            // transport-end event later. AppModel treats this analyzer stop as the logical Ask
-            // endpoint and starts processing the finished transcript immediately.
-            silenceDelay = externalTranscriptSilenceDelay
+            // A new recognition result means the utterance is still evolving. Never use text
+            // stability alone as an endpoint: SpeechAnalyzer can pause result delivery while the
+            // person is still speaking, especially with faint/distant input.
+            externalEndpointTask?.cancel()
+            externalEndpointTask = nil
+
+        case nil:
+            break
+        }
+    }
+
+    private func noteExternalAudioActivity(_ buffer: AVAudioPCMBuffer) {
+        guard inputSource == .externalPCM,
+              snapshot.isRunning,
+              !snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let peakDBFS = Self.peakDBFS(buffer) else {
+            return
         }
 
-        endpointTask?.cancel()
-        endpointTask = Task { @MainActor [weak self] in
+        if peakDBFS > externalSilencePeakThresholdDBFS {
+            externalEndpointTask?.cancel()
+            externalEndpointTask = nil
+            return
+        }
+
+        guard externalEndpointTask == nil else { return }
+        let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: silenceDelay)
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_100))
             } catch {
                 return
             }
             guard let self,
-                  inputSource == source,
+                  inputSource == .externalPCM,
                   snapshot.isRunning,
-                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == endpointTranscript else {
                 return
             }
             await stop()
         }
+    }
+
+    private static func peakDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
+        let frameCount = Int(buffer.frameLength)
+        let channelCount = Int(buffer.format.channelCount)
+        guard frameCount > 0, channelCount > 0 else { return nil }
+
+        var peak: Float = 0
+        switch buffer.format.commonFormat {
+        case .pcmFormatFloat32:
+            guard let channels = buffer.floatChannelData else { return nil }
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    peak = max(peak, abs(samples[frame]))
+                }
+            }
+
+        case .pcmFormatInt16:
+            guard let channels = buffer.int16ChannelData else { return nil }
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    let magnitude = Float(abs(Int(samples[frame]))) / Float(Int16.max)
+                    peak = max(peak, magnitude)
+                }
+            }
+
+        case .pcmFormatInt32:
+            guard let channels = buffer.int32ChannelData else { return nil }
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    let magnitude = Float(abs(Int64(samples[frame]))) / Float(Int32.max)
+                    peak = max(peak, magnitude)
+                }
+            }
+
+        default:
+            return nil
+        }
+
+        guard peak > 0 else { return -120 }
+        return Float(20.0 * log10(Double(peak)))
     }
 
     private static func join(_ prefix: String, _ suffix: String) -> String {
@@ -385,7 +480,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func waitForInstalledModel(
-        _ module: SpeechTranscriber,
+        _ module: DictationTranscriber,
         locale: Locale,
         languageName: String,
         statusUpdate: ((String) -> Void)?,
@@ -403,7 +498,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             case .downloading:
                 statusUpdate?("Finishing \(languageName) speech model download…")
             case .supported:
-                statusUpdate?("Waiting for Apple to finish \(languageName) speech model setup…")
+                statusUpdate?("Waiting for SpeechAnalyzer to finish \(languageName) model setup…")
             @unknown default:
                 await Self.logAssetDiagnostic(
                     locale: locale,
@@ -413,7 +508,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 )
                 throw SpeechAnalyzerAssetError.installationFailed(
                     languageName,
-                    "Apple Speech returned an unknown asset state."
+                    "SpeechAnalyzer returned an unknown asset state."
                 )
             }
 
@@ -433,25 +528,23 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func prepareAnalyzerPipeline(preparedLocale: Locale) async throws -> AVAudioFormat {
-        let module = SpeechTranscriber(locale: preparedLocale, preset: .progressiveTranscription)
+        let module = makeTranscriber(locale: preparedLocale)
 
-        // `prepareAssets()` is the authoritative installation gate. Once it succeeds, do not query
-        // AssetInventory again for every conversation turn: iOS can transiently report supported or
-        // downloading while an already-prepared model is usable, which was the source of the
-        // repeated "English (US) model is downloading" experience. Build/start the analyzer and let
-        // the analyzer itself surface a real runtime failure.
+        // The same pipeline is used by phone Ask/dictation and provider PCM. No flow bypasses
+        // SpeechAnalyzer preheat or model retention.
         guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        // Assistant turns are latency-sensitive and repeatedly create short-lived analyzers. Keep
-        // the compatible Speech model resident for the app process and preheat each analyzer before
-        // feeding audio. Apple documents both options specifically for reducing first-result delay.
         let options = SpeechAnalyzer.Options(
             priority: .userInitiated,
             modelRetention: .processLifetime
         )
         let analyzer = SpeechAnalyzer(modules: [module], options: options)
+        let context = AnalysisContext()
+        context.contextualStrings[.general] = Self.assistantContextualStrings
+        try await analyzer.setContext(context)
+
         let (analyzerInputs, analyzerInputContinuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
         let (audioStream, audioContinuation) = AsyncStream.makeStream(of: AVAudioPCMBuffer.self)
         self.analyzer = analyzer
@@ -475,6 +568,21 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             analyzerInputContinuation.finish()
         }
         return analyzerFormat
+    }
+
+    private func makeTranscriber(locale: Locale) -> DictationTranscriber {
+        // Start from the accurate short-dictation configuration, then request volatile results for
+        // live UI without enabling `frequentFinalization` (the DictationTranscriber equivalent of
+        // trading accuracy for speed). `farField` asks Apple's model to better accommodate quiet or
+        // distant delivery without changing the PCM samples with guessed gain/EQ.
+        let preset = DictationTranscriber.Preset.shortDictation
+        return DictationTranscriber(
+            locale: locale,
+            contentHints: preset.contentHints.union([.farField]),
+            transcriptionOptions: preset.transcriptionOptions,
+            reportingOptions: [.volatileResults],
+            attributeOptions: preset.attributeOptions
+        )
     }
 
     private func reserve(_ locale: Locale) async throws {
@@ -518,7 +626,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         stage: String
     ) async {
         let nsError = error.map { $0 as NSError }
-        let installed = await SpeechTranscriber.installedLocales
+        let installed = await DictationTranscriber.installedLocales
             .map(\.identifier)
             .sorted()
             .joined(separator: ", ")
@@ -533,9 +641,15 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         NSLog("%@", message)
     }
 
+    private func cancelEndpointTasks() {
+        phoneEndpointTask?.cancel()
+        phoneEndpointTask = nil
+        externalEndpointTask?.cancel()
+        externalEndpointTask = nil
+    }
+
     private func cancelPreparedPipeline() async {
-        endpointTask?.cancel()
-        endpointTask = nil
+        cancelEndpointTasks()
         audioContinuation?.finish()
         await audioTask?.value
         audioTask = nil
@@ -557,7 +671,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
 @available(iOS 26.0, *)
 private enum SpeechAnalyzerAssetError: LocalizedError {
-    case moduleUnavailable
     case unsupportedLanguage(String)
     case reservationFailed(String)
     case installationFailed(String, String)
@@ -565,16 +678,14 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .moduleUnavailable:
-            return "Apple SpeechAnalyzer is not available on this iPhone."
         case .unsupportedLanguage(let language):
-            return "Apple SpeechAnalyzer does not support \(language) on this iPhone."
+            return "SpeechAnalyzer does not support \(language) on this iPhone."
         case .reservationFailed(let language):
-            return "Apple could not prepare the \(language) SpeechAnalyzer model. Try again after freeing storage or restarting the iPhone."
+            return "SpeechAnalyzer could not prepare the \(language) model. Try again after freeing storage or restarting the iPhone."
         case .installationFailed(let language, let reason):
-            return "The \(language) speech model could not be installed. \(reason)"
+            return "The \(language) SpeechAnalyzer model could not be installed. \(reason)"
         case .installationPending(let language):
-            return "Apple is still downloading the \(language) speech model. Keep this iPhone online and try voice input again shortly."
+            return "SpeechAnalyzer is still downloading the \(language) model. Keep this iPhone online and try voice input again shortly."
         }
     }
 }
@@ -590,11 +701,11 @@ private final class SpeechBufferConverter {
         var errorDescription: String? {
             switch self {
             case .failedToCreateConverter:
-                return "Could not create an audio converter for Apple SpeechAnalyzer."
+                return "Could not create an audio converter for SpeechAnalyzer."
             case .failedToCreateBuffer:
-                return "Could not allocate an audio buffer for Apple SpeechAnalyzer."
+                return "Could not allocate an audio buffer for SpeechAnalyzer."
             case .conversionFailed(let error):
-                return error?.localizedDescription ?? "Audio conversion for Apple SpeechAnalyzer failed."
+                return error?.localizedDescription ?? "Audio conversion for SpeechAnalyzer failed."
             }
         }
     }
