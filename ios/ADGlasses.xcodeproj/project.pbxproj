@@ -11,7 +11,6 @@
 		B00000000000000000000002 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* AppModel.swift */; };
 		B00000000000000000000003 /* SpeechTranscribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* SpeechTranscribing.swift */; };
 		B00000000000000000000004 /* AppleSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* AppleSpeechTranscriber.swift */; };
-		B00000000000000000000005 /* LegacySpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* LegacySpeechTranscriber.swift */; };
 		B00000000000000000000006 /* SpeechAnalyzerTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */; };
 		B00000000000000000000007 /* GlassesModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* GlassesModels.swift */; };
 		B00000000000000000000008 /* GlassesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* GlassesProvider.swift */; };
@@ -73,7 +72,6 @@
 		A00000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		A00000000000000000000003 /* SpeechTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscribing.swift; sourceTree = "<group>"; };
 		A00000000000000000000004 /* AppleSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriber.swift; sourceTree = "<group>"; };
-		A00000000000000000000005 /* LegacySpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacySpeechTranscriber.swift; sourceTree = "<group>"; };
 		A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechAnalyzerTranscriber.swift; sourceTree = "<group>"; };
 		A00000000000000000000007 /* GlassesModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000008 /* GlassesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesProvider.swift; sourceTree = "<group>"; };
@@ -202,7 +200,6 @@
 			children = (
 				A00000000000000000000003 /* SpeechTranscribing.swift */,
 				A00000000000000000000004 /* AppleSpeechTranscriber.swift */,
-				A00000000000000000000005 /* LegacySpeechTranscriber.swift */,
 				A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */,
 				A0000000000000000000001E /* SpeechOutputController.swift */,
 			);
@@ -498,7 +495,6 @@
 				B00000000000000000000002 /* AppModel.swift in Sources */,
 				B00000000000000000000003 /* SpeechTranscribing.swift in Sources */,
 				B00000000000000000000004 /* AppleSpeechTranscriber.swift in Sources */,
-				B00000000000000000000005 /* LegacySpeechTranscriber.swift in Sources */,
 				B00000000000000000000006 /* SpeechAnalyzerTranscriber.swift in Sources */,
 				B00000000000000000000007 /* GlassesModels.swift in Sources */,
 				B00000000000000000000008 /* GlassesProvider.swift in Sources */,
