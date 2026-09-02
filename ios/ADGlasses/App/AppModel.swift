@@ -88,8 +88,6 @@ final class AppModel: ObservableObject {
               generationTask == nil,
               !isGlassesAssistantAudioActive else { return }
         speechError = nil
-        // Publish ownership before opening the microphone so phone wake-word capture yields its
-        // audio session first instead of racing the manual Jarvis transcriber during startup.
         isManualTranscription = true
         speechOutput.stop()
         do {
@@ -138,37 +136,6 @@ final class AppModel: ObservableObject {
         } else {
             await startTranscription()
         }
-    }
-
-    @discardableResult
-    func startPhoneVoiceTranscriptionFromWakeWord() async -> Bool {
-        guard !isStoppingTranscription, !transcriber.snapshot.isRunning else { return false }
-        isManualTranscription = false
-        cancelResponse()
-        speechOutput.stop()
-        clearTranscript()
-        do {
-            try await transcriber.start()
-            return true
-        } catch {
-            speechError = error.localizedDescription
-            return false
-        }
-    }
-
-    func finishPhoneVoiceTranscriptionFromWakeWord() async {
-        if transcriber.snapshot.isRunning {
-            await stopTranscription()
-        }
-        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            speechError = "I didn’t hear a question. Try the wake phrase again."
-            return
-        }
-        let preservedDraft = chatDraft
-        chatDraft = text
-        sendChatMessage(source: .phoneVoice, speakResponse: true)
-        chatDraft = preservedDraft
     }
 
     func clearTranscript() {
@@ -399,9 +366,9 @@ final class AppModel: ObservableObject {
         endVoiceResponseBackgroundTask()
     }
 
-    /// Gives a glasses/phone voice turn a finite opportunity to finish its network response and
-    /// persist it when the user locks the screen or changes apps. Spoken output then continues
-    /// under the app's background-audio mode; this is not used as an indefinite execution claim.
+    /// Gives a glasses voice turn a finite opportunity to finish its network response and persist
+    /// it when the user locks the screen or changes apps. Spoken output then continues under the
+    /// app's background-audio mode; this is not used as an indefinite execution claim.
     private func beginVoiceResponseBackgroundTask() {
         endVoiceResponseBackgroundTask()
         responseBackgroundTaskID = UIApplication.shared.beginBackgroundTask(
@@ -452,9 +419,9 @@ final class AppModel: ObservableObject {
         glassesSpeechStartTask = Task { [weak self] in
             guard let self else { return }
             do {
-                // The AppModel transcriber is shared by manual dictation, phone wake turns, and
-                // decoded glasses PCM. Finalize the previous source before clearing its transcript;
-                // otherwise a late final callback can leak old phone text into this glasses turn.
+                // Manual dictation and decoded glasses PCM share the AppModel transcriber. Finalize
+                // the previous source before clearing its transcript so a late final callback cannot
+                // leak old text into this glasses turn.
                 if transcriber.snapshot.isRunning || isStoppingTranscription {
                     await stopTranscription()
                     guard glassesAssistantSessionID == sessionID, !Task.isCancelled else { return }
