@@ -113,6 +113,12 @@ protocol GlassesVisualCapturing: AnyObject {
 }
 
 @MainActor
+protocol GlassesMediaInventoryProviding: AnyObject {
+    /// Reads the provider's lightweight media counts without entering Wi-Fi/media-transfer mode.
+    func mediaInventory() async throws -> GlassesMediaInventory
+}
+
+@MainActor
 protocol GlassesMediaTransferring: AnyObject {
     var mediaTransferState: GlassesMediaTransferState { get }
     var onMediaTransferStateChange: ((GlassesMediaTransferState) -> Void)? { get set }
