@@ -493,7 +493,10 @@ private struct LiveTranslateExperience: View {
     }
 
     private func languageBase(_ code: String) -> String {
-        code.lowercased().split(separator: "-").first.map(String.init) ?? code.lowercased()
+        let normalized = code
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
+        return normalized.split(separator: "-").first.map(String.init) ?? normalized
     }
 }
 #endif
