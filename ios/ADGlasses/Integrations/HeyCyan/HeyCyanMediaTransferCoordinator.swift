@@ -401,25 +401,16 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
-    /// Personal/sideloaded builds cannot provision Hotspot Configuration. Restore the exact
-    /// two-route Wi-Fi Settings handoff used by the previously working sync path: try the legacy
-    /// `prefs:` route first, then fall back to `App-Prefs:` only if iOS rejects the first open.
+    /// Personal/sideloaded builds cannot provision Hotspot Configuration. `App-Prefs:` is the
+    /// physically validated handoff on the current test iPhone: it opens the Settings root so Wi-Fi
+    /// is one tap away. The public app-settings URL opens AD Glasses under Apps, and the accepted
+    /// `prefs:root=WIFI` URL is redirected there as well on this iOS version.
+    ///
+    /// This is an undocumented convenience for personal builds; the in-app instructions remain
+    /// the source of truth because iOS does not provide a supported Wi-Fi Settings deep link.
     private func openSettingsForManualWiFiJoin() {
-        openSettingsURLCandidates([
-            "prefs:root=WIFI",
-            "App-Prefs:root=WIFI"
-        ])
-    }
-
-    private func openSettingsURLCandidates(_ candidates: [String]) {
-        guard let first = candidates.first,
-              let url = URL(string: first) else { return }
-        UIApplication.shared.open(url, options: [:]) { [weak self] opened in
-            guard !opened, candidates.count > 1 else { return }
-            Task { @MainActor [weak self] in
-                self?.openSettingsURLCandidates(Array(candidates.dropFirst()))
-            }
-        }
+        guard let url = URL(string: "App-Prefs:") else { return }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 
     private func copyNetworkPassword(_ passphrase: String) {

@@ -126,6 +126,85 @@ final class GroundingPolicyTests: XCTestCase {
     }
 }
 
+final class CloudStreamingTests: XCTestCase {
+    func testGroqCRLFEventSeparatorsNormalizeToBlankLines() {
+        XCTAssertEqual(ServerSentEventFraming.normalize("\r"), "")
+        XCTAssertEqual(
+            ServerSentEventFraming.normalize("data: {\"choices\":[]}\r"),
+            "data: {\"choices\":[]}"
+        )
+        XCTAssertEqual(ServerSentEventFraming.normalize("data: [DONE]"), "data: [DONE]")
+        XCTAssertTrue(ServerSentEventFraming.isCompleteDataLine("{\"choices\":[]}"))
+        XCTAssertTrue(ServerSentEventFraming.isCompleteDataLine("[DONE]"))
+        XCTAssertFalse(ServerSentEventFraming.isCompleteDataLine("{\"choices\":"))
+    }
+
+    @MainActor
+    func testGroqStreamsOnlyFinalContentAndRequestsHiddenReasoning() async throws {
+        GroqStreamingStub.shared.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GroqStreamingStubURLProtocol.self]
+        let client = CloudAIClient(session: URLSession(configuration: configuration))
+        let profile = AIProfile(
+            id: UUID(),
+            name: "Groq",
+            provider: .groq,
+            baseURL: AIProviderKind.groq.defaultBaseURL,
+            model: AIProviderKind.groq.defaultModel
+        )
+        var deltas = [String]()
+
+        let answer = try await client.streamingResponse(
+            to: [ConversationMessage(role: .user, text: "Explain photosynthesis simply")],
+            profile: profile,
+            credential: "test-key"
+        ) { deltas.append($0) }
+
+        XCTAssertEqual(answer, "Visible answer")
+        XCTAssertEqual(deltas, ["Visible answer"])
+        XCTAssertEqual(GroqStreamingStub.shared.requestCount, 1)
+
+        var payload: [String: Any] = ["stream": true]
+        CloudModelPolicy.applyOpenAICompatibleTuning(
+            to: &payload,
+            profile: profile,
+            mode: .conciseConversation
+        )
+        XCTAssertEqual(payload["include_reasoning"] as? Bool, false)
+        XCTAssertEqual(payload["reasoning_effort"] as? String, "low")
+        XCTAssertEqual(payload["stream"] as? Bool, true)
+    }
+}
+
+final class AssistantCompletionSanitizerTests: XCTestCase {
+    func testCompletedThinkingBlockNeverReachesVisibleAnswer() {
+        let raw = "<think>Private chain of thought.</think>Paris is the capital of France."
+        XCTAssertEqual(AssistantCompletionSanitizer.clean(raw), "Paris is the capital of France.")
+    }
+
+    func testUnfinishedThinkingIsHeldDuringStreaming() {
+        XCTAssertEqual(AssistantCompletionSanitizer.cleanForStreaming("<thi"), "")
+        XCTAssertEqual(AssistantCompletionSanitizer.cleanForStreaming("<think>Private reasoning"), "")
+    }
+
+    func testReasoningLabelRequiresASeparateFinalAnswer() {
+        XCTAssertEqual(AssistantCompletionSanitizer.cleanForStreaming("Reasoning: private notes"), "")
+        XCTAssertEqual(
+            AssistantCompletionSanitizer.clean("Reasoning: private notes\nFinal answer: Safe answer."),
+            "Safe answer."
+        )
+    }
+
+    func testReasoningOnlyAssistantHistoryIsNotSentBackToProvider() {
+        let messages = [
+            ConversationMessage(role: .user, text: "Question"),
+            ConversationMessage(role: .assistant, text: "<think>Private notes only</think>"),
+            ConversationMessage(role: .user, text: "Follow-up")
+        ]
+        XCTAssertEqual(ConversationContextPolicy.requestMessages(from: messages).map(\.text), ["Question", "Follow-up"])
+    }
+}
+
 @MainActor
 final class GlassesAssistantPipelineTests: XCTestCase {
     func testSpokenPhotoCommandExecutesLocalGlassesActionWithoutCloudProfile() async throws {
@@ -275,6 +354,34 @@ final class GlassesAssistantPipelineTests: XCTestCase {
         XCTAssertEqual(app.conversation.last?.text, "Question from glasses")
     }
 
+    func testPhoneVoiceQuestionSendsImmediatelyAndPreservesTypedDraft() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let transcriber = FakeExternalAudioTranscriber(
+            finalTranscript: "",
+            phoneFinalTranscript: "What is in front of me?"
+        )
+        let app = AppModel(
+            transcriber: transcriber,
+            aiProfiles: AIProfileStore(defaults: defaults),
+            speechOutput: SpeechOutputController(defaults: defaults)
+        )
+        app.chatDraft = "Keep this typed draft"
+
+        await app.startVoiceQuestion()
+        XCTAssertTrue(app.isPhoneVoiceQuestionActive)
+
+        await app.finishVoiceQuestion()
+        for _ in 0 ..< 200 where app.conversation.isEmpty || app.isGenerating {
+            await Task.yield()
+        }
+
+        XCTAssertFalse(app.isPhoneVoiceQuestionActive)
+        XCTAssertEqual(transcriber.phoneStopCount, 1)
+        XCTAssertEqual(app.conversation.first?.role, .user)
+        XCTAssertEqual(app.conversation.first?.text, "What is in front of me?")
+        XCTAssertEqual(app.chatDraft, "Keep this typed draft")
+    }
+
     func testGlassesVoiceSessionResetsWhenConnectionDropsWithoutEndedEvent() async throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let transcriber = FakeExternalAudioTranscriber(finalTranscript: "Partial glasses speech")
@@ -400,4 +507,65 @@ private final class FakeAssistantAudioProvider:
     func emit(_ event: GlassesAssistantAudioEvent) {
         onAssistantAudioEvent?(event)
     }
+}
+
+private final class GroqStreamingStub: @unchecked Sendable {
+    static let shared = GroqStreamingStub()
+    private let lock = NSLock()
+    private var count = 0
+    private var payload: [String: Any]?
+
+    var requestCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+
+    var latestPayload: [String: Any]? {
+        lock.lock()
+        defer { lock.unlock() }
+        return payload
+    }
+
+    func reset() {
+        lock.lock()
+        count = 0
+        payload = nil
+        lock.unlock()
+    }
+
+    func response(for request: URLRequest) -> (HTTPURLResponse, Data) {
+        let body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+        lock.lock()
+        count += 1
+        payload = body
+        lock.unlock()
+
+        let eventStream =
+            "data: {\"choices\":[{\"delta\":{\"reasoning\":\"Private thought\"}}]}\r\n\r\n" +
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Visible answer\"}}]}\r\n\r\n" +
+            "data: [DONE]\r\n\r\n"
+        let data = Data(eventStream.utf8)
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "text/event-stream"]
+        )!
+        return (response, data)
+    }
+}
+
+private final class GroqStreamingStubURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let (response, data) = GroqStreamingStub.shared.response(for: request)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

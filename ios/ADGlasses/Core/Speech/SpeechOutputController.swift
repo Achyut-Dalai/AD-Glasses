@@ -62,6 +62,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
     private let defaults: UserDefaults
     private let audioSession: AVAudioSession
     private let selectedVoiceKey = "speech.output.selectedVoiceIdentifier.v1"
+    private var queuedUtterances: [AVSpeechUtterance] = []
 
     init(
         synthesizer: AVSpeechSynthesizer = AVSpeechSynthesizer(),
@@ -112,28 +113,31 @@ final class SpeechOutputController: NSObject, ObservableObject {
             throw SpeechOutputError.noVoiceAvailable
         }
 
-        if synthesizer.isSpeaking {
+        if synthesizer.isSpeaking || !queuedUtterances.isEmpty {
+            // Clear ownership before stopping. AVSpeechSynthesizer can deliver didCancel later;
+            // that stale callback must not deactivate the audio session used by this new reply.
+            queuedUtterances.removeAll()
             synthesizer.stopSpeaking(at: .immediate)
         }
-        isSpeaking = true
+        try enqueue(value, voice: voice)
+    }
 
-        do {
-            // Voice input is now finite and releases HFP before inference/TTS. Playback can use the
-            // normal system-selected output route instead of preserving an old recording lease.
-            try audioSession.setCategory(.playback, mode: .spokenAudio)
-            try audioSession.setActive(true)
-        } catch {
-            isSpeaking = false
-            throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
+    /// Adds a safe streaming segment without interrupting speech already in progress.
+    func enqueue(_ text: String, languageCode: String? = nil) throws {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        let option = languageCode.flatMap(preferredVoice(languageCode:))
+            ?? voices.first(where: { $0.identifier == selectedVoiceIdentifier })
+            ?? preferredVoice(languageCode: Locale.current.language.languageCode?.identifier)
+        guard let option,
+              let voice = AVSpeechSynthesisVoice(identifier: option.identifier) else {
+            throw SpeechOutputError.noVoiceAvailable
         }
-
-        let utterance = AVSpeechUtterance(string: value)
-        utterance.voice = voice
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        synthesizer.speak(utterance)
+        try enqueue(value, voice: voice)
     }
 
     func stop() {
+        queuedUtterances.removeAll()
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
         deactivateAudioSession()
@@ -151,6 +155,35 @@ final class SpeechOutputController: NSObject, ObservableObject {
 
     private func deactivateAudioSession() {
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func enqueue(_ text: String, voice: AVSpeechSynthesisVoice) throws {
+        if queuedUtterances.isEmpty {
+            do {
+                // The finite input turn has released HFP. Playback follows the system-selected
+                // output route and therefore works with the phone speaker or Bluetooth audio.
+                try audioSession.setCategory(.playback, mode: .spokenAudio)
+                try audioSession.setActive(true)
+            } catch {
+                isSpeaking = false
+                throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
+            }
+        }
+
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = voice
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        queuedUtterances.append(utterance)
+        isSpeaking = true
+        synthesizer.speak(utterance)
+    }
+
+    private func finish(_ utterance: AVSpeechUtterance) {
+        guard let index = queuedUtterances.firstIndex(where: { $0 === utterance }) else { return }
+        queuedUtterances.remove(at: index)
+        guard queuedUtterances.isEmpty else { return }
+        isSpeaking = false
+        deactivateAudioSession()
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
@@ -203,6 +236,7 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didStart utterance: AVSpeechUtterance
     ) {
+        guard queuedUtterances.contains(where: { $0 === utterance }) else { return }
         isSpeaking = true
     }
 
@@ -210,15 +244,13 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
-        isSpeaking = false
-        deactivateAudioSession()
+        finish(utterance)
     }
 
     func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didCancel utterance: AVSpeechUtterance
     ) {
-        isSpeaking = false
-        deactivateAudioSession()
+        finish(utterance)
     }
 }

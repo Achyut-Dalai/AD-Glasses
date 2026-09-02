@@ -124,7 +124,7 @@ struct ADVisualAIClient: Sendable {
         ]
         let root = try await post(url: url, bearer: credential, headers: [:], payload: payload, label: "OpenAI visual understanding")
         if let text = (root["output_text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
-            return text
+            return try visibleAnswer(text)
         }
         if let output = root["output"] as? [[String: Any]] {
             let text = output.compactMap { $0["content"] as? [[String: Any]] }
@@ -133,7 +133,7 @@ struct ADVisualAIClient: Sendable {
                 .compactMap { $0["text"] as? String }
                 .joined()
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty { return text }
+            if !text.isEmpty { return try visibleAnswer(text) }
         }
         throw AIConfigurationError.invalidResponse
     }
@@ -160,7 +160,7 @@ struct ADVisualAIClient: Sendable {
         }
         let text = parts.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw AIConfigurationError.invalidResponse }
-        return text
+        return try visibleAnswer(text)
     }
 
     private func compatible(prompt: String, imageJPEGData: Data, profile: AIProfile, credential: String) async throws -> String {
@@ -175,8 +175,12 @@ struct ADVisualAIClient: Sendable {
                 ]]
             ]
         ]
-        if profile.provider == .groq { payload["max_completion_tokens"] = Self.outputTokenLimit }
-        else { payload["max_tokens"] = Self.outputTokenLimit }
+        CloudModelPolicy.applyOpenAICompatibleTuning(
+            to: &payload,
+            profile: profile,
+            mode: .conciseConversation,
+            outputTokenLimit: Self.outputTokenLimit
+        )
 
         let root = try await post(url: url, bearer: credential, headers: [:], payload: payload, label: "\(profile.provider.displayName) visual understanding")
         guard let choices = root["choices"] as? [[String: Any]],
@@ -184,13 +188,24 @@ struct ADVisualAIClient: Sendable {
             throw AIConfigurationError.invalidResponse
         }
         if let text = (message["content"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
-            return text
+            return try visibleAnswer(text)
         }
         if let parts = message["content"] as? [[String: Any]] {
             let text = parts.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty { return text }
+            if !text.isEmpty { return try visibleAnswer(text) }
         }
         throw AIConfigurationError.invalidResponse
+    }
+
+    private func visibleAnswer(_ raw: String) throws -> String {
+        let inspected = AssistantCompletionSanitizer.inspect(raw)
+        guard !inspected.text.isEmpty else {
+            if inspected.rejectionReason == .reasoningOnly || inspected.rejectionReason == .unfinishedReasoning {
+                throw AIConfigurationError.requestFailed("The AI didn’t produce a final answer. Please try again.")
+            }
+            throw AIConfigurationError.invalidResponse
+        }
+        return inspected.text
     }
 
     private func endpoint(base: String, suffix: String) throws -> URL {

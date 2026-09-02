@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var isTranscribing = false
     @Published private(set) var isPreparingTranscription = false
     @Published private(set) var isManualTranscription = false
+    @Published private(set) var isPhoneVoiceQuestionActive = false
     @Published private(set) var isStoppingTranscription = false
     @Published private(set) var speechEngineName = "Apple Speech"
     @Published var speechError: String?
@@ -42,6 +43,7 @@ final class AppModel: ObservableObject {
     private var isGlassesSpeechReady = false
     private var glassesStreamDidEnd = false
     private var applicationIsActive = true
+    private var phoneVoiceInputMode: PhoneVoiceInputMode?
 
     // HeyCyan Opus packets represent 20 ms of 16-kHz mono audio. Keep up to ~30 seconds while
     // SpeechAnalyzer performs a first/cold asset or pipeline start, matching Android Moonshine's
@@ -49,6 +51,7 @@ final class AppModel: ObservableObject {
     private let maximumPendingGlassesPackets = 1_500
     private weak var glassesManager: GlassesManager?
     private var glassesConnectionCancellable: AnyCancellable?
+    private var speechOutputCancellable: AnyCancellable?
 
     private enum LocalAssistantAction {
         case capturePhoto
@@ -58,6 +61,11 @@ final class AppModel: ObservableObject {
         case stopAudio
         case readVisibleText
         case visualQuestion
+    }
+
+    private enum PhoneVoiceInputMode {
+        case draft
+        case question
     }
 
     init(
@@ -90,8 +98,7 @@ final class AppModel: ObservableObject {
             // delayed.
             if wasRunning, !snapshot.isRunning, !isStoppingTranscription {
                 if isManualTranscription {
-                    isManualTranscription = false
-                    useTranscriptAsDraft()
+                    finalizePhoneVoiceInput()
                 } else if let sessionID = glassesAssistantSessionID, isGlassesSpeechReady {
                     Task { [weak self] in
                         await self?.finishGlassesAssistantSession(sessionID: sessionID)
@@ -104,6 +111,16 @@ final class AppModel: ObservableObject {
             self?.speechError = error.localizedDescription
         }
 
+        // A spoken glasses response is asynchronous: AVSpeechSynthesizer returns as soon as the
+        // utterance is queued. Keep the finite background task alive until playback really ends so
+        // locking the phone or switching apps does not silence a response between queue and speech.
+        speechOutputCancellable = self.speechOutput.$isSpeaking
+            .removeDuplicates()
+            .sink { [weak self] isSpeaking in
+                guard let self, !isSpeaking, generationTask == nil else { return }
+                endVoiceResponseBackgroundTask()
+            }
+
         conversationLoadTask = Task { try await conversationStore.load() }
         Task { [weak self] in await self?.loadConversationsIfNeeded() }
     }
@@ -113,9 +130,21 @@ final class AppModel: ObservableObject {
         conversationLoadTask?.cancel()
         glassesSpeechStartTask?.cancel()
         glassesConnectionCancellable?.cancel()
+        speechOutputCancellable?.cancel()
     }
 
     func startTranscription() async {
+        await startPhoneVoiceInput(mode: .draft)
+    }
+
+    /// Starts a complete Assistant turn. Silence endpointing or an explicit stop sends the final
+    /// transcript immediately, matching the glasses/Android Ask interaction instead of producing
+    /// an unsent composer draft.
+    func startVoiceQuestion() async {
+        await startPhoneVoiceInput(mode: .question)
+    }
+
+    private func startPhoneVoiceInput(mode: PhoneVoiceInputMode) async {
         guard !isPreparingTranscription,
               !isStoppingTranscription,
               !transcriber.snapshot.isRunning,
@@ -123,6 +152,8 @@ final class AppModel: ObservableObject {
               !isGlassesAssistantAudioActive else { return }
         speechError = nil
         isPreparingTranscription = true
+        phoneVoiceInputMode = mode
+        isPhoneVoiceQuestionActive = mode == .question
         speechOutput.stop()
         defer { isPreparingTranscription = false }
 
@@ -130,6 +161,8 @@ final class AppModel: ObservableObject {
             try await transcriber.start()
             isManualTranscription = transcriber.snapshot.isRunning
         } catch {
+            phoneVoiceInputMode = nil
+            isPhoneVoiceQuestionActive = false
             isManualTranscription = false
             speechError = error.localizedDescription
         }
@@ -143,25 +176,39 @@ final class AppModel: ObservableObject {
             return
         }
         guard transcriber.snapshot.isRunning else {
-            isManualTranscription = false
+            finalizePhoneVoiceInput()
             return
         }
-        let shouldPreserveManualDraft = isManualTranscription
         speechError = nil
         isStoppingTranscription = true
         defer {
             isStoppingTranscription = false
-            isManualTranscription = false
         }
         await transcriber.stop()
-        if shouldPreserveManualDraft {
-            useTranscriptAsDraft()
-        }
+        finalizePhoneVoiceInput()
     }
 
     func finishManualTranscriptionAsDraft() async {
         guard isManualTranscription else { return }
         await stopTranscription()
+    }
+
+    func finishVoiceQuestion() async {
+        guard isPhoneVoiceQuestionActive else { return }
+        await stopTranscription()
+    }
+
+    /// Abandons a phone-microphone turn without dispatching its partial transcript. Normal voice
+    /// questions finish through silence endpointing; this is only the user's escape hatch.
+    func cancelVoiceQuestion() async {
+        guard isPhoneVoiceQuestionActive else { return }
+        phoneVoiceInputMode = nil
+        isPhoneVoiceQuestionActive = false
+        isManualTranscription = false
+        isStoppingTranscription = true
+        await transcriber.stop()
+        isStoppingTranscription = false
+        clearTranscript()
     }
 
     func toggleTranscription() async {
@@ -185,7 +232,7 @@ final class AppModel: ObservableObject {
 
     func sendChatMessage(
         source: AssistantRequestSource = .chat,
-        speakResponse: Bool = false
+        speakResponse: Bool = true
     ) {
         let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let localAction = localAssistantAction(for: text)
@@ -193,6 +240,7 @@ final class AppModel: ObservableObject {
             AssistantRequest(text: text, source: source, hasImage: false)
         )
         guard (!text.isEmpty && (localAction != nil || route != .clarify)), generationTask == nil else { return }
+        speechOutput.stop()
         chatDraft = ""
 
         let id = UUID()
@@ -217,6 +265,35 @@ final class AppModel: ObservableObject {
             case .clarify:
                 finishGeneration(id)
             }
+        }
+    }
+
+    private func finalizePhoneVoiceInput() {
+        guard let mode = phoneVoiceInputMode else {
+            isManualTranscription = false
+            isPhoneVoiceQuestionActive = false
+            return
+        }
+        phoneVoiceInputMode = nil
+        isManualTranscription = false
+        isPhoneVoiceQuestionActive = false
+
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            if mode == .question {
+                speechError = "I didn’t hear a question. Try again."
+            }
+            return
+        }
+
+        switch mode {
+        case .draft:
+            useTranscriptAsDraft()
+        case .question:
+            let preservedDraft = chatDraft
+            chatDraft = text
+            sendChatMessage(source: .phoneVoice, speakResponse: true)
+            chatDraft = preservedDraft
         }
     }
 
@@ -248,6 +325,7 @@ final class AppModel: ObservableObject {
     func cancelResponse() {
         let hadActiveResponse = generationTask != nil
         generationTask?.cancel()
+        speechOutput.stop()
         generationTask = nil
         generationID = nil
         isGenerating = false
@@ -332,20 +410,88 @@ final class AppModel: ObservableObject {
         conversationNotice = nil
 
         do {
-            let answer = try await aiClient.response(
+            let assistantMessageID = UUID()
+            let assistantMessageDate = Date()
+            let visibleResponse = AssistantVisibleResponseBuffer()
+            let speechBuffer = AssistantStreamingSpeechBuffer()
+            var streamedText = ""
+            var speechFailure: String?
+
+            let answer = try await aiClient.streamingResponse(
                 to: conversation,
                 profile: profile,
                 credential: credential
-            )
+            ) { [weak self] delta in
+                guard let self,
+                      self.generationID == generationID,
+                      !Task.isCancelled else { return }
+                let visibleDelta = visibleResponse.accept(delta)
+                guard !visibleDelta.isEmpty else { return }
+                streamedText.append(visibleDelta)
+                let message = ConversationMessage(
+                    id: assistantMessageID,
+                    role: .assistant,
+                    text: streamedText,
+                    createdAt: assistantMessageDate
+                )
+                if let index = conversation.firstIndex(where: { $0.id == assistantMessageID }) {
+                    conversation[index] = message
+                } else {
+                    conversation.append(message)
+                }
+
+                if speakResponse, speechFailure == nil {
+                    for segment in speechBuffer.accept(visibleDelta) {
+                        do {
+                            try speechOutput.enqueue(segment)
+                        } catch {
+                            speechFailure = error.localizedDescription
+                            break
+                        }
+                    }
+                }
+            }
             try Task.checkCancellation()
             guard self.generationID == generationID else { throw CancellationError() }
-            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            let finalized = try visibleResponse.finish(answer)
+            if !finalized.remainingDelta.isEmpty {
+                streamedText.append(finalized.remainingDelta)
+                if speakResponse, speechFailure == nil {
+                    for segment in speechBuffer.accept(finalized.remainingDelta) {
+                        do {
+                            try speechOutput.enqueue(segment)
+                        } catch {
+                            speechFailure = error.localizedDescription
+                            break
+                        }
+                    }
+                }
+            }
+            let finalMessage = ConversationMessage(
+                id: assistantMessageID,
+                role: .assistant,
+                text: finalized.text,
+                createdAt: assistantMessageDate
+            )
+            if let index = conversation.firstIndex(where: { $0.id == assistantMessageID }) {
+                conversation[index] = finalMessage
+            } else {
+                conversation.append(finalMessage)
+            }
             await persistCurrentConversation()
             if speakResponse {
-                do {
-                    try speechOutput.speak(answer)
-                } catch {
-                    conversationNotice = "The answer is saved, but it could not be spoken: \(error.localizedDescription)"
+                if speechFailure == nil {
+                    for segment in speechBuffer.finish() {
+                        do {
+                            try speechOutput.enqueue(segment)
+                        } catch {
+                            speechFailure = error.localizedDescription
+                            break
+                        }
+                    }
+                }
+                if let speechFailure {
+                    conversationNotice = "The answer is saved, but it could not be spoken: \(speechFailure)"
                 }
             }
         } catch is CancellationError {
@@ -529,7 +675,9 @@ final class AppModel: ObservableObject {
         generationID = nil
         generationTask = nil
         isGenerating = false
-        endVoiceResponseBackgroundTask()
+        if !speechOutput.isSpeaking {
+            endVoiceResponseBackgroundTask()
+        }
     }
 
     private func beginVoiceResponseBackgroundTask() {
@@ -736,5 +884,123 @@ final class AppModel: ObservableObject {
         } catch {
             conversationNotice = "Could not save this conversation: \(error.localizedDescription)"
         }
+    }
+}
+
+/// Holds cumulative provider text until it is safe to expose. Structured reasoning is already
+/// excluded by provider parsers; this additionally blocks models that place `<think>` blocks or
+/// reasoning labels inside ordinary answer content.
+@MainActor
+private final class AssistantVisibleResponseBuffer {
+    private var raw = ""
+    private var emitted = ""
+
+    func accept(_ delta: String) -> String {
+        guard !delta.isEmpty else { return "" }
+        raw.append(delta)
+        let candidate = AssistantCompletionSanitizer.cleanForStreaming(raw)
+        guard !candidate.isEmpty, candidate.hasPrefix(emitted) else { return "" }
+        let next = String(candidate.dropFirst(emitted.count))
+        emitted = candidate
+        return next
+    }
+
+    func finish(_ finalRaw: String) throws -> (text: String, remainingDelta: String) {
+        let inspected = AssistantCompletionSanitizer.inspect(finalRaw)
+        guard !inspected.text.isEmpty else {
+            switch inspected.rejectionReason {
+            case .reasoningOnly, .unfinishedReasoning:
+                throw AIConfigurationError.requestFailed("The AI didn’t produce a final answer. Please try again.")
+            case .systemPromptEcho:
+                throw AIConfigurationError.requestFailed("The AI returned an invalid response. Please try again.")
+            case .empty, .none:
+                throw AIConfigurationError.invalidResponse
+            }
+        }
+        guard inspected.text.hasPrefix(emitted) else {
+            // Never replace already displayed or spoken words with a contradictory sanitized form.
+            throw AIConfigurationError.requestFailed("The AI returned an unstable response. Please try again.")
+        }
+        let remainder = String(inspected.text.dropFirst(emitted.count))
+        emitted = inspected.text
+        return (inspected.text, remainder)
+    }
+}
+
+/// Converts provider deltas into short, natural TTS units. It waits for punctuation when possible,
+/// but forces the first phrase at a bounded size so speech can begin before generation completes.
+@MainActor
+private final class AssistantStreamingSpeechBuffer {
+    private var pending = ""
+    private var emittedAny = false
+
+    func accept(_ delta: String) -> [String] {
+        pending.append(delta)
+        return drain(final: false)
+    }
+
+    func finish() -> [String] {
+        drain(final: true)
+    }
+
+    private func drain(final: Bool) -> [String] {
+        var segments = [String]()
+        while !pending.isEmpty {
+            let characters = Array(pending)
+            let forcedLimit = emittedAny ? 140 : 72
+            let minimumForced = emittedAny ? 72 : 42
+            let searchLimit = min(characters.count, forcedLimit)
+
+            var cut: Int?
+            for index in 0..<searchLimit where index >= 8 {
+                let character = characters[index]
+                if character == "." || character == "!" || character == "?" || character == "\n" {
+                    cut = index + 1
+                    break
+                }
+            }
+
+            if cut == nil, characters.count >= forcedLimit {
+                if forcedLimit > minimumForced {
+                    for index in stride(from: forcedLimit - 1, through: minimumForced, by: -1)
+                    where characters[index].isWhitespace || ",;:—–".contains(characters[index]) {
+                        cut = characters[index].isWhitespace ? index : index + 1
+                        break
+                    }
+                }
+                cut = cut ?? forcedLimit
+            }
+
+            if cut == nil, final {
+                cut = min(characters.count, 180)
+            }
+            guard let cut, cut > 0 else { break }
+
+            let rawSegment = String(characters[..<cut])
+            pending = String(characters[cut...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let clean = Self.cleanForSpeech(rawSegment)
+            if !clean.isEmpty {
+                segments.append(clean)
+                emittedAny = true
+            }
+        }
+        return segments
+    }
+
+    private static func cleanForSpeech(_ raw: String) -> String {
+        raw
+            .replacingOccurrences(
+                of: #"\[([^\]]+)\]\([^\)]+\)"#,
+                with: "$1",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                of: #"https?://\S+"#,
+                with: "",
+                options: .regularExpression
+            )
+            .replacingOccurrences(of: #"[*_`#>]"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

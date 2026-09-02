@@ -26,7 +26,6 @@ struct HomeView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeScreen(
-                openAssistant: { selectedTab = .assistant },
                 openLens: { showsLens = true },
                 openTranslation: { showsTranslation = true },
                 openSoundbite: { showsSoundbite = true },
@@ -79,10 +78,10 @@ private enum AppTab: Hashable {
 }
 
 private struct HomeScreen: View {
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    let openAssistant: () -> Void
     let openLens: () -> Void
     let openTranslation: () -> Void
     let openSoundbite: () -> Void
@@ -111,11 +110,11 @@ private struct HomeScreen: View {
                         LazyVGrid(columns: columns, spacing: 12) {
                             FeatureTile(
                                 title: "Ask",
-                                detail: "Continue from your glasses",
-                                systemImage: "sparkles",
-                                tint: .indigo,
+                                detail: askDetail,
+                                systemImage: app.isPhoneVoiceQuestionActive ? "waveform" : "mic.fill",
+                                tint: app.isPhoneVoiceQuestionActive ? .red : .indigo,
                                 availability: .available,
-                                action: openAssistant
+                                action: askByVoice
                             )
 
                             ForEach(ProductFeature.hardwareActions) { feature in
@@ -187,6 +186,23 @@ private struct HomeScreen: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+        }
+    }
+
+    private var askDetail: String {
+        if app.isPhoneVoiceQuestionActive {
+            return app.isStoppingTranscription ? "Sending…" : "Listening · sends automatically"
+        }
+        if app.isGenerating { return "Thinking…" }
+        if app.speechOutput.isSpeaking { return "Speaking…" }
+        return "Ask by voice"
+    }
+
+    private func askByVoice() {
+        Task {
+            guard !app.isPhoneVoiceQuestionActive else { return }
+            app.clearTranscript()
+            await app.startVoiceQuestion()
         }
     }
 
