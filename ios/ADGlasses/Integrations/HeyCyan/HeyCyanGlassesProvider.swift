@@ -16,6 +16,7 @@ final class HeyCyanGlassesProvider: NSObject,
     GlassesVolumeProviding,
     GlassesVoiceWakeProviding,
     GlassesAssistantAudioProviding,
+    GlassesMediaInventoryProviding,
     GlassesMediaTransferring,
     GlassesDiagnosticsProviding
 {
@@ -257,6 +258,16 @@ final class HeyCyanGlassesProvider: NSObject,
         } catch {
             throw GlassesProviderError.connectionFailed(error.localizedDescription)
         }
+    }
+
+    func mediaInventory() async throws -> GlassesMediaInventory {
+        let frame = try await session.send(.readMediaCounts)
+        let counts = try responseDecoder.decodeMediaCounts(frame)
+        return GlassesMediaInventory(
+            photos: counts.photos,
+            videos: counts.videos,
+            recordings: counts.recordings
+        )
     }
 
     func restartGlasses() async throws {
