@@ -136,9 +136,7 @@ private struct HomeScreen: View {
                                 )
                             }
                         }
-
                     }
-
                 }
                 .frame(maxWidth: 700)
                 .padding(.horizontal, 16)
@@ -424,7 +422,7 @@ private struct LibraryScreen: View {
                 }
 
                 Section {
-                    Text("Synced photos, videos, and recordings are kept as original files. Photo Auto Enhance creates a separate processed copy and never replaces the original.")
+                    Text("Synced photos, videos, and recordings are kept as original files. Photo Auto Enhance creates a separate processed copy and never replaces the original. Deleting an item here removes only the copy stored on this iPhone.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -581,8 +579,6 @@ private struct MediaSyncSheet: View {
                     }
                     .padding(24)
                     .onAppear {
-                        // The coordinator copies the current session password before opening
-                        // Settings so the first render after returning reflects the real state.
                         didCopyNetworkPassword = true
                     }
                 } else if isPreparing {
@@ -703,9 +699,6 @@ private struct MediaSyncSheet: View {
         do {
             items = try await glasses.prepareMediaTransfer()
             if unsyncedItems.isEmpty {
-                // A successful empty/already-imported manifest is a completed check, not an open
-                // transfer session. Exit immediately so the glasses leave transfer mode and the
-                // sheet cannot appear to sync forever while there is nothing to download.
                 if !items.isEmpty {
                     glasses.cancelMediaTransfer()
                 }
@@ -936,20 +929,35 @@ private struct LibraryCollectionView: View {
                     description: Text(description)
                 )
             } else {
-                List(items) { item in
-                    NavigationLink {
-                        LibraryItemDetailView(item: item)
-                    } label: {
-                        LibraryItemRow(item: item)
-                    }
-                    .contextMenu {
-                        Button(
-                            item.isFavorite ? "Remove favorite" : "Favorite",
-                            systemImage: item.isFavorite ? "star.slash" : "star"
-                        ) {
-                            Task { await library.toggleFavorite(item) }
+                List {
+                    ForEach(items) { item in
+                        NavigationLink {
+                            LibraryItemDetailView(item: item)
+                        } label: {
+                            LibraryItemRow(item: item)
                         }
-                        ShareLink(item: library.fileURL(for: item))
+                        .contextMenu {
+                            Button(
+                                item.isFavorite ? "Remove favorite" : "Favorite",
+                                systemImage: item.isFavorite ? "star.slash" : "star"
+                            ) {
+                                Task { await library.toggleFavorite(item) }
+                            }
+                            ShareLink(item: library.fileURL(for: item))
+                            Button("Delete from iPhone", systemImage: "trash", role: .destructive) {
+                                Task { _ = await library.delete(item) }
+                            }
+                        }
+                    }
+                    .onDelete { offsets in
+                        let deleting = offsets.compactMap { index in
+                            items.indices.contains(index) ? items[index] : nil
+                        }
+                        Task {
+                            for item in deleting {
+                                _ = await library.delete(item)
+                            }
+                        }
                     }
                 }
             }
@@ -1001,6 +1009,7 @@ private enum PhotoDisplayVariant: String, CaseIterable, Identifiable {
 
 private struct LibraryItemDetailView: View {
     @EnvironmentObject private var library: LibraryModel
+    @Environment(\.dismiss) private var dismiss
     let item: LibraryItem
 
     @State private var transcript: String?
@@ -1013,6 +1022,7 @@ private struct LibraryItemDetailView: View {
     @State private var player: AVPlayer?
     @State private var isPlayingAudio = false
     @State private var loadError: String?
+    @State private var confirmsDelete = false
 
     var body: some View {
         Group {
@@ -1083,8 +1093,14 @@ private struct LibraryItemDetailView: View {
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 ShareLink(item: shareURL)
+                Button(role: .destructive) {
+                    confirmsDelete = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .accessibilityLabel("Delete from this iPhone")
             }
         }
         .task {
@@ -1130,6 +1146,22 @@ private struct LibraryItemDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(photoEnhancementError ?? "")
+        }
+        .confirmationDialog(
+            "Delete from this iPhone?",
+            isPresented: $confirmsDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    if await library.delete(item) {
+                        dismiss()
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the local Library file and any enhanced copy. Media still stored on AD Glasses is not changed.")
         }
     }
 
@@ -1445,7 +1477,6 @@ private struct DeviceCenterSheet: View {
                             .foregroundStyle(.red)
                     }
                 }
-
             }
             .navigationTitle("Glasses")
             .navigationBarTitleDisplayMode(.inline)
