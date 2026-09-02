@@ -29,7 +29,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
 
-    private let transcriptSilenceDelay: Duration = .milliseconds(1_200)
+    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_200)
+    private let externalTranscriptSilenceDelay: Duration = .milliseconds(900)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
@@ -339,19 +340,33 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func noteTranscriptActivity(_ text: String) {
-        guard inputSource == .phoneMicrophone else { return }
+        guard let source = inputSource else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
         lastEndpointTranscript = clean
+
+        let silenceDelay: Duration
+        switch source {
+        case .phoneMicrophone:
+            silenceDelay = phoneTranscriptSilenceDelay
+        case .externalPCM:
+            // The glasses firmware can hold its 0x73 voice transport open noticeably longer than
+            // the user's actual utterance. End SpeechAnalyzer promptly once recognized text has
+            // been stable, while leaving the provider/BLE layer free to receive the real 0x73/0x0A
+            // transport-end event later. AppModel treats this analyzer stop as the logical Ask
+            // endpoint and starts processing the finished transcript immediately.
+            silenceDelay = externalTranscriptSilenceDelay
+        }
+
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.transcriptSilenceDelay ?? .milliseconds(1_200))
+                try await Task.sleep(for: silenceDelay)
             } catch {
                 return
             }
             guard let self,
-                  inputSource == .phoneMicrophone,
+                  inputSource == source,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                 return
@@ -429,7 +444,14 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        let analyzer = SpeechAnalyzer(modules: [module])
+        // Assistant turns are latency-sensitive and repeatedly create short-lived analyzers. Keep
+        // the compatible Speech model resident for the app process and preheat each analyzer before
+        // feeding audio. Apple documents both options specifically for reducing first-result delay.
+        let options = SpeechAnalyzer.Options(
+            priority: .userInitiated,
+            modelRetention: .processLifetime
+        )
+        let analyzer = SpeechAnalyzer(modules: [module], options: options)
         let (analyzerInputs, analyzerInputContinuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
         let (audioStream, audioContinuation) = AsyncStream.makeStream(of: AVAudioPCMBuffer.self)
         self.analyzer = analyzer
@@ -437,6 +459,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         self.analyzerInputContinuation = analyzerInputContinuation
         self.audioContinuation = audioContinuation
 
+        try await analyzer.prepareToAnalyze(in: analyzerFormat)
         try await analyzer.start(inputSequence: analyzerInputs)
         startResultTask(for: module)
         audioTask = Task { [weak self] in
