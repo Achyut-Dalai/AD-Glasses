@@ -401,13 +401,25 @@ final class HeyCyanMediaTransferCoordinator {
     }
 
 #if AD_PERSONAL_TEAM_BUILD
-    /// This is an unsupported legacy Settings route used only by the sideloaded Personal Team
-    /// build because Hotspot Configuration is unavailable there. It is intentionally restored to
-    /// the exact Wi-Fi route that was physically validated for this project; the app still verifies
-    /// the BLE IP event and HTTP server after the user returns.
+    /// Personal/sideloaded builds cannot provision Hotspot Configuration. Restore the exact
+    /// two-route Wi-Fi Settings handoff used by the previously working sync path: try the legacy
+    /// `prefs:` route first, then fall back to `App-Prefs:` only if iOS rejects the first open.
     private func openSettingsForManualWiFiJoin() {
-        guard let url = URL(string: "prefs:root=WIFI") else { return }
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        openSettingsURLCandidates([
+            "prefs:root=WIFI",
+            "App-Prefs:root=WIFI"
+        ])
+    }
+
+    private func openSettingsURLCandidates(_ candidates: [String]) {
+        guard let first = candidates.first,
+              let url = URL(string: first) else { return }
+        UIApplication.shared.open(url, options: [:]) { [weak self] opened in
+            guard !opened, candidates.count > 1 else { return }
+            Task { @MainActor [weak self] in
+                self?.openSettingsURLCandidates(Array(candidates.dropFirst()))
+            }
+        }
     }
 
     private func copyNetworkPassword(_ passphrase: String) {
