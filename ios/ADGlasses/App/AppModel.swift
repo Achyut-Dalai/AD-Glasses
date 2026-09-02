@@ -240,9 +240,10 @@ final class AppModel: ObservableObject {
         speakResponse: Bool = true
     ) {
         let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let route = requestRouter.route(
+        let routed = requestRouter.route(
             AssistantRequest(text: text, source: source, hasImage: false)
         )
+        let route = effectiveAssistantRoute(routed, text: text, source: source)
         guard !text.isEmpty, route != .clarify, generationTask == nil else { return }
         speechOutput.stop()
         chatDraft = ""
@@ -278,6 +279,34 @@ final class AppModel: ObservableObject {
                 finishGeneration(id)
             }
         }
+    }
+
+    /// Product-level command policy sits after lexical routing and before execution. The glasses
+    /// use a compact "click" command for photo capture. Recording-stop commands are intentionally
+    /// not executable from voice because those recording modes already own the relevant audio path;
+    /// their physical/app buttons remain the deterministic controls.
+    private func effectiveAssistantRoute(
+        _ routed: AssistantRoute,
+        text: String,
+        source: AssistantRequestSource
+    ) -> AssistantRoute {
+        let normalized = text.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        if normalized == "click" { return .capturePhoto }
+        if routed == .capturePhoto { return .conversation }
+
+        switch source {
+        case .phoneVoice, .glassesVoice:
+            if routed == .stopVideo || routed == .stopAudio || routed == .stopRecording {
+                return .conversation
+            }
+        case .chat, .lensImage:
+            break
+        }
+        return routed
     }
 
     private func finalizePhoneVoiceInput() {
@@ -335,7 +364,7 @@ final class AppModel: ObservableObject {
     }
 
     func cancelResponse() {
-        let hadActiveResponse = generationTask != nil
+        let hadActiveResponse = generationTask != nil || speechOutput.isSpeaking
         generationTask?.cancel()
         speechOutput.stop()
         generationTask = nil
