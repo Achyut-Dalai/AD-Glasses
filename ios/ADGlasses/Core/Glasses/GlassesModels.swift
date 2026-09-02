@@ -28,6 +28,17 @@ struct GlassesMediaItem: Identifiable, Equatable, Sendable {
     let providerID: String
 }
 
+/// Lightweight inventory reported directly by the glasses control protocol. This is deliberately
+/// item-count based: the reverse-engineered protocol proves photo/video/recording counts, but does
+/// not yet prove a total/free byte-capacity field.
+struct GlassesMediaInventory: Equatable, Sendable {
+    let photos: Int
+    let videos: Int
+    let recordings: Int
+
+    var total: Int { photos + videos + recordings }
+}
+
 struct GlassesVisualCapture: Identifiable, Equatable, Sendable {
     let id: UUID
     let jpegData: Data
