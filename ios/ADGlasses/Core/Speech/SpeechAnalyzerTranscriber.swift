@@ -29,7 +29,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var inputSource: InputSource?
 
     private let transcriptSilenceDelay: Duration = .milliseconds(1_200)
-    private let initialNoSpeechDelay: Duration = .seconds(3)
+    private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
     private enum InputSource {
@@ -300,7 +300,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(3))
+                try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(6))
             } catch {
                 return
             }
