@@ -75,6 +75,18 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func delete(_ item: LibraryItem) async -> Bool {
+        do {
+            items = try await store.delete(itemID: item.id)
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = "Could not delete \(item.title): \(error.localizedDescription)"
+            return false
+        }
+    }
+
     func fileURL(for item: LibraryItem) -> URL {
         store.fileURL(for: item)
     }
