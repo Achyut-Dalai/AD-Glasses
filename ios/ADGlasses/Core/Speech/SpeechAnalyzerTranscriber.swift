@@ -258,7 +258,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline()
         inputSource = .externalPCM
         snapshot.isRunning = true
-        armInitialEndpoint()
+        // External PCM has a hardware-owned endpoint. HeyCyan's verified Assistant-ended event
+        // closes this stream; Apple transcript silence must not race the glasses state machine.
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -304,9 +305,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    /// Mirrors the Android Moonshine endpoint policy: six seconds for a completely silent turn,
-    /// then 1.2 seconds of transcript stability after speech begins. This is transcript-driven,
-    /// so normal Bluetooth noise does not keep recognition alive forever.
+    /// Phone-microphone turns endpoint after silence so Ask remains one-shot. External glasses
+    /// audio is endpointed by the glasses firmware and never enters this timer path.
     private func armInitialEndpoint() {
         endpointTask?.cancel()
         endpointTask = Task { @MainActor [weak self] in
@@ -316,6 +316,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
@@ -325,6 +326,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private func noteTranscriptActivity(_ text: String) {
+        guard inputSource == .phoneMicrophone else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean != lastEndpointTranscript else { return }
         lastEndpointTranscript = clean
@@ -336,6 +338,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                 return
             }
             guard let self,
+                  inputSource == .phoneMicrophone,
                   snapshot.isRunning,
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                 return
