@@ -157,9 +157,11 @@ struct SettingsView: View {
 
     private var groundingStatus: String {
         if grounding.tavilyEnabled {
-            return grounding.hasTavilyAPIKey ? "Web + maps" : "Maps · web key needed"
+            return grounding.hasTavilyAPIKey
+                ? "Knowledge · web · maps"
+                : "Knowledge · maps · web key needed"
         }
-        return "Maps only"
+        return "Knowledge · maps"
     }
 
     private var selectedSpeechVoiceName: String {
@@ -534,6 +536,17 @@ private struct SearchAndMapsSettingsView: View {
 
     var body: some View {
         List {
+            Section {
+                LabeledContent("Wikipedia", value: "No key")
+                LabeledContent("Dictionary", value: "No key")
+                LabeledContent("Weather · currency · books", value: "No key")
+                LabeledContent("News · sports", value: "No key")
+            } header: {
+                Text("Built-in knowledge")
+            } footer: {
+                Text("These structured sources work without Tavily: Wikipedia, Free Dictionary, Open-Meteo, Frankfurter currency, Open Library, Google News RSS, and ESPN scoreboards. AD selects them automatically when a request matches. Tavily is optional general web retrieval.")
+            }
+
             Section {
                 Toggle("Use Tavily for live web evidence", isOn: tavilyEnabledBinding)
                 LabeledContent("API key", value: store.hasTavilyAPIKey ? "Stored" : "Not configured")
