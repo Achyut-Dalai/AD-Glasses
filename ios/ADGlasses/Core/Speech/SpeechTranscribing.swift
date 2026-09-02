@@ -2,39 +2,36 @@ import AVFoundation
 import Foundation
 import Speech
 
-/// Keeps the recording audio session alive across the short wake-word detector → Speech →
-/// spoken-answer handoff. iOS permits an already-running recording session to continue after the
-/// app is backgrounded, but does not permit an ordinary app to create a new recording session
-/// there. The lease is therefore acquired only after wake-word capture starts successfully in
-/// foreground.
+/// Audio-session policy for an intentional, finite speech turn.
+///
+/// The always-on wake path is gone. Voice input now opens Bluetooth HFP only while the user is
+/// actively dictating or the assistant is handling a glasses-triggered turn, then releases it as
+/// soon as recognition finishes. Prefer the connected glasses/headset microphone when iOS exposes
+/// one, matching Android's communication-input policy without keeping that route alive all day.
 @MainActor
-final class VoiceAudioSessionContinuity {
-    static let shared = VoiceAudioSessionContinuity()
-
-    private(set) var keepsRecordingSessionActive = false
-
-    private init() {}
-
-    func holdRecordingSession() {
-        keepsRecordingSessionActive = true
-    }
-
-    func releaseRecordingSession(deactivateIfIdle: Bool) {
-        keepsRecordingSessionActive = false
-        if deactivateIfIdle {
-            try? AVAudioSession.sharedInstance().setActive(
-                false,
-                options: .notifyOthersOnDeactivation
-            )
-        }
-    }
-
-    func deactivateIfAllowed() {
-        guard !keepsRecordingSessionActive else { return }
-        try? AVAudioSession.sharedInstance().setActive(
-            false,
-            options: .notifyOthersOnDeactivation
+enum SpeechInputAudioSession {
+    static func activate(preferBluetoothHFP: Bool = true) throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(
+            .playAndRecord,
+            mode: .voiceChat,
+            options: [.duckOthers, .allowBluetoothHFP]
         )
+        try session.setActive(true, options: .notifyOthersOnDeactivation)
+
+        guard preferBluetoothHFP,
+              let bluetoothInput = session.availableInputs?.first(where: {
+                  $0.portType == .bluetoothHFP
+              }) else {
+            return
+        }
+        try? session.setPreferredInput(bluetoothInput)
+    }
+
+    static func deactivate() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setPreferredInput(nil)
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 
