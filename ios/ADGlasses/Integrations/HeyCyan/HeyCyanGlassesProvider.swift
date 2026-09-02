@@ -12,6 +12,7 @@ final class HeyCyanGlassesProvider: NSObject,
     GlassesBatteryProviding,
     GlassesDeviceInformationProviding,
     GlassesDeviceManagementPlanning,
+    GlassesDeviceManaging,
     GlassesVolumeProviding,
     GlassesVoiceWakeProviding,
     GlassesAssistantAudioProviding,
@@ -38,14 +39,6 @@ final class HeyCyanGlassesProvider: NSObject,
         GlassesDeviceManagementPlaceholder(
             operation: .firmwareUpdate,
             reason: "Awaiting a captured update, recovery, and rollback session."
-        ),
-        GlassesDeviceManagementPlaceholder(
-            operation: .factoryReset,
-            reason: "Awaiting a dedicated result and post-reset pairing/recovery trace."
-        ),
-        GlassesDeviceManagementPlaceholder(
-            operation: .forcedRestart,
-            reason: "A restart call site exists; its result and recovery trace are not verified."
         ),
     ]
 
@@ -264,6 +257,16 @@ final class HeyCyanGlassesProvider: NSObject,
         } catch {
             throw GlassesProviderError.connectionFailed(error.localizedDescription)
         }
+    }
+
+    func restartGlasses() async throws {
+        let frame = try await session.send(.restartGlasses)
+        _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x0E)
+    }
+
+    func factoryResetGlasses() async throws {
+        let frame = try await session.send(.factoryResetGlasses)
+        _ = try responseDecoder.decodeControlAcknowledgement(frame, expectedWorkType: 0x0A)
     }
 
     func requestVisualCapture() async throws -> GlassesVisualCapture {
