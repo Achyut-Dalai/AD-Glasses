@@ -76,7 +76,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            Self.logAssetDiagnostic(
+            await Self.logAssetDiagnostic(
                 locale: locale,
                 status: await AssetInventory.status(forModules: [module]),
                 error: error,
@@ -132,7 +132,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         } catch {
             installationError = error
             let state = await AssetInventory.status(forModules: [module])
-            Self.logAssetDiagnostic(
+            await Self.logAssetDiagnostic(
                 locale: locale,
                 status: state,
                 error: error,
@@ -374,7 +374,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             case .supported:
                 statusUpdate?("Waiting for Apple to finish \(languageName) speech model setup…")
             @unknown default:
-                Self.logAssetDiagnostic(
+                await Self.logAssetDiagnostic(
                     locale: locale,
                     status: status,
                     error: initialError,
@@ -392,7 +392,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
 
         let finalStatus = await AssetInventory.status(forModules: [module])
-        Self.logAssetDiagnostic(
+        await Self.logAssetDiagnostic(
             locale: locale,
             status: finalStatus,
             error: initialError,
@@ -411,7 +411,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         let status = await AssetInventory.status(forModules: [module])
         guard status == .installed else {
-            Self.logAssetDiagnostic(
+            await Self.logAssetDiagnostic(
                 locale: locale,
                 status: status,
                 error: nil,
@@ -490,13 +490,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         status: AssetInventory.Status,
         error: Error?,
         stage: String
-    ) {
+    ) async {
         let nsError = error.map { $0 as NSError }
-        let installed = SpeechTranscriber.installedLocales
+        let installed = await SpeechTranscriber.installedLocales
             .map(\.identifier)
             .sorted()
             .joined(separator: ", ")
-        let reserved = AssetInventory.reservedLocales
+        let reserved = await AssetInventory.reservedLocales
             .map(\.identifier)
             .sorted()
             .joined(separator: ", ")
