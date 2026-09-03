@@ -126,8 +126,8 @@ final class ADContinuedProcessingCoordinator {
         task.progress.completedUnitCount = Int64(progressFraction * 1_000)
         task.expirationHandler = { [weak self] in
             Task { @MainActor in
-                guard let self, let workID = activeWorkID else { return }
-                finish(workID, success: false)
+                guard let self, let workID = self.activeWorkID else { return }
+                self.finish(workID, success: false)
             }
         }
 
@@ -250,38 +250,36 @@ struct ToggleADGlassesAudioIntent: AppIntent {
 
 struct ADGlassesAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
-        [
-            AppShortcut(
-                intent: ConnectADGlassesIntent(),
-                phrases: ["Connect \(.applicationName)", "Reconnect \(.applicationName)"],
-                shortTitle: "Connect Glasses",
-                systemImageName: "eyeglasses"
-            ),
-            AppShortcut(
-                intent: AskADGlassesIntent(),
-                phrases: ["Ask \(.applicationName)", "Ask with \(.applicationName)"],
-                shortTitle: "Ask AD",
-                systemImageName: "mic.fill"
-            ),
-            AppShortcut(
-                intent: TakeADGlassesPhotoIntent(),
-                phrases: ["Take a photo with \(.applicationName)", "Click with \(.applicationName)"],
-                shortTitle: "Take Photo",
-                systemImageName: "camera.fill"
-            ),
-            AppShortcut(
-                intent: ToggleADGlassesVideoIntent(),
-                phrases: ["Toggle video on \(.applicationName)"],
-                shortTitle: "Toggle Video",
-                systemImageName: "video.fill"
-            ),
-            AppShortcut(
-                intent: ToggleADGlassesAudioIntent(),
-                phrases: ["Toggle recording on \(.applicationName)"],
-                shortTitle: "Toggle Audio",
-                systemImageName: "waveform"
-            )
-        ]
+        AppShortcut(
+            intent: ConnectADGlassesIntent(),
+            phrases: ["Connect \(.applicationName)", "Reconnect \(.applicationName)"],
+            shortTitle: "Connect Glasses",
+            systemImageName: "eyeglasses"
+        )
+        AppShortcut(
+            intent: AskADGlassesIntent(),
+            phrases: ["Ask \(.applicationName)", "Ask with \(.applicationName)"],
+            shortTitle: "Ask AD",
+            systemImageName: "mic.fill"
+        )
+        AppShortcut(
+            intent: TakeADGlassesPhotoIntent(),
+            phrases: ["Take a photo with \(.applicationName)", "Click with \(.applicationName)"],
+            shortTitle: "Take Photo",
+            systemImageName: "camera.fill"
+        )
+        AppShortcut(
+            intent: ToggleADGlassesVideoIntent(),
+            phrases: ["Toggle video on \(.applicationName)"],
+            shortTitle: "Toggle Video",
+            systemImageName: "video.fill"
+        )
+        AppShortcut(
+            intent: ToggleADGlassesAudioIntent(),
+            phrases: ["Toggle recording on \(.applicationName)"],
+            shortTitle: "Toggle Audio",
+            systemImageName: "waveform"
+        )
     }
 }
 
