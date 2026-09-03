@@ -28,15 +28,21 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
 
-    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_200)
-    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_100)
+    // Phone dictation keeps a generous pause because the user may still be composing a sentence.
+    // Glasses Assistant is a short Ask turn and already has a verified hardware end notification as
+    // a fallback, so once SpeechAnalyzer has recognized speech we can commit after a much shorter
+    // acoustic tail instead of waiting several seconds for firmware to close the stream.
+    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_500)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(900)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
-    // Deliberately forgiving. If the environment is noisier than this, the logical early endpoint
-    // simply stays disabled and the verified glasses 0x73/0x0A end event remains the fallback. This
-    // is safer than cutting quiet or distant speech because a fixed transcript stopped changing.
-    private let externalSilencePeakThresholdDBFS: Float = -56
+    // RMS energy is intentionally used instead of peak energy. The previous -48 dBFS threshold was
+    // below the steady noise floor on the physical glasses often enough that silence never armed and
+    // the app waited for the much later 0x73/0x0A event. -42 dBFS still requires a recognized
+    // transcript before endpointing and ignores brief spikes, while allowing normal room noise to
+    // count as silence after the user finishes speaking.
+    private let externalSilenceRMSThresholdDBFS: Float = -42
 
     private enum InputSource {
         case phoneMicrophone
@@ -81,7 +87,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     /// Ensures the requested SpeechAnalyzer language asset is ready once per transcriber lifetime.
     /// A successful preparation is cached so later Assistant turns do not repeatedly re-enter the
-    /// installation/status path for the same en-US model.
+    /// installation/status path for the same requested English model.
     func prepareAssets(statusUpdate: ((String) -> Void)? = nil) async throws -> Locale {
         if let preparedLocale {
             statusUpdate?("\(languageDisplayName(preparedLocale)) speech model ready")
@@ -205,7 +211,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
 
         do {
-            try SpeechInputAudioSession.activate()
+            try await SpeechInputAudioSession.activate()
         } catch {
             await cancelPreparedPipeline()
             throw error
@@ -215,13 +221,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
         guard let audioContinuation else {
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
@@ -235,7 +241,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         } catch {
             audioContinuation.finish()
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw error
         }
 
@@ -249,7 +255,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             inputNode.removeTap(onBus: 0)
             audioContinuation.finish()
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw error
         }
     }
@@ -258,7 +264,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         cancelEndpointTasks()
         lastPhoneEndpointTranscript = ""
 
-        let wasUsingPhoneMicrophone = inputSource == .phoneMicrophone
+        let source = inputSource
+        let wasUsingPhoneMicrophone = source == .phoneMicrophone
+
         if wasUsingPhoneMicrophone {
             if audioEngine.isRunning {
                 audioEngine.stop()
@@ -273,6 +281,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         audioContinuation = nil
 
         if let analyzer {
+            // Even an acoustically detected endpoint gets normal SpeechAnalyzer end-of-input
+            // finalization. The previous fast-cancel path saved roughly a second but could preserve
+            // a volatile, not-yet-corrected hypothesis. Accuracy matters more than that shortcut.
             do {
                 try await analyzer.finalizeAndFinishThroughEndOfInput()
             } catch {
@@ -289,7 +300,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         inputSource = nil
         snapshot.isRunning = false
         if wasUsingPhoneMicrophone {
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
         }
     }
 
@@ -377,7 +388,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             phoneEndpointTask?.cancel()
             phoneEndpointTask = Task { @MainActor [weak self] in
                 do {
-                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_200))
+                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_500))
                 } catch {
                     return
                 }
@@ -406,11 +417,11 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         guard inputSource == .externalPCM,
               snapshot.isRunning,
               !snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let peakDBFS = Self.peakDBFS(buffer) else {
+              let rmsDBFS = Self.rmsDBFS(buffer) else {
             return
         }
 
-        if peakDBFS > externalSilencePeakThresholdDBFS {
+        if rmsDBFS > externalSilenceRMSThresholdDBFS {
             externalEndpointTask?.cancel()
             externalEndpointTask = nil
             return
@@ -420,7 +431,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_100))
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(900))
             } catch {
                 return
             }
@@ -434,39 +445,47 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         }
     }
 
-    private static func peakDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
+    private static func rmsDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
         let frameCount = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
         guard frameCount > 0, channelCount > 0 else { return nil }
 
-        var peak: Float = 0
+        var squareSum = 0.0
+        var sampleCount = 0
+
         switch buffer.format.commonFormat {
         case .pcmFormatFloat32:
             guard let channels = buffer.floatChannelData else { return nil }
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    peak = max(peak, abs(samples[frame]))
+                    let value = Double(samples[frame])
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
         case .pcmFormatInt16:
             guard let channels = buffer.int16ChannelData else { return nil }
+            let scale = Double(Int16.max)
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    let magnitude = Float(abs(Int(samples[frame]))) / Float(Int16.max)
-                    peak = max(peak, magnitude)
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
         case .pcmFormatInt32:
             guard let channels = buffer.int32ChannelData else { return nil }
+            let scale = Double(Int32.max)
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    let magnitude = Float(abs(Int64(samples[frame]))) / Float(Int32.max)
-                    peak = max(peak, magnitude)
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
@@ -474,8 +493,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             return nil
         }
 
-        guard peak > 0 else { return -120 }
-        return Float(20.0 * log10(Double(peak)))
+        guard sampleCount > 0, squareSum > 0 else { return -120 }
+        let rms = sqrt(squareSum / Double(sampleCount))
+        return Float(20.0 * log10(rms))
     }
 
     private static func join(_ prefix: String, _ suffix: String) -> String {
@@ -694,73 +714,5 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
         case .installationPending(let language):
             return "SpeechAnalyzer is still downloading the \(language) model. Keep this iPhone online and try voice input again shortly."
         }
-    }
-}
-
-@MainActor
-private final class SpeechBufferConverter {
-    enum ConversionError: LocalizedError {
-        case failedToCreateConverter
-        case failedToCreateBuffer
-        case conversionFailed(NSError?)
-
-        var errorDescription: String? {
-            switch self {
-            case .failedToCreateConverter:
-                return "Could not create an audio converter for SpeechAnalyzer."
-            case .failedToCreateBuffer:
-                return "Could not allocate an audio buffer for SpeechAnalyzer."
-            case .conversionFailed(let error):
-                return error?.localizedDescription ?? "Audio conversion for SpeechAnalyzer failed."
-            }
-        }
-    }
-
-    private var converter: AVAudioConverter?
-
-    func convertBuffer(_ buffer: AVAudioPCMBuffer, to format: AVAudioFormat) throws -> AVAudioPCMBuffer {
-        let inputFormat = buffer.format
-        guard inputFormat != format else {
-            return buffer
-        }
-
-        if converter == nil || converter?.inputFormat != inputFormat || converter?.outputFormat != format {
-            converter = AVAudioConverter(from: inputFormat, to: format)
-            converter?.primeMethod = .none
-        }
-
-        guard let converter else {
-            throw ConversionError.failedToCreateConverter
-        }
-
-        let sampleRateRatio = converter.outputFormat.sampleRate / converter.inputFormat.sampleRate
-        let scaledInputFrameLength = Double(buffer.frameLength) * sampleRateRatio
-        let frameCapacity = max(1, AVAudioFrameCount(scaledInputFrameLength.rounded(.up)))
-
-        guard let conversionBuffer = AVAudioPCMBuffer(
-            pcmFormat: converter.outputFormat,
-            frameCapacity: frameCapacity
-        ) else {
-            throw ConversionError.failedToCreateBuffer
-        }
-
-        var conversionError: NSError?
-        var bufferProcessed = false
-
-        let status = converter.convert(to: conversionBuffer, error: &conversionError) { _, inputStatus in
-            defer { bufferProcessed = true }
-            inputStatus.pointee = bufferProcessed ? .noDataNow : .haveData
-            return bufferProcessed ? nil : buffer
-        }
-
-        guard status != .error else {
-            throw ConversionError.conversionFailed(conversionError)
-        }
-
-        return conversionBuffer
-    }
-
-    func reset() {
-        converter = nil
     }
 }

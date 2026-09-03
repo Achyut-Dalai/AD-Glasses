@@ -3,34 +3,54 @@ import Foundation
 
 /// Audio-session policy for an intentional, finite speech turn.
 ///
-/// The always-on wake path is gone. Voice input now opens Bluetooth HFP only while the user is
-/// actively dictating or the assistant is handling a phone-microphone turn, then releases it as
-/// soon as recognition finishes. Prefer the connected glasses/headset microphone when iOS exposes
-/// one, matching Android's communication-input policy without keeping that route alive all day.
-@MainActor
+/// AD can receive Assistant audio over BLE while spoken output travels over the glasses' separate
+/// Classic-Bluetooth audio profile. Phone microphone turns open HFP only while recording and never
+/// override the output route. All potentially blocking AVAudioSession activation/deactivation work
+/// runs off the main actor so iOS cannot stall the UI while negotiating Bluetooth audio.
 enum SpeechInputAudioSession {
-    static func activate(preferBluetoothHFP: Bool = true) throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(
-            .playAndRecord,
-            mode: .voiceChat,
-            options: [.duckOthers, .allowBluetoothHFP]
-        )
-        try session.setActive(true, options: .notifyOthersOnDeactivation)
+    static func activate(preferBluetoothHFP: Bool = true) async throws {
+        try await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
 
-        guard preferBluetoothHFP,
-              let bluetoothInput = session.availableInputs?.first(where: {
-                  $0.portType == .bluetoothHFP
-              }) else {
-            return
-        }
-        try? session.setPreferredInput(bluetoothInput)
+            // Keep the input route simple: make a communication session HFP-eligible, activate it,
+            // then prefer the Bluetooth headset microphone when iOS exposes one. Never use
+            // `.defaultToSpeaker` and never force `.speaker` from a transient currentRoute snapshot.
+            try session.setCategory(
+                .playAndRecord,
+                mode: .voiceChat,
+                options: [.duckOthers, .allowBluetoothHFP]
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+
+            guard preferBluetoothHFP,
+                  let bluetoothInput = session.availableInputs?.first(where: {
+                      $0.portType == .bluetoothHFP
+                  }) else {
+                return
+            }
+            try? session.setPreferredInput(bluetoothInput)
+        }.value
     }
 
-    static func deactivate() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setPreferredInput(nil)
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+    static func deactivate() async {
+        await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setPreferredInput(nil)
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        }.value
+    }
+
+    static func hasBluetoothOutput(_ route: AVAudioSessionRouteDescription) -> Bool {
+        route.outputs.contains { isBluetoothOutputPort($0.portType) }
+    }
+
+    static func isBluetoothOutputPort(_ portType: AVAudioSession.Port) -> Bool {
+        switch portType {
+        case .bluetoothHFP, .bluetoothA2DP, .bluetoothLE:
+            return true
+        default:
+            return false
+        }
     }
 }
 
@@ -56,7 +76,7 @@ enum SpeechTranscriptionError: LocalizedError {
             // legacy SFSpeechRecognizer authorization path.
             return "SpeechAnalyzer permission is unavailable."
         case .recognizerUnavailable:
-            return "SpeechAnalyzer is unavailable. Voice input requires iOS 26 or later."
+            return "SpeechAnalyzer is unavailable. Voice input requires iOS 27 or later."
         case .localeUnsupported:
             return "The current language is not supported by SpeechAnalyzer."
         case .failedToCreateAudioInput:
@@ -107,5 +127,76 @@ enum SpeechPermissions {
 
     static func requestRecognition() async throws {
         // Intentionally empty for SpeechAnalyzer external PCM.
+    }
+}
+
+/// Shared PCM converter used by SpeechAnalyzer input paths. This is kept as an internal helper so
+/// both phone microphone buffers and provider-delivered glasses PCM use the same proven conversion
+/// behavior without duplicating AVAudioConverter state.
+@MainActor
+final class SpeechBufferConverter {
+    enum ConversionError: LocalizedError {
+        case failedToCreateConverter
+        case failedToCreateBuffer
+        case conversionFailed(NSError?)
+
+        var errorDescription: String? {
+            switch self {
+            case .failedToCreateConverter:
+                return "Could not create an audio converter for SpeechAnalyzer."
+            case .failedToCreateBuffer:
+                return "Could not allocate an audio buffer for SpeechAnalyzer."
+            case .conversionFailed(let error):
+                return error?.localizedDescription ?? "Audio conversion for SpeechAnalyzer failed."
+            }
+        }
+    }
+
+    private var converter: AVAudioConverter?
+
+    func convertBuffer(_ buffer: AVAudioPCMBuffer, to format: AVAudioFormat) throws -> AVAudioPCMBuffer {
+        let inputFormat = buffer.format
+        guard inputFormat != format else {
+            return buffer
+        }
+
+        if converter == nil || converter?.inputFormat != inputFormat || converter?.outputFormat != format {
+            converter = AVAudioConverter(from: inputFormat, to: format)
+            converter?.primeMethod = .none
+        }
+
+        guard let converter else {
+            throw ConversionError.failedToCreateConverter
+        }
+
+        let sampleRateRatio = converter.outputFormat.sampleRate / converter.inputFormat.sampleRate
+        let scaledInputFrameLength = Double(buffer.frameLength) * sampleRateRatio
+        let frameCapacity = max(1, AVAudioFrameCount(scaledInputFrameLength.rounded(.up)))
+
+        guard let conversionBuffer = AVAudioPCMBuffer(
+            pcmFormat: converter.outputFormat,
+            frameCapacity: frameCapacity
+        ) else {
+            throw ConversionError.failedToCreateBuffer
+        }
+
+        var conversionError: NSError?
+        var bufferProcessed = false
+
+        let status = converter.convert(to: conversionBuffer, error: &conversionError) { _, inputStatus in
+            defer { bufferProcessed = true }
+            inputStatus.pointee = bufferProcessed ? .noDataNow : .haveData
+            return bufferProcessed ? nil : buffer
+        }
+
+        guard status != .error else {
+            throw ConversionError.conversionFailed(conversionError)
+        }
+
+        return conversionBuffer
+    }
+
+    func reset() {
+        converter = nil
     }
 }

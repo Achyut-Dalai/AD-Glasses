@@ -190,7 +190,7 @@ private struct LiveTranslateExperience: View {
             .buttonStyle(.plain)
             .disabled(isLiveRunning)
 
-            Text("Whisper transcribes each isolated speech turn so you can verify what it heard, then Whisper Large V3 translates the same audio directly to English. Apple Translation is not used in the Groq path. If a language is not listed, use Auto Detect.")
+            Text("Whisper Large V3 recognizes each isolated speech turn so you can verify exactly what it heard. Your configured Groq cloud AI model then translates that recognized text to English. AD does not use Apple Translation or a second Whisper audio-translation request in this path.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -198,7 +198,7 @@ private struct LiveTranslateExperience: View {
             HStack(spacing: 8) {
                 Image(systemName: groqProfile != nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(groqProfile != nil ? .green : .orange)
-                Text(groqProfile.map { "Using Groq profile: \($0.name)" }
+                Text(groqProfile.map { "Using Groq profile: \($0.name) · \($0.model)" }
                      ?? "Add a Groq profile and API key in Settings → AI & Models.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -282,7 +282,7 @@ private struct LiveTranslateExperience: View {
                 }
 
                 Text(selectedEngine == .groq
-                     ? "AD listens for one phrase, closes the microphone, lets Whisper transcribe and directly translate that isolated audio, speaks the English result, then opens a fresh microphone turn. It never listens to its own translated speech."
+                     ? "AD listens for one phrase, closes the microphone, lets Whisper recognize it, translates that text with your Groq cloud model, speaks the English result, then opens a fresh microphone turn. It never listens to its own translated speech."
                      : "AD transcribes and translates each completed utterance on the iPhone, speaks the English result, then resumes listening.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -562,6 +562,7 @@ private struct LiveTranslateExperience: View {
                 let credential = try app.aiProfiles.credential(for: profile.id)
                 _ = await groqLive.start(
                     model: selectedGroqModel,
+                    translationModel: profile.model,
                     credential: credential,
                     sourceLanguageCode: normalizedGroqSourceLanguage.isEmpty
                         ? nil
