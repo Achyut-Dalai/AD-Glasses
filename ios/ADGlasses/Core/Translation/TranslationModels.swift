@@ -342,15 +342,19 @@ final class GroqLiveTranslationController: ObservableObject {
     private var sourceLanguageCode: String?
     private var heardSpeech = false
     private var candidateSpeechFrames = 0
+    private var bargeInFrames = 0
+    private var bargeInDetectedForCurrentCapture = false
     private var lastSpeechAt: Date?
     private var recordingStartedAt: Date?
     private var lastSpokenEnglish = ""
 
-    // A single loud meter sample used to be enough to submit a turn, which let camera clicks,
-    // handling noise, or room transients reach Whisper. Require sustained speech-like energy while
-    // keeping the threshold forgiving for a quiet glasses/HFP microphone.
+    // Normal VAD remains forgiving for quiet HFP microphones. While AD itself is speaking, a much
+    // stronger sustained threshold is required before we consider the input a real barge-in; this
+    // prevents our own TTS leakage from recursively becoming a new Whisper request.
     private let speechPowerThreshold: Float = -48
     private let requiredSpeechFrames = 3
+    private let bargeInPowerThreshold: Float = -36
+    private let requiredBargeInFrames = 4
     private let endSilenceSeconds: TimeInterval = 1.25
     private let minimumTurnSeconds: TimeInterval = 0.8
     private let maximumTurnSeconds: TimeInterval = 14
@@ -399,6 +403,7 @@ final class GroqLiveTranslationController: ObservableObject {
 
         do {
             try startRecorder()
+            speechOutput.refreshOutputRouteName()
             statusMessage = listeningStatus
             startMonitor()
             return true
@@ -424,6 +429,8 @@ final class GroqLiveTranslationController: ObservableObject {
         pendingAudioURLs.removeAll()
         heardSpeech = false
         candidateSpeechFrames = 0
+        bargeInFrames = 0
+        bargeInDetectedForCurrentCapture = false
         lastSpeechAt = nil
         recordingStartedAt = nil
         speechOutput?.stop()
@@ -461,10 +468,13 @@ final class GroqLiveTranslationController: ObservableObject {
         recorderURL = url
         heardSpeech = false
         candidateSpeechFrames = 0
+        bargeInFrames = 0
+        bargeInDetectedForCurrentCapture = false
         lastSpeechAt = nil
         recordingStartedAt = Date()
         inputRouteName = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName
             ?? "iPhone microphone"
+        speechOutput?.refreshOutputRouteName()
     }
 
     private func startMonitor() {
@@ -484,19 +494,44 @@ final class GroqLiveTranslationController: ObservableObject {
                 let now = Date()
                 let elapsed = now.timeIntervalSince(started)
                 let power = recorder.averagePower(forChannel: 0)
+                let adIsSpeaking = speechOutput?.isSpeaking ?? false
 
-                if power >= speechPowerThreshold {
-                    if heardSpeech {
-                        lastSpeechAt = now
-                    } else {
-                        candidateSpeechFrames += 1
-                        if candidateSpeechFrames >= requiredSpeechFrames {
+                if adIsSpeaking, !heardSpeech {
+                    // Don't let our own playback enter ordinary VAD. A real interruption must be
+                    // distinctly louder and sustained; once accepted, stop TTS immediately so the
+                    // other person owns the conversational floor.
+                    if power >= bargeInPowerThreshold {
+                        bargeInFrames += 1
+                        if bargeInFrames >= requiredBargeInFrames {
+                            bargeInDetectedForCurrentCapture = true
                             heardSpeech = true
+                            candidateSpeechFrames = 0
                             lastSpeechAt = now
+                            speechOutput?.stop()
+                            statusMessage = "Barge-in detected · listening"
                         }
+                    } else {
+                        bargeInFrames = 0
                     }
-                } else if !heardSpeech {
-                    candidateSpeechFrames = 0
+                } else {
+                    bargeInFrames = 0
+                    if power >= speechPowerThreshold {
+                        if heardSpeech {
+                            lastSpeechAt = now
+                            if adIsSpeaking, power >= bargeInPowerThreshold {
+                                bargeInDetectedForCurrentCapture = true
+                                speechOutput?.stop()
+                            }
+                        } else {
+                            candidateSpeechFrames += 1
+                            if candidateSpeechFrames >= requiredSpeechFrames {
+                                heardSpeech = true
+                                lastSpeechAt = now
+                            }
+                        }
+                    } else if !heardSpeech {
+                        candidateSpeechFrames = 0
+                    }
                 }
 
                 if heardSpeech {
@@ -505,7 +540,7 @@ final class GroqLiveTranslationController: ObservableObject {
                         elapsed >= maximumTurnSeconds {
                         await finishCaptureTurn()
                     }
-                } else if elapsed >= idleRecycleSeconds {
+                } else if elapsed >= idleRecycleSeconds, !adIsSpeaking {
                     recorder.stop()
                     self.recorder = nil
                     removeRecorderFile()
@@ -523,7 +558,7 @@ final class GroqLiveTranslationController: ObservableObject {
 
     /// Close only the finished capture and immediately open the next recorder. Network inference,
     /// Apple Translation, and TTS happen on a separate serial processing task, so nearby speech is
-    /// still captured while the previous phrase is being translated or spoken.
+    /// still capturable while the previous phrase is being translated or spoken.
     private func finishCaptureTurn() async {
         guard isRunning, let recorder, let audioURL = recorderURL else { return }
         recorder.stop()
@@ -531,6 +566,8 @@ final class GroqLiveTranslationController: ObservableObject {
         recorderURL = nil
         heardSpeech = false
         candidateSpeechFrames = 0
+        bargeInFrames = 0
+        bargeInDetectedForCurrentCapture = false
         lastSpeechAt = nil
         recordingStartedAt = nil
 
@@ -605,9 +642,9 @@ final class GroqLiveTranslationController: ObservableObject {
             let sourceText = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !sourceText.isEmpty else { return }
 
-            // Voice-chat mode provides system echo cancellation, but keep a second app-side guard
-            // for Auto Detect. If Whisper hears only AD's just-spoken English answer, do not feed it
-            // back into the translator as a new user utterance.
+            // This is a secondary guard. The capture VAD already suppresses normal TTS while AD is
+            // speaking, but Auto Detect can also recognize a residual Bluetooth acoustic echo as
+            // English. Never feed an obvious copy of our immediately previous spoken result back in.
             if sourceLanguageCode == nil,
                Self.isLikelyEnglish(sourceText),
                Self.isLikelySelfEcho(sourceText, of: lastSpokenEnglish) {
@@ -670,6 +707,7 @@ final class GroqLiveTranslationController: ObservableObject {
                 lastSpokenEnglish = cleanEnglish
                 statusMessage = "Speaking English · still listening"
                 try SpeechInputAudioSession.activate()
+                speechOutput.refreshOutputRouteName()
                 try speechOutput.speak(
                     cleanEnglish,
                     languageCode: "en",
@@ -679,12 +717,35 @@ final class GroqLiveTranslationController: ObservableObject {
                     try Task.checkCancellation()
                     try await Task.sleep(for: .milliseconds(80))
                 }
+
+                // If nobody barged in while AD spoke, throw away the active file that contained
+                // playback leakage and immediately start a clean capture. If real speech has begun,
+                // preserve that file instead; the user always wins over cleanup.
+                if isRunning,
+                   !heardSpeech,
+                   candidateSpeechFrames == 0,
+                   !bargeInDetectedForCurrentCapture {
+                    try resetRecorderAfterPlayback()
+                }
             }
         } catch is CancellationError {
             return
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func resetRecorderAfterPlayback() throws {
+        guard isRunning else { return }
+        let oldURL = recorderURL
+        recorder?.stop()
+        recorder = nil
+        recorderURL = nil
+        if let oldURL {
+            try? FileManager.default.removeItem(at: oldURL)
+        }
+        try startRecorder()
+        statusMessage = listeningStatus
     }
 
     private var listeningStatus: String {
