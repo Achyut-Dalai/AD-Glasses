@@ -75,7 +75,7 @@ private struct LiveTranslateExperience: View {
     @StateObject private var groqLive = GroqLiveTranslationController()
 
     @AppStorage("translation.engine.v2") private var engineRaw = LiveTranslationEngine.groq.rawValue
-    @AppStorage("translation.groqSourceLanguage.v1") private var groqSourceLanguage = "hi"
+    @AppStorage("translation.groqSourceLanguage.v2") private var groqSourceLanguage = ""
     @AppStorage("translation.appleSourceLanguage.v2") private var appleSourceLanguage = "hi"
 
     @State private var appleSourceLanguages = [TranslationLanguageOption]()
@@ -96,7 +96,10 @@ private struct LiveTranslateExperience: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .task { await loadAppleSourceLanguages() }
+        .task {
+            migrateGroqSourceLanguagePreferenceIfNeeded()
+            await loadAppleSourceLanguages()
+        }
         .onChange(of: engineRaw) { _, _ in
             Task { await stopLiveTranslation() }
         }
@@ -123,7 +126,7 @@ private struct LiveTranslateExperience: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("English Live Translation")
                         .font(.headline)
-                    Text("Translate nearby speech into English. For Groq, choosing the spoken language gives Whisper a stronger recognition hint; Auto Detect remains available when the language is unknown.")
+                    Text("Translate nearby speech into English. Auto Detect is the first-run choice; selecting a language gives Whisper a recognition hint and that choice stays selected until you change it.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -181,16 +184,13 @@ private struct LiveTranslateExperience: View {
                         }
                     }
                 }
-                Divider()
-                Button("Odia — use Auto Detect (no fixed Whisper language)") {}
-                    .disabled(true)
             } label: {
                 settingsRow(title: "Spoken language", value: groqSourceLanguageName)
             }
             .buttonStyle(.plain)
             .disabled(isLiveRunning)
 
-            Text("AD first transcribes each isolated speech turn so you can verify what Whisper heard, then translates that transcript to English. Fixed language hints improve supported-language recognition. Whisper does not expose a fixed Odia/Oriya language token, so Odia must use Auto Detect and may be less reliable.")
+            Text("Whisper transcribes each isolated speech turn so you can verify what it heard, then Whisper Large V3 translates the same audio directly to English. Apple Translation is not used in the Groq path. If a language is not listed, use Auto Detect.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -282,7 +282,7 @@ private struct LiveTranslateExperience: View {
                 }
 
                 Text(selectedEngine == .groq
-                     ? "AD keeps listening while the previous phrase is being translated or spoken. Each completed turn is sent as its own audio file; old turns are never appended to a new Whisper request. Strong speech can interrupt English playback, and playback-only audio is discarded before the next clean turn."
+                     ? "AD listens for one phrase, closes the microphone, lets Whisper transcribe and directly translate that isolated audio, speaks the English result, then opens a fresh microphone turn. It never listens to its own translated speech."
                      : "AD transcribes and translates each completed utterance on the iPhone, speaks the English result, then resumes listening.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -329,18 +329,6 @@ private struct LiveTranslateExperience: View {
                         Text("Listening through \(inputRouteName)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                    }
-                }
-
-                if isLiveRunning {
-                    HStack(spacing: 8) {
-                        Image(systemName: app.speechOutput.outputRouteIsBluetooth
-                              ? "headphones"
-                              : "speaker.wave.2")
-                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? .green : .orange)
-                        Text("English output: \(app.speechOutput.outputRouteName)")
-                            .font(.footnote)
-                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? Color.secondary : Color.orange)
                     }
                 }
 
@@ -435,13 +423,13 @@ private struct LiveTranslateExperience: View {
     private var normalizedGroqSourceLanguage: String {
         GroqSourceLanguageOption.supported.contains(where: { $0.code == groqSourceLanguage })
             ? groqSourceLanguage
-            : "hi"
+            : ""
     }
 
     private var groqSourceLanguageName: String {
         GroqSourceLanguageOption.supported
             .first(where: { $0.code == normalizedGroqSourceLanguage })?.name
-            ?? "Hindi"
+            ?? "Auto Detect"
     }
 
     private var groqProfile: AIProfile? {
@@ -493,6 +481,21 @@ private struct LiveTranslateExperience: View {
 
     private var activeErrorMessage: String? {
         selectedEngine == .groq ? groqLive.errorMessage : appleLive.errorMessage
+    }
+
+    private func migrateGroqSourceLanguagePreferenceIfNeeded() {
+        let defaults = UserDefaults.standard
+        let currentKey = "translation.groqSourceLanguage.v2"
+        guard defaults.object(forKey: currentKey) == nil else { return }
+
+        // v1 accidentally used Hindi as the code-level default. Preserve a real persisted user
+        // choice when one exists; otherwise the new first-run behavior remains Auto Detect.
+        if let legacy = defaults.string(forKey: "translation.groqSourceLanguage.v1"),
+           GroqSourceLanguageOption.supported.contains(where: { $0.code == legacy }) {
+            groqSourceLanguage = legacy
+        } else {
+            groqSourceLanguage = ""
+        }
     }
 
     private func loadAppleSourceLanguages() async {
@@ -563,7 +566,6 @@ private struct LiveTranslateExperience: View {
                     sourceLanguageCode: normalizedGroqSourceLanguage.isEmpty
                         ? nil
                         : normalizedGroqSourceLanguage,
-                    appleTranslation: translation,
                     speechOutput: app.speechOutput
                 )
             } catch {
