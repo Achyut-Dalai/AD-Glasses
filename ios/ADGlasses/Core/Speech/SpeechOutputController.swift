@@ -30,12 +30,10 @@ struct SpeechVoiceOption: Identifiable, Equatable, Sendable {
 }
 
 enum SpeechOutputAudioSessionPolicy: Sendable {
-    /// Normal Assistant speech no longer needs a recording route after recognition has finished.
-    /// A playback session lets iOS retain/select the glasses' normal A2DP output instead of forcing
-    /// the iPhone speaker merely because an HFP microphone is unavailable.
+    /// Normal Assistant and half-duplex translation speech own a finite media-playback session.
+    /// This is the same simple route policy used before the September communication-route changes.
     case managedPlayback
-    /// Live Translation owns a simultaneous play-and-record Bluetooth session. Speech output must
-    /// reuse that full-duplex route instead of changing categories between every translated turn.
+    /// Apple Offline live translation currently owns its own play-and-record session and can reuse it.
     case reuseCurrentSession
 }
 
@@ -56,9 +54,8 @@ enum SpeechOutputError: LocalizedError {
 /// Native spoken output for Assistant and translation responses.
 ///
 /// `speechVoices()` reports what is actually installed on this iPhone. AD does not bundle or
-/// silently download Apple voices. Bluetooth routing remains an iOS system route: AD makes A2DP/HFP
-/// eligible and avoids speaker-forcing overrides, but it never pretends CoreBluetooth can select a
-/// Classic-Bluetooth audio device.
+/// silently download Apple voices. Classic-Bluetooth routing remains owned by iOS; this controller
+/// deliberately avoids forcing the iPhone speaker or changing a preferred input during playback.
 @MainActor
 final class SpeechOutputController: NSObject, ObservableObject {
     @Published private(set) var voices: [SpeechVoiceOption] = []
@@ -189,25 +186,16 @@ final class SpeechOutputController: NSObject, ObservableObject {
     }
 
     private func activateManagedAudioSession() throws {
-        // Recognition has already ended for normal Assistant output, so don't keep a microphone
-        // category alive just to synthesize speech. `.playback` automatically supports A2DP and is
-        // the cleanest way to preserve the user's selected glasses route. There is intentionally no
-        // speaker override; with no Bluetooth device iOS naturally falls back to the phone speaker.
-        try? audioSession.overrideOutputAudioPort(.none)
-        try? audioSession.setPreferredInput(nil)
-        try audioSession.setCategory(
-            .playback,
-            mode: .voicePrompt,
-            options: [.duckOthers]
-        )
+        // Restore the known-good pre-regression behavior. Recognition has already ended before
+        // managed speech begins, so a media playback session is sufficient and lets iOS use the
+        // currently selected Classic-Bluetooth output naturally.
+        try audioSession.setCategory(.playback, mode: .spokenAudio)
         try audioSession.setActive(true)
         ownsAudioSession = true
         refreshOutputRouteName()
     }
 
     private func deactivateAudioSession() {
-        try? audioSession.overrideOutputAudioPort(.none)
-        try? audioSession.setPreferredInput(nil)
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
         refreshOutputRouteName()
     }
@@ -231,8 +219,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
                     throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
                 }
             case .reuseCurrentSession:
-                // Live Translation already established a play-and-record session with both HFP and
-                // A2DP eligible. Never replace it with a speaker-biased category here.
+                // Apple Offline live translation may already own its play-and-record session.
                 ownsAudioSession = false
                 refreshOutputRouteName()
             }
