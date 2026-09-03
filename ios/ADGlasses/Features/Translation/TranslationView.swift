@@ -46,7 +46,6 @@ private struct LiveTranslateExperience: View {
     @StateObject private var groqLive = GroqLiveTranslationController()
 
     @AppStorage("translation.engine.v2") private var engineRaw = LiveTranslationEngine.groq.rawValue
-    @AppStorage("translation.groqWhisperModel.v1") private var groqModelRaw = GroqWhisperModel.largeV3.rawValue
     @AppStorage("translation.appleSourceLanguage.v2") private var appleSourceLanguage = "hi"
 
     @State private var appleSourceLanguages = [TranslationLanguageOption]()
@@ -69,10 +68,6 @@ private struct LiveTranslateExperience: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .task { await loadAppleSourceLanguages() }
         .onChange(of: engineRaw) { _, _ in
-            Task { await stopLiveTranslation() }
-        }
-        .onChange(of: groqModelRaw) { _, _ in
-            guard groqLive.isRunning else { return }
             Task { await stopLiveTranslation() }
         }
         .onChange(of: appleSourceLanguage) { _, _ in
@@ -119,25 +114,28 @@ private struct LiveTranslateExperience: View {
 
     private var groqSettings: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Menu {
-                ForEach(GroqWhisperModel.allCases) { model in
-                    Button {
-                        groqModelRaw = model.rawValue
-                    } label: {
-                        if model == selectedGroqModel {
-                            Label(model.displayName, systemImage: "checkmark")
-                        } else {
-                            Text(model.displayName)
-                        }
-                    }
+            HStack(spacing: 10) {
+                Image(systemName: "waveform")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Speech model")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Whisper Large V3")
+                        .font(.subheadline.weight(.semibold))
                 }
-            } label: {
-                settingsRow(title: "Speech model", value: selectedGroqModel.displayName)
+                Spacer()
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
             }
-            .buttonStyle(.plain)
-            .disabled(isLiveRunning)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
 
-            Text(selectedGroqModel.detail)
+            Text("Direct multilingual audio → English translation with Whisper Large V3. AD uses the accuracy-oriented Groq translation path instead of Turbo.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -359,7 +357,7 @@ private struct LiveTranslateExperience: View {
     }
 
     private var selectedGroqModel: GroqWhisperModel {
-        GroqWhisperModel(rawValue: groqModelRaw) ?? .largeV3
+        .largeV3
     }
 
     private var groqProfile: AIProfile? {
