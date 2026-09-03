@@ -124,7 +124,7 @@ enum GroqWhisperModel: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
     var displayName: String { "Whisper Large V3" }
-    var detail: String { "Direct multilingual audio → English translation with a separate source transcript." }
+    var detail: String { "Multilingual recognition with cloud text translation and Whisper audio fallback." }
 }
 
 enum GroqSpeechTranslationError: LocalizedError, Sendable {
@@ -143,7 +143,7 @@ enum GroqSpeechTranslationError: LocalizedError, Sendable {
         case .recordingFailed:
             return "AD could not record this translation turn."
         case .invalidResponse:
-            return "Groq returned a speech response AD could not read."
+            return "Groq returned a translation response AD could not read."
         case .requestFailed(let reason):
             return reason
         }
@@ -161,8 +161,6 @@ struct GroqSpeechResult: Sendable {
     let segments: [GroqSpeechSegment]
 
     /// App-side guard against Whisper hallucinating a phrase from silence/background noise.
-    /// Groq exposes these values as diagnostics rather than prescribing universal thresholds, so
-    /// keep this deliberately conservative and let any credible segment admit the utterance.
     var containsCredibleSpeech: Bool {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         guard !segments.isEmpty else { return true }
@@ -301,20 +299,130 @@ struct GroqAudioTranslationClient: Sendable {
         return nil
     }
 
-    private static func errorMessage(from data: Data, statusCode: Int) -> String {
+    fileprivate static func errorMessage(from data: Data, statusCode: Int) -> String {
         if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let error = root["error"] as? [String: Any],
            let message = error["message"] as? String,
            !message.isEmpty {
-            return "Groq speech request failed: \(message)"
+            return "Groq request failed: \(message)"
         }
         if statusCode == 401 || statusCode == 403 {
             return "Groq rejected the API key used for Live Translation."
         }
         if statusCode == 429 {
-            return "Groq Live Translation hit its current rate limit. Try again shortly or switch to Apple Offline."
+            return "Groq Live Translation hit its current rate limit. Try again shortly."
         }
-        return "Groq speech request failed with HTTP \(statusCode)."
+        return "Groq request failed with HTTP \(statusCode)."
+    }
+}
+
+/// Uses the user's configured Groq conversational model as a strict text translator. Whisper's
+/// transcription is the source of truth, so short words and phrases do not depend on a second
+/// audio-recognition pass to be translated correctly.
+struct GroqTextTranslationClient: Sendable {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    func translateToEnglish(
+        text: String,
+        sourceLanguageCode: String?,
+        detectedLanguageCode: String?,
+        model: String,
+        credential: String
+    ) async throws -> String {
+        let source = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = credential.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty, !key.isEmpty, !model.isEmpty else {
+            throw GroqSpeechTranslationError.invalidResponse
+        }
+        guard let url = URL(string: "https://api.groq.com/openai/v1/chat/completions") else {
+            throw GroqSpeechTranslationError.invalidResponse
+        }
+
+        let languageHint = sourceLanguageCode ?? detectedLanguageCode ?? "auto-detected"
+        let system = """
+        You are a translation engine. Translate the user's source text into natural English and return only the English translation. Translate the semantic meaning even when the input is only one word or two words. Do not answer the text, explain it, transliterate it instead of translating it, add labels, or repeat non-English source text unchanged. Preserve proper names, numbers, and punctuation when appropriate. If the source is already English, return it unchanged.
+        """
+        let user = "Source language: \(languageHint)\nSource text:\n\(source)"
+
+        var payload: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user]
+            ],
+            "temperature": 0,
+            "max_completion_tokens": 256
+        ]
+        let lowerModel = model.lowercased()
+        if lowerModel.contains("gpt-oss") {
+            payload["reasoning_effort"] = "low"
+            payload["include_reasoning"] = false
+        } else if lowerModel.contains("qwen3.6") || lowerModel.contains("qwen-3.6") {
+            payload["reasoning_effort"] = "none"
+            payload["reasoning_format"] = "hidden"
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        let (data, response) = try await session.data(for: request)
+        try Task.checkCancellation()
+        guard let http = response as? HTTPURLResponse else {
+            throw GroqSpeechTranslationError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw GroqSpeechTranslationError.requestFailed(
+                GroqAudioTranslationClient.errorMessage(from: data, statusCode: http.statusCode)
+            )
+        }
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = root["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let translated = Self.messageText(message["content"]),
+              !translated.isEmpty else {
+            throw GroqSpeechTranslationError.invalidResponse
+        }
+        return Self.cleanModelOutput(translated)
+    }
+
+    private static func messageText(_ value: Any?) -> String? {
+        if let text = value as? String {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let parts = value as? [[String: Any]] {
+            let text = parts.compactMap { part -> String? in
+                if let value = part["text"] as? String { return value }
+                if let text = part["text"] as? [String: Any] { return text["value"] as? String }
+                return nil
+            }.joined()
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return nil
+    }
+
+    private static func cleanModelOutput(_ raw: String) -> String {
+        var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("```") && value.hasSuffix("```") {
+            value = String(value.dropFirst(3).dropLast(3))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if value.count >= 2,
+           ((value.first == "\"" && value.last == "\"") ||
+            (value.first == "“" && value.last == "”")) {
+            value.removeFirst()
+            value.removeLast()
+        }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -328,12 +436,14 @@ final class GroqLiveTranslationController: ObservableObject {
     @Published private(set) var inputRouteName: String?
     @Published private(set) var errorMessage: String?
 
-    private let client = GroqAudioTranslationClient()
+    private let audioClient = GroqAudioTranslationClient()
+    private let textClient = GroqTextTranslationClient()
     private weak var speechOutput: SpeechOutputController?
     private var recorder: AVAudioRecorder?
     private var recorderURL: URL?
     private var monitorTask: Task<Void, Never>?
     private var model: GroqWhisperModel = .largeV3
+    private var cloudModel = ""
     private var credential = ""
     private var sourceLanguageCode: String?
     private var heardSpeech = false
@@ -341,9 +451,8 @@ final class GroqLiveTranslationController: ObservableObject {
     private var lastSpeechAt: Date?
     private var recordingStartedAt: Date?
 
-    // Live Translation is intentionally half-duplex. We capture one isolated phrase, close the
-    // microphone, let Whisper transcribe/translate that file, speak the result, and only then open
-    // a fresh recorder. This makes acoustic echo structurally impossible instead of heuristic.
+    // Live Translation is intentionally half-duplex. One isolated phrase is recorded, the mic and
+    // HFP session close, translation and TTS finish, and only then is a fresh recorder opened.
     private let speechPowerThreshold: Float = -48
     private let requiredSpeechFrames = 3
     private let endSilenceSeconds: TimeInterval = 1.25
@@ -354,13 +463,15 @@ final class GroqLiveTranslationController: ObservableObject {
     @discardableResult
     func start(
         model: GroqWhisperModel,
+        cloudModel: String,
         credential: String,
         sourceLanguageCode: String? = nil,
         speechOutput: SpeechOutputController
     ) async -> Bool {
         if isRunning { return true }
         let key = credential.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else {
+        let cloudModel = cloudModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, !cloudModel.isEmpty else {
             errorMessage = GroqSpeechTranslationError.missingCredential.localizedDescription
             return false
         }
@@ -371,13 +482,14 @@ final class GroqLiveTranslationController: ObservableObject {
 
         do {
             try await SpeechPermissions.requestAll()
-            try SpeechInputAudioSession.activate()
+            try await SpeechInputAudioSession.activate()
         } catch {
             errorMessage = error.localizedDescription
             return false
         }
 
         self.model = model
+        self.cloudModel = cloudModel
         self.credential = key
         self.sourceLanguageCode = Self.normalizedLanguageCode(sourceLanguageCode)
         self.speechOutput = speechOutput
@@ -413,10 +525,11 @@ final class GroqLiveTranslationController: ObservableObject {
         speechOutput?.stop()
         speechOutput = nil
         credential = ""
+        cloudModel = ""
         sourceLanguageCode = nil
         inputRouteName = nil
         statusMessage = "Ready"
-        SpeechInputAudioSession.deactivate()
+        await SpeechInputAudioSession.deactivate()
     }
 
     private func startRecorder() throws {
@@ -513,9 +626,9 @@ final class GroqLiveTranslationController: ObservableObject {
         lastSpeechAt = nil
         recordingStartedAt = nil
 
-        // Recording is finished before any network request or speech begins. Release HFP now so TTS
-        // can later open a clean media-playback route to the glasses instead of sharing a mic route.
-        SpeechInputAudioSession.deactivate()
+        // Recording is finished before any network request or speech begins. Releasing HFP here is
+        // what prevents the spoken English result from becoming the next microphone turn.
+        await SpeechInputAudioSession.deactivate()
 
         defer { try? FileManager.default.removeItem(at: audioURL) }
         let fileSize = (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
@@ -528,7 +641,7 @@ final class GroqLiveTranslationController: ObservableObject {
         statusMessage = "Whisper Large V3 transcribing…"
 
         do {
-            let transcription = try await client.transcribe(
+            let transcription = try await audioClient.transcribe(
                 audioURL: audioURL,
                 credential: credential,
                 model: model,
@@ -551,24 +664,14 @@ final class GroqLiveTranslationController: ObservableObject {
             lastSourceText = sourceText
             lastTranslation = ""
 
-            let english: String
-            if sourceLanguageCode.map(Self.languageBase) == "en" {
-                english = sourceText
-            } else {
-                // Groq mode means Groq/Whisper owns translation. Apple Translation is deliberately
-                // not part of this path. The same isolated audio file is sent to Whisper's direct
-                // audio→English translation endpoint regardless of whether the source was fixed or
-                // Auto Detect.
-                statusMessage = "Whisper Large V3 translating to English…"
-                english = try await client.translateToEnglish(
-                    audioURL: audioURL,
-                    credential: credential,
-                    model: .largeV3
-                ).text
-            }
-
+            let english = try await translateRecognizedText(
+                sourceText,
+                transcription: transcription,
+                audioURL: audioURL
+            )
             try Task.checkCancellation()
             guard isRunning else { return }
+
             let cleanEnglish = english.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleanEnglish.isEmpty else { throw GroqSpeechTranslationError.invalidResponse }
 
@@ -603,10 +706,77 @@ final class GroqLiveTranslationController: ObservableObject {
         }
     }
 
+    private func translateRecognizedText(
+        _ sourceText: String,
+        transcription: GroqSpeechResult,
+        audioURL: URL
+    ) async throws -> String {
+        let recognizedLanguage = sourceLanguageCode ?? Self.normalizedLanguageCode(transcription.language)
+        if recognizedLanguage.map(Self.languageBase) == "en" {
+            return sourceText
+        }
+
+        var cloudFailure: Error?
+        statusMessage = "Groq AI translating to English…"
+        do {
+            let translated = try await textClient.translateToEnglish(
+                text: sourceText,
+                sourceLanguageCode: sourceLanguageCode,
+                detectedLanguageCode: transcription.language,
+                model: cloudModel,
+                credential: credential
+            )
+            if !Self.isSuspiciousUnchangedTranslation(
+                source: sourceText,
+                translated: translated,
+                sourceLanguageCode: recognizedLanguage
+            ) {
+                return translated
+            }
+            cloudFailure = GroqSpeechTranslationError.requestFailed(
+                "Groq AI returned the recognized source text without translating it."
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            cloudFailure = error
+        }
+
+        // Keep Whisper's direct audio→English endpoint as a resilience fallback, not the primary
+        // translator. It can recover if the user's configured chat model is temporarily unavailable.
+        statusMessage = "Whisper translation fallback…"
+        do {
+            let translated = try await audioClient.translateToEnglish(
+                audioURL: audioURL,
+                credential: credential,
+                model: .largeV3
+            ).text
+            guard !Self.isSuspiciousUnchangedTranslation(
+                source: sourceText,
+                translated: translated,
+                sourceLanguageCode: recognizedLanguage
+            ) else {
+                throw GroqSpeechTranslationError.requestFailed(
+                    "Groq recognized the speech correctly, but both translation paths returned the source text unchanged."
+                )
+            }
+            return translated
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let cloudFailure {
+                throw GroqSpeechTranslationError.requestFailed(
+                    "Translation failed after a correct transcription. Cloud AI: \(cloudFailure.localizedDescription) Fallback: \(error.localizedDescription)"
+                )
+            }
+            throw error
+        }
+    }
+
     private func resumeListening() async {
         guard isRunning, !Task.isCancelled else { return }
         do {
-            try SpeechInputAudioSession.activate()
+            try await SpeechInputAudioSession.activate()
             try startRecorder()
             statusMessage = listeningStatus
         } catch {
@@ -626,6 +796,23 @@ final class GroqLiveTranslationController: ObservableObject {
         guard let recorderURL else { return }
         try? FileManager.default.removeItem(at: recorderURL)
         self.recorderURL = nil
+    }
+
+    private static func isSuspiciousUnchangedTranslation(
+        source: String,
+        translated: String,
+        sourceLanguageCode: String?
+    ) -> Bool {
+        guard sourceLanguageCode.map(languageBase) != "en" else { return false }
+        guard sourceLanguageCode != nil else { return false }
+        return normalizedComparisonText(source) == normalizedComparisonText(translated)
+    }
+
+    private static func normalizedComparisonText(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     private static func normalizedLanguageCode(_ code: String?) -> String? {

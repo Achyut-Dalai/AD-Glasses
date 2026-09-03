@@ -23,22 +23,24 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var resultTask: Task<Void, Never>?
     private var phoneEndpointTask: Task<Void, Never>?
     private var externalEndpointTask: Task<Void, Never>?
+    private var externalPacketIdleTask: Task<Void, Never>?
     private var finalizedTranscript = ""
     private var lastPhoneEndpointTranscript = ""
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
 
-    // Leave enough room for natural intra-sentence pauses. The earlier 1.1–1.2 second endpoint
-    // favored speed but could finalize a turn while the user was still composing the next phrase.
+    // Phone dictation keeps a generous pause window. Glasses PCM has a separate, faster endpoint:
+    // once speech has been recognized, either sustained acoustic silence or the absence of further
+    // 0x59 audio packets can close the turn. That prevents AD from waiting several seconds for a
+    // delayed hardware 0x73/0x0A notification after the user has already stopped speaking.
     private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_500)
-    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_450)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_050)
+    private let externalPacketIdleDelay: Duration = .milliseconds(1_050)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
-    // RMS energy is intentionally used instead of peak energy. A single click/noise spike used to
-    // keep the glasses Assistant open for several extra seconds even after real speech had stopped.
-    // RMS tracks sustained voice energy while still keeping quiet/far-field speech above the normal
-    // silence floor. The verified glasses 0x73/0x0A event remains the final hardware boundary.
+    // RMS energy is intentionally used instead of peak energy. A single click/noise spike should
+    // not keep the glasses Assistant open for several extra seconds after real speech has stopped.
     private let externalSilenceRMSThresholdDBFS: Float = -48
 
     private enum InputSource {
@@ -208,7 +210,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
 
         do {
-            try SpeechInputAudioSession.activate()
+            try await SpeechInputAudioSession.activate()
         } catch {
             await cancelPreparedPipeline()
             throw error
@@ -218,13 +220,13 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
         guard let audioContinuation else {
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
@@ -238,7 +240,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         } catch {
             audioContinuation.finish()
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw error
         }
 
@@ -252,7 +254,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             inputNode.removeTap(onBus: 0)
             audioContinuation.finish()
             await cancelPreparedPipeline()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             throw error
         }
     }
@@ -279,8 +281,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         if let analyzer {
             // Even an acoustically detected endpoint gets normal SpeechAnalyzer end-of-input
-            // finalization. The previous fast-cancel path saved roughly a second but could preserve
-            // a volatile, not-yet-corrected hypothesis. Accuracy matters more than that shortcut.
+            // finalization. Accuracy matters more than preserving a volatile hypothesis.
             do {
                 try await analyzer.finalizeAndFinishThroughEndOfInput()
             } catch {
@@ -297,7 +298,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         inputSource = nil
         snapshot.isRunning = false
         if wasUsingPhoneMicrophone {
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
         }
     }
 
@@ -313,6 +314,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
         guard inputSource == .externalPCM else { return }
         audioContinuation?.yield(buffer)
+        armExternalPacketIdleEndpoint()
         noteExternalAudioActivity(buffer)
     }
 
@@ -326,6 +328,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         lastPhoneEndpointTranscript = ""
         externalEndpointTask?.cancel()
         externalEndpointTask = nil
+        externalPacketIdleTask?.cancel()
+        externalPacketIdleTask = nil
         snapshot.transcript = ""
     }
 
@@ -399,14 +403,38 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             }
 
         case .externalPCM:
-            // A new recognition result means the utterance is still evolving. Never use text
-            // stability alone as an endpoint: SpeechAnalyzer can pause result delivery while the
-            // person is still speaking, especially with faint/distant input.
+            // Recognition has produced useful text. Arm the packet-idle endpoint immediately as a
+            // backstop in case the final 0x59 packet arrived just before SpeechAnalyzer emitted the
+            // transcript. Later packets continuously re-arm this timer while the user is speaking.
             externalEndpointTask?.cancel()
             externalEndpointTask = nil
+            armExternalPacketIdleEndpoint(transcript: clean)
 
         case nil:
             break
+        }
+    }
+
+    private func armExternalPacketIdleEndpoint(transcript explicitTranscript: String? = nil) {
+        guard inputSource == .externalPCM, snapshot.isRunning else { return }
+        let clean = (explicitTranscript ?? snapshot.transcript)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+
+        externalPacketIdleTask?.cancel()
+        externalPacketIdleTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.externalPacketIdleDelay ?? .milliseconds(1_050))
+            } catch {
+                return
+            }
+            guard let self,
+                  inputSource == .externalPCM,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                return
+            }
+            await stop()
         }
     }
 
@@ -428,7 +456,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_450))
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_050))
             } catch {
                 return
             }
@@ -671,6 +699,8 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         phoneEndpointTask = nil
         externalEndpointTask?.cancel()
         externalEndpointTask = nil
+        externalPacketIdleTask?.cancel()
+        externalPacketIdleTask = nil
     }
 
     private func cancelPreparedPipeline() async {

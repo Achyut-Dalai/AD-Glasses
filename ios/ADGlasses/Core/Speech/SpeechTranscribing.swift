@@ -6,21 +6,22 @@ import Foundation
 /// AD can receive Assistant audio over BLE while spoken output travels over the glasses' separate
 /// Classic-Bluetooth audio profile. Phone microphone turns open HFP only while recording and never
 /// override the output route. Spoken output gets its own playback session after recording ends.
-@MainActor
 enum SpeechInputAudioSession {
-    static func activate(preferBluetoothHFP: Bool = true) throws {
+    static func activate(preferBluetoothHFP: Bool = true) async throws {
         let session = AVAudioSession.sharedInstance()
 
-        // Restore the simple route policy that worked before the September speaker-routing changes:
-        // make a communication session HFP-eligible, activate it, then prefer the glasses/headset
-        // microphone when iOS exposes one. Do not use `.defaultToSpeaker` and do not call
-        // `overrideOutputAudioPort(.speaker)` based on a transient currentRoute snapshot.
+        // Keep voice capture HFP-eligible without ever defaulting or overriding output to speaker.
+        // iOS 27 warns when the legacy synchronous setActive API runs on the main thread, so use the
+        // new asynchronous activation API and let the system finish route negotiation before audio
+        // capture starts.
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
             options: [.duckOthers, .allowBluetoothHFP]
         )
-        try session.setActive(true, options: .notifyOthersOnDeactivation)
+        guard try await session.activate() else {
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
 
         guard preferBluetoothHFP,
               let bluetoothInput = session.availableInputs?.first(where: {
@@ -31,10 +32,10 @@ enum SpeechInputAudioSession {
         try? session.setPreferredInput(bluetoothInput)
     }
 
-    static func deactivate() {
+    static func deactivate() async {
         let session = AVAudioSession.sharedInstance()
         try? session.setPreferredInput(nil)
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        _ = try? await session.deactivate(options: [.notifyOthersOnDeactivation])
     }
 
     static func hasBluetoothOutput(_ route: AVAudioSessionRouteDescription) -> Bool {

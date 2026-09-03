@@ -350,7 +350,7 @@ final class LiveTranslationController: ObservableObject {
                 await transcriber.stop()
             }
         }
-        SpeechInputAudioSession.deactivate()
+        await SpeechInputAudioSession.deactivate()
         resetSessionState(keepError: true)
         statusMessage = "Ready"
     }
@@ -400,7 +400,7 @@ final class LiveTranslationController: ObservableObject {
             speechOutput.stop()
             transcriber.onUpdate = nil
             transcriber.onError = nil
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
             statusMessage = "Ready"
             return
@@ -431,10 +431,9 @@ final class LiveTranslationController: ObservableObject {
             lastTranslation = result.translatedText
             statusMessage = "Speaking \(languageName(targetLanguageCode))…"
 
-            // Keep one communication-style audio route for the whole Live Translation session.
-            // Switching to `.playback` for every utterance makes iOS bounce between media-volume
-            // and Bluetooth HFP/call-volume domains and can surface the system volume HUD.
-            try SpeechInputAudioSession.activate()
+            // Apple Offline deliberately reopens its communication-style route before speaking.
+            // Use iOS 27's asynchronous activation rather than blocking the main actor.
+            try await SpeechInputAudioSession.activate()
             try speechOutput.speak(
                 result.translatedText,
                 languageCode: result.targetLanguage,
@@ -479,7 +478,7 @@ final class LiveTranslationController: ObservableObject {
             transcriber.onUpdate = nil
             transcriber.onError = nil
             await transcriber.stop()
-            SpeechInputAudioSession.deactivate()
+            await SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
         }
     }

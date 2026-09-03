@@ -30,8 +30,7 @@ struct SpeechVoiceOption: Identifiable, Equatable, Sendable {
 }
 
 enum SpeechOutputAudioSessionPolicy: Sendable {
-    /// Normal Assistant and half-duplex translation speech own a finite media-playback session.
-    /// This is the same simple route policy used before the September communication-route changes.
+    /// Normal Assistant and half-duplex translation speech prepare a media-playback category.
     case managedPlayback
     /// Apple Offline live translation currently owns its own play-and-record session and can reuse it.
     case reuseCurrentSession
@@ -74,7 +73,6 @@ final class SpeechOutputController: NSObject, ObservableObject {
     private let audioSession: AVAudioSession
     private let selectedVoiceKey = "speech.output.selectedVoiceIdentifier.v1"
     private var queuedUtterances: [AVSpeechUtterance] = []
-    private var ownsAudioSession = false
 
     init(
         synthesizer: AVSpeechSynthesizer = AVSpeechSynthesizer(),
@@ -139,13 +137,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
         }
 
         if synthesizer.isSpeaking || !queuedUtterances.isEmpty {
-            // Clear ownership before stopping. AVSpeechSynthesizer can deliver didCancel later;
-            // that stale callback must not deactivate the audio session used by this new reply.
             queuedUtterances.removeAll()
-            if ownsAudioSession {
-                deactivateAudioSession()
-            }
-            ownsAudioSession = false
             synthesizer.stopSpeaking(at: .immediate)
         }
         try enqueue(value, voice: voice, audioSessionPolicy: audioSessionPolicy)
@@ -185,18 +177,12 @@ final class SpeechOutputController: NSObject, ObservableObject {
         }
     }
 
-    private func activateManagedAudioSession() throws {
-        // Restore the known-good pre-regression behavior. Recognition has already ended before
-        // managed speech begins, so a media playback session is sufficient and lets iOS use the
-        // currently selected Classic-Bluetooth output naturally.
+    private func prepareManagedPlayback() throws {
+        // AVSpeechSynthesizer owns the finite playback activation itself. Explicitly calling the
+        // legacy synchronous setActive API from this @MainActor controller is what iOS 27 flags as
+        // a UI hang risk. We only choose the playback category here, never force a speaker route,
+        // and let the system activate the currently selected Classic-Bluetooth output for speech.
         try audioSession.setCategory(.playback, mode: .spokenAudio)
-        try audioSession.setActive(true)
-        ownsAudioSession = true
-        refreshOutputRouteName()
-    }
-
-    private func deactivateAudioSession() {
-        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
         refreshOutputRouteName()
     }
 
@@ -209,18 +195,13 @@ final class SpeechOutputController: NSObject, ObservableObject {
             switch audioSessionPolicy {
             case .managedPlayback:
                 do {
-                    try activateManagedAudioSession()
+                    try prepareManagedPlayback()
                 } catch {
-                    if ownsAudioSession {
-                        deactivateAudioSession()
-                    }
-                    ownsAudioSession = false
                     isSpeaking = false
                     throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
                 }
             case .reuseCurrentSession:
                 // Apple Offline live translation may already own its play-and-record session.
-                ownsAudioSession = false
                 refreshOutputRouteName()
             }
         }
@@ -261,12 +242,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
 
     private func settleIdleState() {
         isSpeaking = false
-        if ownsAudioSession {
-            deactivateAudioSession()
-        } else {
-            refreshOutputRouteName()
-        }
-        ownsAudioSession = false
+        refreshOutputRouteName()
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
