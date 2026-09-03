@@ -4,7 +4,6 @@ import Foundation
 import NaturalLanguage
 import Translation
 
-@available(iOS 18.0, *)
 @MainActor
 final class NativeTranslationController: ObservableObject {
     private struct PendingRequest {
@@ -57,19 +56,11 @@ final class NativeTranslationController: ObservableObject {
                     continuation: continuation
                 )
 
-                let nextConfiguration: TranslationSession.Configuration
-                if #available(iOS 26.4, *) {
-                    nextConfiguration = TranslationSession.Configuration(
-                        source: sourceLanguage,
-                        target: targetLanguage,
-                        preferredStrategy: .lowLatency
-                    )
-                } else {
-                    nextConfiguration = TranslationSession.Configuration(
-                        source: sourceLanguage,
-                        target: targetLanguage
-                    )
-                }
+                let nextConfiguration = TranslationSession.Configuration(
+                    source: sourceLanguage,
+                    target: targetLanguage,
+                    preferredStrategy: .lowLatency
+                )
 
                 if configuration == nextConfiguration {
                     configuration?.invalidate()
@@ -189,10 +180,7 @@ final class NativeTranslationController: ObservableObject {
     }
 
     private func languageAvailability() -> LanguageAvailability {
-        if #available(iOS 26.4, *) {
-            return LanguageAvailability(preferredStrategy: .lowLatency)
-        }
-        return LanguageAvailability()
+        LanguageAvailability(preferredStrategy: .lowLatency)
     }
 
     private func finish(
@@ -207,7 +195,6 @@ final class NativeTranslationController: ObservableObject {
     }
 }
 
-@available(iOS 18.0, *)
 @MainActor
 final class LiveTranslationController: ObservableObject {
     @Published private(set) var isRunning = false
@@ -270,23 +257,14 @@ final class LiveTranslationController: ObservableObject {
             return false
         }
 
-#if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
-            return await startSpeechAnalyzer(
-                sourceLanguageCode: sourceLanguageCode,
-                targetLanguageCode: targetLanguageCode,
-                translation: translation,
-                speechOutput: speechOutput
-            )
-        }
-#endif
-
-        errorMessage = "Live Translation requires iOS 26 or later because it uses Apple SpeechAnalyzer."
-        return false
+        return await startSpeechAnalyzer(
+            sourceLanguageCode: sourceLanguageCode,
+            targetLanguageCode: targetLanguageCode,
+            translation: translation,
+            speechOutput: speechOutput
+        )
     }
 
-#if compiler(>=6.2)
-    @available(iOS 26.0, *)
     private func startSpeechAnalyzer(
         sourceLanguageCode: String,
         targetLanguageCode: String,
@@ -350,7 +328,6 @@ final class LiveTranslationController: ObservableObject {
             return false
         }
     }
-#endif
 
     func stop() async {
         let activeFinalizeTask = finalizeTask
@@ -483,9 +460,7 @@ final class LiveTranslationController: ObservableObject {
         transcriber.resetTranscript()
         currentTranscript = ""
         do {
-#if compiler(>=6.2)
-            if #available(iOS 26.0, *),
-               let analyzer = transcriber as? SpeechAnalyzerTranscriber,
+            if let analyzer = transcriber as? SpeechAnalyzerTranscriber,
                let preparedLocale = preparedSpeechLocale {
                 // The locale/model was already prepared when the session began. Reusing it avoids
                 // another reservation/status/download pass after every translated sentence.
@@ -493,9 +468,6 @@ final class LiveTranslationController: ObservableObject {
             } else {
                 try await transcriber.start()
             }
-#else
-            try await transcriber.start()
-#endif
             updateInputRoute()
             statusMessage = listeningStatus
         } catch is CancellationError {
