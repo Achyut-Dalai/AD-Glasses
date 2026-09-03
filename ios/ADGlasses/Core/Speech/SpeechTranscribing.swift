@@ -4,47 +4,35 @@ import Foundation
 /// Audio-session policy for an intentional, finite speech turn.
 ///
 /// AD can receive Assistant audio over BLE while spoken output travels over the glasses' separate
-/// Classic-Bluetooth audio profile. Phone/live-translation microphone turns use `playAndRecord`, but
-/// must never force the iPhone speaker just because the glasses aren't currently exposing an HFP
-/// microphone. Many glasses present an A2DP output route even when their HFP input isn't selected.
+/// Classic-Bluetooth audio profile. Phone microphone turns open HFP only while recording and never
+/// override the output route. Spoken output gets its own playback session after recording ends.
 @MainActor
 enum SpeechInputAudioSession {
     static func activate(preferBluetoothHFP: Bool = true) throws {
         let session = AVAudioSession.sharedInstance()
 
-        // Permit both Bluetooth profiles. HFP is the preferred full-duplex route when iOS exposes
-        // it; A2DP remains eligible for spoken output when the input is the iPhone microphone.
-        // `.defaultToSpeaker` is deliberately absent because it can steal output from the glasses.
+        // Restore the simple route policy that worked before the September speaker-routing changes:
+        // make a communication session HFP-eligible, activate it, then prefer the glasses/headset
+        // microphone when iOS exposes one. Do not use `.defaultToSpeaker` and do not call
+        // `overrideOutputAudioPort(.speaker)` based on a transient currentRoute snapshot.
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.duckOthers, .allowBluetoothHFP, .allowBluetoothA2DP]
+            options: [.duckOthers, .allowBluetoothHFP]
         )
-        try? session.overrideOutputAudioPort(.none)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
-        if preferBluetoothHFP,
-           let bluetoothInput = session.availableInputs?.first(where: {
-               $0.portType == .bluetoothHFP
-           }) {
-            try session.setPreferredInput(bluetoothInput)
-            try? session.overrideOutputAudioPort(.none)
+        guard preferBluetoothHFP,
+              let bluetoothInput = session.availableInputs?.first(where: {
+                  $0.portType == .bluetoothHFP
+              }) else {
             return
         }
-
-        // No HFP input is available. Keep any system-selected Bluetooth/A2DP output instead of
-        // unconditionally switching to the phone speaker. Only choose the speaker when there is no
-        // Bluetooth output route at all.
-        try? session.setPreferredInput(nil)
-        try? session.overrideOutputAudioPort(.none)
-        if !hasBluetoothOutput(session.currentRoute) {
-            try? session.overrideOutputAudioPort(.speaker)
-        }
+        try? session.setPreferredInput(bluetoothInput)
     }
 
     static func deactivate() {
         let session = AVAudioSession.sharedInstance()
-        try? session.overrideOutputAudioPort(.none)
         try? session.setPreferredInput(nil)
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
