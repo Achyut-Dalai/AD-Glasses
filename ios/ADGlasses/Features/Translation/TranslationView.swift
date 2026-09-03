@@ -340,7 +340,7 @@ private struct LiveTranslateExperience: View {
                             .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? .green : .orange)
                         Text("English output: \(app.speechOutput.outputRouteName)")
                             .font(.footnote)
-                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? .secondary : .orange)
+                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? Color.secondary : Color.orange)
                     }
                 }
 
