@@ -47,7 +47,7 @@ struct SettingsView: View {
                             controller: app.speechOutput
                         )
                     } label: {
-                        LabeledContent("Voice & Language", value: app.speechEngineName)
+                        LabeledContent("Voice & Language", value: "English (India)")
                     }
                 }
 
@@ -220,6 +220,7 @@ private struct VoiceAndLanguageSettingsView: View {
         List {
             Section("Speech recognition") {
                 LabeledContent("Engine", value: speechEngineName)
+                LabeledContent("Assistant language", value: "English (India) · en-IN")
             }
 
             Section("Spoken output") {
@@ -228,17 +229,21 @@ private struct VoiceAndLanguageSettingsView: View {
                 } label: {
                     LabeledContent("Voice", value: selectedSpeechVoiceName)
                 }
+                LabeledContent("Current audio route", value: controller.outputRouteName)
             }
 
             Section {
-                Text("On iOS 26, AD uses Apple SpeechAnalyzer as the runtime speech-recognition engine rather than silently switching to another recognizer when a model is unavailable. Translation language selection remains inside Live Translation because speech input, translation support, and spoken-output availability are separate capabilities.")
+                Text("On iOS 27, AD uses Apple SpeechAnalyzer with the English (India) model for Assistant recognition rather than silently switching recognizers. Translation language selection remains inside Live Translation because its source language is independent of the English Assistant language.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Voice & Language")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { controller.refreshVoices() }
+        .onAppear {
+            controller.refreshVoices()
+            controller.refreshOutputRouteName()
+        }
     }
 
     private var selectedSpeechVoiceName: String {
@@ -277,17 +282,22 @@ private struct SpeechVoiceSettingsView: View {
                         catch { errorMessage = error.localizedDescription }
                     }
                 }
+
+                LabeledContent("Output", value: controller.outputRouteName)
             }
 
             Section {
-                Text("Premium and Enhanced labels come directly from Apple. Ava, Zoe, Samantha, and Alex appear only when that voice is available on this iPhone; additional voices are managed in iOS Settings.")
+                Text("Premium and Enhanced labels come directly from Apple. Ava, Zoe, Samantha, and Alex appear only when that voice is available on this iPhone; additional voices are managed in iOS Settings. Preview uses the same Bluetooth-aware playback policy as Assistant answers.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Spoken voice")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { controller.refreshVoices() }
+        .onAppear {
+            controller.refreshVoices()
+            controller.refreshOutputRouteName()
+        }
         .alert("Spoken voice", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -306,6 +316,15 @@ private struct CloudAISettingsView: View {
 
     var body: some View {
         List {
+            Section {
+                LabeledContent("Model", value: AppleSpeechTranscriber.localRouterModelName)
+                LabeledContent("Status", value: AppleSpeechTranscriber.localRouterStatus)
+            } header: {
+                Text("On-device router")
+            } footer: {
+                Text(AppleSpeechTranscriber.localRouterDetail)
+            }
+
             if store.profiles.isEmpty {
                 ContentUnavailableView(
                     "No Cloud AI profile",
@@ -314,7 +333,7 @@ private struct CloudAISettingsView: View {
                 )
                 .listRowBackground(Color.clear)
             } else {
-                Section("Profiles") {
+                Section("Cloud profiles") {
                     ForEach(store.profiles) { profile in
                         NavigationLink {
                             AIProfileEditorView(store: store, profile: profile)
@@ -353,7 +372,7 @@ private struct CloudAISettingsView: View {
             }
 
             Section {
-                Text("API keys are stored in the iOS Keychain and are never displayed after saving. Model lists are fetched directly from the selected provider using that profile's key; manual model IDs remain available for providers with incomplete catalogs. Lens visual understanding uses this same active profile when its selected model supports image input.")
+                Text("The local Qwen router never replaces the answer model. API keys are stored in the iOS Keychain and are never displayed after saving. Model lists are fetched directly from the selected provider using that profile's key; Lens visual understanding uses this same active cloud profile when its model supports image input.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -815,7 +834,7 @@ private struct PermissionsSettingsView: View {
         List {
             Section("Voice") {
                 LabeledContent("Microphone", value: microphoneStatus)
-                LabeledContent("Speech recognition", value: speechStatus)
+                LabeledContent("SpeechAnalyzer", value: "On-device")
             }
             Section("Location") {
                 LabeledContent("Nearby places & routes", value: locationStatus)
@@ -826,7 +845,7 @@ private struct PermissionsSettingsView: View {
                     UIApplication.shared.open(url)
                 }
             } footer: {
-                Text("AD Glasses requests permissions only when a feature needs them. Location permission is requested explicitly from Web & Maps settings; asking AD a location question never auto-prompts. Bluetooth access is managed by iOS when the app scans for glasses.")
+                Text("AD Glasses requests permissions only when a feature needs them. SpeechAnalyzer itself does not use the legacy SFSpeechRecognizer authorization service. Location permission is requested explicitly from Web & Maps settings; asking AD a location question never auto-prompts.")
             }
         }
         .navigationTitle("Permissions")
@@ -838,16 +857,6 @@ private struct PermissionsSettingsView: View {
         case .granted: return "Allowed"
         case .denied: return "Denied"
         case .undetermined: return "Not requested"
-        @unknown default: return "Unknown"
-        }
-    }
-
-    private var speechStatus: String {
-        switch SFSpeechRecognizer.authorizationStatus() {
-        case .authorized: return "Allowed"
-        case .denied: return "Denied"
-        case .restricted: return "Restricted"
-        case .notDetermined: return "Not requested"
         @unknown default: return "Unknown"
         }
     }
@@ -870,7 +879,7 @@ private struct AboutSettingsView: View {
                 LabeledContent("App", value: "AD Glasses")
                 LabeledContent("Version", value: version)
                 LabeledContent("Interface", value: "Native SwiftUI")
-                LabeledContent("Minimum iOS", value: "17")
+                LabeledContent("Minimum iOS", value: "27")
             }
             Section {
                 Text("AD Glasses is the quiet companion for your glasses: connection, captured media, AD, Lens, structured knowledge and live information, maps, translation, and continuity when you continue on iPhone.")
