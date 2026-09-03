@@ -48,9 +48,8 @@ enum AppleSpeechTranscriber {
 
     @MainActor
     static func make(locale: Locale = assistantLocale) -> any SpeechTranscribing {
-        // Prewarm is best effort. The Core AI model is deliberately not required for speech itself;
-        // if the model has not been staged on this development device, verified SpeechAnalyzer and
-        // deterministic Assistant routing continue to work exactly as before.
+        // Core AI prewarm is best effort. The model is deliberately not required for speech itself;
+        // if it has not been staged, verified SpeechAnalyzer and deterministic routing keep working.
         Task { await LocalAssistantSemanticRepair.shared.prewarm() }
         return SemanticRepairingSpeechTranscriber(locale: locale)
     }
@@ -100,6 +99,14 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         }
         base.onError = { [weak self] error in
             self?.onError?(error)
+        }
+
+        // Asset/model setup can be the dominant delay on the first physical glasses turn. Warm the
+        // en-IN SpeechAnalyzer asset as soon as AppModel creates the transcriber; this does not open
+        // the microphone and does not start recognition. A later start still validates readiness.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            _ = try? await base.prepareAssets()
         }
     }
 
