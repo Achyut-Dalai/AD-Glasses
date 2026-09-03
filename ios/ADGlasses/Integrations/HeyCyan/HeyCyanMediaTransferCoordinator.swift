@@ -189,12 +189,32 @@ final class HeyCyanMediaTransferCoordinator {
         guard let activeAccessPoint else {
             throw HeyCyanMediaTransferError.notPrepared
         }
+
+        let continuedWorkID = ADContinuedProcessingCoordinator.shared.begin(
+            title: "Syncing from AD Glasses",
+            subtitle: item.fileName
+        )
+        var continuedWorkSucceeded = false
+        defer {
+            ADContinuedProcessingCoordinator.shared.finish(
+                continuedWorkID,
+                success: continuedWorkSucceeded
+            )
+        }
+
         state = .downloading(fileName: item.fileName)
         do {
             try await media.download(item, from: activeAccessPoint, to: destinationURL)
             try ensureOperationIsActive(operationID)
+            ADContinuedProcessingCoordinator.shared.update(
+                continuedWorkID,
+                completed: 1,
+                total: 1,
+                subtitle: "Finishing \(item.fileName)"
+            )
             let items = try await media.mediaList(on: activeAccessPoint)
             state = .ready(items: items)
+            continuedWorkSucceeded = true
         } catch {
             recoverTransferMode(sendBluetoothFinish: true)
             state = .failed(reason: error.localizedDescription)
