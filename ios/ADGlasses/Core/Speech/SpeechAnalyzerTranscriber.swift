@@ -2,8 +2,6 @@
 import Foundation
 import Speech
 
-#if compiler(>=6.2)
-@available(iOS 26.0, *)
 @MainActor
 final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     let engineName = "SpeechAnalyzer (on-device)"
@@ -227,8 +225,18 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             throw SpeechTranscriptionError.failedToCreateAudioInput
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in
-            audioContinuation.yield(buffer)
+        do {
+            try inputNode.installAudioTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in
+                // iOS 27's tap callback is Sendable and supplies a read-only buffer. The existing
+                // SpeechAnalyzer conversion pipeline owns mutable PCM buffers, so copy once at this
+                // boundary. Glasses PCM bypasses this phone-microphone tap and remains unchanged.
+                audioContinuation.yield(AVAudioPCMBuffer(copying: buffer))
+            }
+        } catch {
+            audioContinuation.finish()
+            await cancelPreparedPipeline()
+            SpeechInputAudioSession.deactivate()
+            throw error
         }
 
         audioEngine.prepare()
@@ -669,7 +677,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 }
 
-@available(iOS 26.0, *)
 private enum SpeechAnalyzerAssetError: LocalizedError {
     case unsupportedLanguage(String)
     case reservationFailed(String)
@@ -690,7 +697,6 @@ private enum SpeechAnalyzerAssetError: LocalizedError {
     }
 }
 
-@available(iOS 26.0, *)
 @MainActor
 private final class SpeechBufferConverter {
     enum ConversionError: LocalizedError {
@@ -758,4 +764,3 @@ private final class SpeechBufferConverter {
         converter = nil
     }
 }
-#endif
