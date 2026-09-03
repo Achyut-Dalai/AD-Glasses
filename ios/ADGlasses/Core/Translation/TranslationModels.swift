@@ -212,7 +212,7 @@ struct GroqAudioTranslationClient: Sendable {
         let boundary = "ADGlasses-\(UUID().uuidString)"
         var body = Data()
         body.appendMultipartField(name: "model", value: model.rawValue, boundary: boundary)
-        body.appendMultipartField(name: "response_format", value: "verbose_json", boundary: boundary)
+        body.appendMultipartField(name: "response_format", value: "json", boundary: boundary)
         body.appendMultipartField(name: "temperature", value: "0", boundary: boundary)
         body.appendMultipartFile(
             name: "file",
@@ -225,7 +225,7 @@ struct GroqAudioTranslationClient: Sendable {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 35
+        request.timeoutInterval = 20
         request.httpBody = body
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -247,16 +247,10 @@ struct GroqAudioTranslationClient: Sendable {
             throw GroqSpeechTranslationError.invalidResponse
         }
 
-        let segments = (root["segments"] as? [[String: Any]] ?? []).map { segment in
-            GroqSpeechSegment(
-                averageLogProbability: Self.doubleValue(segment["avg_logprob"]),
-                noSpeechProbability: Self.doubleValue(segment["no_speech_prob"])
-            )
-        }
         return GroqSpeechResult(
             text: text,
             language: root["language"] as? String,
-            segments: segments
+            segments: []
         )
     }
 
@@ -303,17 +297,22 @@ final class GroqLiveTranslationController: ObservableObject {
     private var selectedSourceLanguageCode: String?
     private var heardSpeech = false
     private var candidateSpeechFrames = 0
+    private var strongestPower: Float = -160
     private var lastSpeechAt: Date?
     private var recordingStartedAt: Date?
 
     // Strict half-duplex: capture one phrase, close the microphone, send that audio directly to
-    // Whisper translation, speak the returned English, then start a fresh recorder.
-    private let speechPowerThreshold: Float = -48
-    private let requiredSpeechFrames = 3
-    private let endSilenceSeconds: TimeInterval = 1.25
-    private let minimumTurnSeconds: TimeInterval = 0.8
-    private let maximumTurnSeconds: TimeInterval = 14
-    private let idleRecycleSeconds: TimeInterval = 25
+    // Whisper translation, speak the returned English, then start a fresh recorder. Glasses/HFP
+    // microphones can meter quietly, so the gate is intentionally permissive and has a bounded
+    // quiet-speech fallback rather than waiting forever for a high meter reading.
+    private let speechPowerThreshold: Float = -58
+    private let quietSpeechFallbackThreshold: Float = -65
+    private let requiredSpeechFrames = 1
+    private let endSilenceSeconds: TimeInterval = 0.9
+    private let minimumTurnSeconds: TimeInterval = 0.6
+    private let quietSpeechFallbackSeconds: TimeInterval = 6
+    private let maximumTurnSeconds: TimeInterval = 10
+    private let idleRecycleSeconds: TimeInterval = 20
 
     @discardableResult
     func start(
@@ -349,6 +348,7 @@ final class GroqLiveTranslationController: ObservableObject {
         lastSourceText = ""
         lastTranslation = ""
         recentTurns = []
+        strongestPower = -160
         isRunning = true
 
         do {
@@ -372,6 +372,7 @@ final class GroqLiveTranslationController: ObservableObject {
         removeRecorderFile()
         heardSpeech = false
         candidateSpeechFrames = 0
+        strongestPower = -160
         lastSpeechAt = nil
         recordingStartedAt = nil
         speechOutput?.stop()
@@ -407,6 +408,7 @@ final class GroqLiveTranslationController: ObservableObject {
         recorderURL = url
         heardSpeech = false
         candidateSpeechFrames = 0
+        strongestPower = -160
         lastSpeechAt = nil
         recordingStartedAt = Date()
         inputRouteName = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName
@@ -430,6 +432,7 @@ final class GroqLiveTranslationController: ObservableObject {
                 let now = Date()
                 let elapsed = now.timeIntervalSince(started)
                 let power = recorder.averagePower(forChannel: 0)
+                strongestPower = max(strongestPower, power)
 
                 if power >= speechPowerThreshold {
                     if heardSpeech {
@@ -439,6 +442,7 @@ final class GroqLiveTranslationController: ObservableObject {
                         if candidateSpeechFrames >= requiredSpeechFrames {
                             heardSpeech = true
                             lastSpeechAt = now
+                            statusMessage = "Speech detected — waiting for pause…"
                         }
                     }
                 } else if !heardSpeech {
@@ -451,12 +455,17 @@ final class GroqLiveTranslationController: ObservableObject {
                         elapsed >= maximumTurnSeconds {
                         await finishCurrentTurn()
                     }
+                } else if elapsed >= quietSpeechFallbackSeconds,
+                          strongestPower >= quietSpeechFallbackThreshold {
+                    statusMessage = "Quiet speech captured — translating…"
+                    await finishCurrentTurn()
                 } else if elapsed >= idleRecycleSeconds {
                     recorder.stop()
                     self.recorder = nil
                     removeRecorderFile()
                     do {
                         try startRecorder()
+                        statusMessage = listeningStatus
                     } catch {
                         errorMessage = error.localizedDescription
                         await stop()
@@ -474,6 +483,7 @@ final class GroqLiveTranslationController: ObservableObject {
         recorderURL = nil
         heardSpeech = false
         candidateSpeechFrames = 0
+        strongestPower = -160
         lastSpeechAt = nil
         recordingStartedAt = nil
 
@@ -499,12 +509,6 @@ final class GroqLiveTranslationController: ObservableObject {
             )
             try Task.checkCancellation()
             guard isRunning else { return }
-
-            guard translation.containsCredibleSpeech else {
-                statusMessage = "Noise ignored"
-                await resumeListening()
-                return
-            }
 
             let cleanEnglish = translation.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleanEnglish.isEmpty else {
