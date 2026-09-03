@@ -443,11 +443,8 @@ struct LensView: View {
         .padding(.horizontal, 16)
     }
 
-    @ViewBuilder
     private var translationControls: some View {
-        if #available(iOS 18.0, *) { NativeLensTranslationControls(text: lens.recognizedText) }
-        else if #available(iOS 17.4, *) { SystemLensTranslationButton(text: lens.recognizedText) }
-        else { Text("Native translation requires iOS 17.4 or later.").foregroundStyle(.secondary) }
+        NativeLensTranslationControls(text: lens.recognizedText)
     }
 
     private func toggleLensVoiceQuestion() async {
@@ -515,7 +512,6 @@ struct LensView: View {
     }
 }
 
-@available(iOS 18.0, *)
 private struct NativeLensTranslationControls: View {
     @EnvironmentObject private var translation: NativeTranslationController
     @EnvironmentObject private var app: AppModel
@@ -552,15 +548,5 @@ private struct NativeLensTranslationControls: View {
         .alert("Translation", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
-    }
-}
-
-@available(iOS 17.4, *)
-private struct SystemLensTranslationButton: View {
-    let text: String
-    @State private var isPresented = false
-    var body: some View {
-        Button("Open Apple Translate", systemImage: "translate") { isPresented = true }
-            .translationPresentation(isPresented: $isPresented, text: text)
     }
 }
