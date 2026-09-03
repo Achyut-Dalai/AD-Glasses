@@ -30,7 +30,8 @@ struct SpeechVoiceOption: Identifiable, Equatable, Sendable {
 }
 
 enum SpeechOutputAudioSessionPolicy: Sendable {
-    /// Normal Assistant speech owns a finite media-playback audio session.
+    /// Normal Assistant speech owns a finite communication-style playback session. HFP is preferred
+    /// so a connected pair of AD Glasses receives the spoken answer; the iPhone speaker is fallback.
     case managedPlayback
     /// Live Translation already owns a play-and-record/HFP session and must not flip the system
     /// between call-volume and media-volume routes for every translated utterance.
@@ -72,6 +73,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
     private let selectedVoiceKey = "speech.output.selectedVoiceIdentifier.v1"
     private var queuedUtterances: [AVSpeechUtterance] = []
     private var ownsAudioSession = false
+    private var ownsPreferredInput = false
 
     init(
         synthesizer: AVSpeechSynthesizer = AVSpeechSynthesizer(),
@@ -134,6 +136,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
                 deactivateAudioSession()
             }
             ownsAudioSession = false
+            ownsPreferredInput = false
             synthesizer.stopSpeaking(at: .immediate)
         }
         try enqueue(value, voice: voice, audioSessionPolicy: audioSessionPolicy)
@@ -173,7 +176,34 @@ final class SpeechOutputController: NSObject, ObservableObject {
         }
     }
 
+    private func activateManagedAudioSession() throws {
+        // AD Glasses expose their speaker through the Classic Bluetooth HFP route. A `.playback`
+        // category can leave that route behind and put TTS on the iPhone instead. A finite
+        // communication session lets iOS select HFP bidirectionally; `.defaultToSpeaker` keeps a
+        // useful fallback when no HFP accessory is actually available.
+        try audioSession.setCategory(
+            .playAndRecord,
+            mode: .voiceChat,
+            options: [.allowBluetoothHFP, .defaultToSpeaker]
+        )
+        try audioSession.setActive(true)
+
+        if let bluetoothInput = audioSession.availableInputs?.first(where: {
+            $0.portType == .bluetoothHFP
+        }) {
+            try audioSession.setPreferredInput(bluetoothInput)
+            ownsPreferredInput = true
+        } else {
+            ownsPreferredInput = false
+        }
+        ownsAudioSession = true
+    }
+
     private func deactivateAudioSession() {
+        if ownsPreferredInput {
+            try? audioSession.setPreferredInput(nil)
+        }
+        ownsPreferredInput = false
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -186,12 +216,13 @@ final class SpeechOutputController: NSObject, ObservableObject {
             switch audioSessionPolicy {
             case .managedPlayback:
                 do {
-                    // Normal Assistant output is a finite media-style spoken response.
-                    try audioSession.setCategory(.playback, mode: .spokenAudio)
-                    try audioSession.setActive(true)
-                    ownsAudioSession = true
+                    try activateManagedAudioSession()
                 } catch {
+                    if ownsAudioSession || ownsPreferredInput {
+                        deactivateAudioSession()
+                    }
                     ownsAudioSession = false
+                    ownsPreferredInput = false
                     isSpeaking = false
                     throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
                 }
@@ -199,6 +230,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
                 // Live Translation intentionally leaves its play-and-record/HFP route active so
                 // iOS does not bounce between media and communication volume domains each turn.
                 ownsAudioSession = false
+                ownsPreferredInput = false
             }
         }
 
@@ -242,6 +274,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
             deactivateAudioSession()
         }
         ownsAudioSession = false
+        ownsPreferredInput = false
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
