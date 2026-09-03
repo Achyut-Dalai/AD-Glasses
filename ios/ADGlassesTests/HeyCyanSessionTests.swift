@@ -90,6 +90,69 @@ final class HeyCyanSessionTests: XCTestCase {
         XCTAssertEqual(response.payload, Data([0x02, 0x01, 0x01, 0x00]))
     }
 
+    func testAssistantSensitiveCommandWaitsForVerifiedEndNotification() async throws {
+        let transport = FakeHeyCyanByteTransport(state: .ready(name: "Test glasses"))
+        let session = HeyCyanSession(
+            transport: transport,
+            responseTimeout: .seconds(1),
+            assistantEndTimeout: .milliseconds(250)
+        )
+
+        transport.emit(
+            try HeyCyanFrameCodec.production.encode(
+                command: 0x73,
+                payload: Data([0x03, 0x01])
+            )
+        )
+
+        let request = Task { try await session.send(.takePhoto) }
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(transport.writes.isEmpty)
+
+        transport.emit(
+            try HeyCyanFrameCodec.production.encode(
+                command: 0x73,
+                payload: Data([0x0A, 0x01])
+            )
+        )
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(transport.writes.count, 1)
+
+        transport.emit(
+            try HeyCyanFrameCodec.production.encode(
+                command: 0x41,
+                payload: Data([0x02, 0x01, 0x01, 0x00])
+            )
+        )
+        _ = try await request.value
+    }
+
+    func testAssistantSensitiveCommandFailsWithoutSendingWhenEndNotificationNeverArrives() async throws {
+        let transport = FakeHeyCyanByteTransport(state: .ready(name: "Test glasses"))
+        let session = HeyCyanSession(
+            transport: transport,
+            responseTimeout: .seconds(1),
+            assistantEndTimeout: .milliseconds(40)
+        )
+
+        transport.emit(
+            try HeyCyanFrameCodec.production.encode(
+                command: 0x73,
+                payload: Data([0x03, 0x01])
+            )
+        )
+
+        do {
+            _ = try await session.send(.takePhoto)
+            XCTFail("Expected the command to wait for and then time out on assistant end")
+        } catch let error as HeyCyanSessionError {
+            guard case .assistantSessionDidNotEnd = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+        XCTAssertTrue(transport.writes.isEmpty)
+    }
+
     func testCleanupWriteDoesNotCreatePendingResponseTransaction() throws {
         let transport = FakeHeyCyanByteTransport(state: .ready(name: "Test glasses"))
         let session = HeyCyanSession(transport: transport)
