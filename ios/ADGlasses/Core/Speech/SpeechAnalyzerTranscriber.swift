@@ -28,8 +28,10 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
 
-    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_200)
-    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_100)
+    // Leave enough room for natural intra-sentence pauses. The earlier 1.1–1.2 second endpoint
+    // favored speed but could finalize a turn while the user was still composing the next phrase.
+    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_500)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_600)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
@@ -377,7 +379,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             phoneEndpointTask?.cancel()
             phoneEndpointTask = Task { @MainActor [weak self] in
                 do {
-                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_200))
+                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_500))
                 } catch {
                     return
                 }
@@ -420,7 +422,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_100))
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_600))
             } catch {
                 return
             }
