@@ -1,4 +1,4 @@
-import CoreSpotlight
+@preconcurrency import CoreSpotlight
 import Foundation
 import UniformTypeIdentifiers
 
@@ -225,7 +225,7 @@ actor LibraryStore {
         attributes.title = item.title
         attributes.displayName = item.title
         attributes.contentURL = fileURL(for: item)
-        attributes.creationDate = item.createdAt
+        attributes.contentCreationDate = item.createdAt
         attributes.metadataModificationDate = item.createdAt
         attributes.containerTitle = "AD Glasses Library"
         attributes.containerDisplayName = "AD Glasses Library"
