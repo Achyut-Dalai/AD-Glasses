@@ -12,10 +12,39 @@ import CoreAILanguageModels
 /// availability branch. Model preparation/download failures stay inside the SpeechAnalyzer lifecycle
 /// instead of silently switching engines.
 enum AppleSpeechTranscriber {
-    /// Assistant voice input is an English product surface today. Do not inherit `Locale.current`:
-    /// a device region such as India can otherwise silently select en-IN and force a different
-    /// speech asset than the app actually intends to use.
-    static let assistantLocale = Locale(identifier: "en-US")
+    /// AD's Assistant is an English surface, but the primary user/device locale is India. Use the
+    /// English-India SpeechAnalyzer asset explicitly instead of inheriting Locale.current or forcing
+    /// en-US. This improves recognition of Indian names, pronunciation, and accent without changing
+    /// the language of the Assistant response.
+    static let assistantLocale = Locale(identifier: "en-IN")
+    static let localRouterModelName = "Qwen3 0.6B"
+
+    /// User-visible status for Settings. The local model is deliberately optional: cloud answers,
+    /// SpeechAnalyzer, and deterministic hardware routing remain available when Core AI is absent.
+    static var localRouterStatus: String {
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+        return FileManager.default.fileExists(atPath: localRouterModelURL.path)
+            ? "Ready on device"
+            : "Model not staged"
+#elseif targetEnvironment(simulator)
+        return "Physical iPhone required"
+#else
+        return "Core AI package not linked"
+#endif
+    }
+
+    static var localRouterDetail: String {
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+        if FileManager.default.fileExists(atPath: localRouterModelURL.path) {
+            return "Used only for bounded glasses-speech repair and semantic command routing. Normal Assistant answers still use your selected cloud model."
+        }
+        return "Core AI support is linked, but the exported Qwen3 0.6B resources have not been staged on this iPhone yet. Normal Assistant answers still use your selected cloud model."
+#elseif targetEnvironment(simulator)
+        return "The Qwen3 local router is intentionally disabled in Simulator. Test and stage it on the physical iPhone. Normal Assistant answers still use your selected cloud model."
+#else
+        return "The app is running without the CoreAILanguageModels package. Deterministic speech routing still works, but Qwen semantic repair is unavailable until Core AI is linked and the model is staged."
+#endif
+    }
 
     @MainActor
     static func make(locale: Locale = assistantLocale) -> any SpeechTranscribing {
@@ -25,6 +54,14 @@ enum AppleSpeechTranscriber {
         Task { await LocalAssistantSemanticRepair.shared.prewarm() }
         return SemanticRepairingSpeechTranscriber(locale: locale)
     }
+
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+    fileprivate static var localRouterModelURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CoreAIModels", isDirectory: true)
+            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
+    }
+#endif
 }
 
 /// Wraps SpeechAnalyzer at the product boundary rather than teaching the speech engine about
@@ -51,8 +88,12 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
     init(locale: Locale) {
         let base = SpeechAnalyzerTranscriber(locale: locale)
         self.base = base
-        engineName = base.engineName
-        snapshot = base.snapshot
+        engineName = Self.engineName(base: base.engineName, locale: locale)
+        snapshot = SpeechTranscriptionSnapshot(
+            transcript: base.snapshot.transcript,
+            isRunning: base.snapshot.isRunning,
+            engineName: engineName
+        )
 
         base.onUpdate = { [weak self] next in
             self?.consumeBaseUpdate(next)
@@ -67,7 +108,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         inputMode = nil
         try await base.start()
         inputMode = .phone
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func stop() async {
@@ -77,6 +118,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
             await finishPendingTerminalRepair()
         } else {
             inputMode = nil
+            snapshot = productSnapshot(base.snapshot)
         }
     }
 
@@ -84,7 +126,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         terminalRepairTask?.cancel()
         terminalRepairTask = nil
         base.resetTranscript()
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func startExternalAudio() async throws {
@@ -92,7 +134,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         inputMode = nil
         try await base.startExternalAudio()
         inputMode = .externalGlassesPCM
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -110,7 +152,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         // AppModel therefore never sees an uncorrected terminal transcript followed by a second
         // corrected terminal transcript, which could otherwise execute two different actions.
         guard inputMode == .externalGlassesPCM, !next.isRunning else {
-            snapshot = next
+            snapshot = productSnapshot(next)
             return
         }
 
@@ -122,7 +164,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
             snapshot = SpeechTranscriptionSnapshot(
                 transcript: repaired,
                 isRunning: false,
-                engineName: next.engineName
+                engineName: engineName
             )
             inputMode = nil
             terminalRepairTask = nil
@@ -132,6 +174,19 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
     private func finishPendingTerminalRepair() async {
         let task = terminalRepairTask
         await task?.value
+    }
+
+    private func productSnapshot(_ baseSnapshot: SpeechTranscriptionSnapshot) -> SpeechTranscriptionSnapshot {
+        SpeechTranscriptionSnapshot(
+            transcript: baseSnapshot.transcript,
+            isRunning: baseSnapshot.isRunning,
+            engineName: engineName
+        )
+    }
+
+    private static func engineName(base: String, locale: Locale) -> String {
+        let localeName = locale.identifier.replacingOccurrences(of: "_", with: "-")
+        return "\(base) · \(localeName) · \(AppleSpeechTranscriber.localRouterModelName): \(AppleSpeechTranscriber.localRouterStatus)"
     }
 }
 
@@ -208,7 +263,7 @@ private actor LocalAssistantSemanticRepair {
         if loadAttempted { return nil }
         loadAttempted = true
 
-        let modelURL = Self.modelURL
+        let modelURL = AppleSpeechTranscriber.localRouterModelURL
         guard FileManager.default.fileExists(atPath: modelURL.path) else { return nil }
         let model = try await CoreAILanguageModel(resourcesAt: modelURL)
         let session = LanguageModelSession(
@@ -217,12 +272,6 @@ private actor LocalAssistantSemanticRepair {
         )
         self.session = session
         return session
-    }
-
-    private static var modelURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("CoreAIModels", isDirectory: true)
-            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
     }
 
     private static func parseDecision(_ raw: String) -> Decision? {
