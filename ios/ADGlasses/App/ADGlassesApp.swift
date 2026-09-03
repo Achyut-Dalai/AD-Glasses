@@ -196,7 +196,7 @@ private extension Notification.Name {
 struct ConnectADGlassesIntent: AppIntent {
     static let title: LocalizedStringResource = "Connect AD Glasses"
     static let description = IntentDescription("Reconnects the most recently paired AD Glasses.")
-    static var openAppWhenRun = true
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     func perform() async throws -> some IntentResult {
         ADPendingSystemActionStore.enqueue(.connect)
@@ -207,7 +207,7 @@ struct ConnectADGlassesIntent: AppIntent {
 struct AskADGlassesIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask AD Glasses"
     static let description = IntentDescription("Opens AD Glasses and starts a voice Ask turn.")
-    static var openAppWhenRun = true
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     func perform() async throws -> some IntentResult {
         ADPendingSystemActionStore.enqueue(.ask)
@@ -218,7 +218,7 @@ struct AskADGlassesIntent: AppIntent {
 struct TakeADGlassesPhotoIntent: AppIntent {
     static let title: LocalizedStringResource = "Take AD Glasses Photo"
     static let description = IntentDescription("Takes a photo using the connected AD Glasses.")
-    static var openAppWhenRun = true
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     func perform() async throws -> some IntentResult {
         ADPendingSystemActionStore.enqueue(.photo)
@@ -229,7 +229,7 @@ struct TakeADGlassesPhotoIntent: AppIntent {
 struct ToggleADGlassesVideoIntent: AppIntent {
     static let title: LocalizedStringResource = "Toggle AD Glasses Video"
     static let description = IntentDescription("Starts or stops video recording on AD Glasses.")
-    static var openAppWhenRun = true
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     func perform() async throws -> some IntentResult {
         ADPendingSystemActionStore.enqueue(.video)
@@ -240,7 +240,7 @@ struct ToggleADGlassesVideoIntent: AppIntent {
 struct ToggleADGlassesAudioIntent: AppIntent {
     static let title: LocalizedStringResource = "Toggle AD Glasses Audio"
     static let description = IntentDescription("Starts or stops audio recording on AD Glasses.")
-    static var openAppWhenRun = true
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     func perform() async throws -> some IntentResult {
         ADPendingSystemActionStore.enqueue(.audio)
