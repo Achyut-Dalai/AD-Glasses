@@ -12,10 +12,11 @@ import CoreAILanguageModels
 /// availability branch. Model preparation/download failures stay inside the SpeechAnalyzer lifecycle
 /// instead of silently switching engines.
 enum AppleSpeechTranscriber {
-    /// Assistant voice input is an English product surface today. Do not inherit `Locale.current`:
-    /// a device region such as India can otherwise silently select en-IN and force a different
-    /// speech asset than the app actually intends to use.
-    static let assistantLocale = Locale(identifier: "en-US")
+    /// AD's Assistant is an English surface, but the primary user/device locale is India. Use the
+    /// English-India SpeechAnalyzer asset explicitly instead of inheriting Locale.current or forcing
+    /// en-US. This improves recognition of Indian names, pronunciation, and accent without changing
+    /// the language of the Assistant response.
+    static let assistantLocale = Locale(identifier: "en-IN")
 
     @MainActor
     static func make(locale: Locale = assistantLocale) -> any SpeechTranscribing {
@@ -51,8 +52,12 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
     init(locale: Locale) {
         let base = SpeechAnalyzerTranscriber(locale: locale)
         self.base = base
-        engineName = base.engineName
-        snapshot = base.snapshot
+        engineName = Self.engineName(base: base.engineName, locale: locale)
+        snapshot = SpeechTranscriptionSnapshot(
+            transcript: base.snapshot.transcript,
+            isRunning: base.snapshot.isRunning,
+            engineName: engineName
+        )
 
         base.onUpdate = { [weak self] next in
             self?.consumeBaseUpdate(next)
@@ -67,7 +72,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         inputMode = nil
         try await base.start()
         inputMode = .phone
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func stop() async {
@@ -77,6 +82,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
             await finishPendingTerminalRepair()
         } else {
             inputMode = nil
+            snapshot = productSnapshot(base.snapshot)
         }
     }
 
@@ -84,7 +90,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         terminalRepairTask?.cancel()
         terminalRepairTask = nil
         base.resetTranscript()
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func startExternalAudio() async throws {
@@ -92,7 +98,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         inputMode = nil
         try await base.startExternalAudio()
         inputMode = .externalGlassesPCM
-        snapshot = base.snapshot
+        snapshot = productSnapshot(base.snapshot)
     }
 
     func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
@@ -110,7 +116,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         // AppModel therefore never sees an uncorrected terminal transcript followed by a second
         // corrected terminal transcript, which could otherwise execute two different actions.
         guard inputMode == .externalGlassesPCM, !next.isRunning else {
-            snapshot = next
+            snapshot = productSnapshot(next)
             return
         }
 
@@ -122,7 +128,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
             snapshot = SpeechTranscriptionSnapshot(
                 transcript: repaired,
                 isRunning: false,
-                engineName: next.engineName
+                engineName: engineName
             )
             inputMode = nil
             terminalRepairTask = nil
@@ -132,6 +138,29 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
     private func finishPendingTerminalRepair() async {
         let task = terminalRepairTask
         await task?.value
+    }
+
+    private func productSnapshot(_ baseSnapshot: SpeechTranscriptionSnapshot) -> SpeechTranscriptionSnapshot {
+        SpeechTranscriptionSnapshot(
+            transcript: baseSnapshot.transcript,
+            isRunning: baseSnapshot.isRunning,
+            engineName: engineName
+        )
+    }
+
+    private static func engineName(base: String, locale: Locale) -> String {
+        let localeName = locale.identifier.replacingOccurrences(of: "_", with: "-")
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+        let modelURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CoreAIModels", isDirectory: true)
+            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
+        let router = FileManager.default.fileExists(atPath: modelURL.path)
+            ? "Qwen3 0.6B router ready"
+            : "Qwen3 router not staged"
+#else
+        let router = "Qwen3 router not linked"
+#endif
+        return "\(base) · \(localeName) · \(router)"
     }
 }
 
