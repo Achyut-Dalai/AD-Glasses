@@ -14,7 +14,7 @@ enum SpeechInputAudioSession {
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.duckOthers, .allowBluetoothHFP]
+            options: [.duckOthers, .allowBluetoothHFP, .defaultToSpeaker]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
