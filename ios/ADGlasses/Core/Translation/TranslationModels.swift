@@ -1,7 +1,6 @@
 @preconcurrency import AVFoundation
 import Combine
 import Foundation
-import NaturalLanguage
 
 struct TextTranslationResult: Equatable, Sendable {
     let sourceText: String
@@ -122,25 +121,10 @@ enum LiveTranslationEngine: String, CaseIterable, Identifiable, Sendable {
 
 enum GroqWhisperModel: String, CaseIterable, Identifiable, Sendable {
     case largeV3 = "whisper-large-v3"
-    case largeV3Turbo = "whisper-large-v3-turbo"
 
     var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .largeV3: return "Whisper Large V3"
-        case .largeV3Turbo: return "Whisper Large V3 Turbo"
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .largeV3:
-            return "Direct multilingual audio → English translation. Best accuracy for difficult audio."
-        case .largeV3Turbo:
-            return "Fast multilingual transcription, then English translation. Falls back to Large V3 direct translation when needed."
-        }
-    }
+    var displayName: String { "Whisper Large V3" }
+    var detail: String { "Direct multilingual audio → English translation with a separate source transcript." }
 }
 
 enum GroqSpeechTranslationError: LocalizedError, Sendable {
@@ -166,6 +150,45 @@ enum GroqSpeechTranslationError: LocalizedError, Sendable {
     }
 }
 
+struct GroqSpeechSegment: Sendable {
+    let averageLogProbability: Double?
+    let noSpeechProbability: Double?
+}
+
+struct GroqSpeechResult: Sendable {
+    let text: String
+    let language: String?
+    let segments: [GroqSpeechSegment]
+
+    /// App-side guard against Whisper hallucinating a phrase from silence/background noise.
+    /// Groq exposes these values as diagnostics rather than prescribing universal thresholds, so
+    /// keep this deliberately conservative and let any credible segment admit the utterance.
+    var containsCredibleSpeech: Bool {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard !segments.isEmpty else { return true }
+
+        return segments.contains { segment in
+            let speechProbabilityIsCredible = segment.noSpeechProbability.map { $0 < 0.65 } ?? true
+            let recognitionIsCredible = segment.averageLogProbability.map { $0 > -1.2 } ?? true
+            return speechProbabilityIsCredible && recognitionIsCredible
+        }
+    }
+}
+
+struct LiveTranslationTurn: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let sourceText: String
+    let englishText: String
+    let createdAt: Date
+
+    init(sourceText: String, englishText: String, createdAt: Date = Date()) {
+        id = UUID()
+        self.sourceText = sourceText
+        self.englishText = englishText
+        self.createdAt = createdAt
+    }
+}
+
 struct GroqAudioTranslationClient: Sendable {
     private let session: URLSession
 
@@ -177,7 +200,7 @@ struct GroqAudioTranslationClient: Sendable {
         audioURL: URL,
         credential: String,
         model: GroqWhisperModel = .largeV3
-    ) async throws -> String {
+    ) async throws -> GroqSpeechResult {
         try await request(
             path: "/audio/translations",
             audioURL: audioURL,
@@ -190,9 +213,9 @@ struct GroqAudioTranslationClient: Sendable {
     func transcribe(
         audioURL: URL,
         credential: String,
-        model: GroqWhisperModel,
+        model: GroqWhisperModel = .largeV3,
         language: String? = nil
-    ) async throws -> String {
+    ) async throws -> GroqSpeechResult {
         try await request(
             path: "/audio/transcriptions",
             audioURL: audioURL,
@@ -208,7 +231,7 @@ struct GroqAudioTranslationClient: Sendable {
         credential: String,
         model: GroqWhisperModel,
         language: String?
-    ) async throws -> String {
+    ) async throws -> GroqSpeechResult {
         let key = credential.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { throw GroqSpeechTranslationError.missingCredential }
         guard let url = URL(string: "https://api.groq.com/openai/v1" + path) else {
@@ -221,7 +244,7 @@ struct GroqAudioTranslationClient: Sendable {
         let boundary = "ADGlasses-\(UUID().uuidString)"
         var body = Data()
         body.appendMultipartField(name: "model", value: model.rawValue, boundary: boundary)
-        body.appendMultipartField(name: "response_format", value: "json", boundary: boundary)
+        body.appendMultipartField(name: "response_format", value: "verbose_json", boundary: boundary)
         body.appendMultipartField(name: "temperature", value: "0", boundary: boundary)
         if let language, !language.isEmpty {
             body.appendMultipartField(name: "language", value: language, boundary: boundary)
@@ -258,7 +281,24 @@ struct GroqAudioTranslationClient: Sendable {
               !text.isEmpty else {
             throw GroqSpeechTranslationError.invalidResponse
         }
-        return text
+
+        let segments = (root["segments"] as? [[String: Any]] ?? []).map { segment in
+            GroqSpeechSegment(
+                averageLogProbability: Self.doubleValue(segment["avg_logprob"]),
+                noSpeechProbability: Self.doubleValue(segment["no_speech_prob"])
+            )
+        }
+        return GroqSpeechResult(
+            text: text,
+            language: root["language"] as? String,
+            segments: segments
+        )
+    }
+
+    private static func doubleValue(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let value = value as? Double { return value }
+        return nil
     }
 
     private static func errorMessage(from data: Data, statusCode: Int) -> String {
@@ -284,26 +324,30 @@ final class GroqLiveTranslationController: ObservableObject {
     @Published private(set) var statusMessage = "Ready"
     @Published private(set) var lastSourceText = ""
     @Published private(set) var lastTranslation = ""
+    @Published private(set) var recentTurns: [LiveTranslationTurn] = []
     @Published private(set) var inputRouteName: String?
     @Published private(set) var errorMessage: String?
 
     private let client = GroqAudioTranslationClient()
-    private weak var appleTranslation: NativeTranslationController?
     private weak var speechOutput: SpeechOutputController?
     private var recorder: AVAudioRecorder?
     private var recorderURL: URL?
     private var monitorTask: Task<Void, Never>?
     private var model: GroqWhisperModel = .largeV3
     private var credential = ""
+    private var sourceLanguageCode: String?
     private var heardSpeech = false
+    private var candidateSpeechFrames = 0
     private var lastSpeechAt: Date?
     private var recordingStartedAt: Date?
 
-    // Metering is deliberately forgiving because the glasses/HFP microphone can be quiet. The
-    // maximum turn duration is the safety net in noisy environments where silence never settles.
+    // Live Translation is intentionally half-duplex. We capture one isolated phrase, close the
+    // microphone, let Whisper transcribe/translate that file, speak the result, and only then open
+    // a fresh recorder. This makes acoustic echo structurally impossible instead of heuristic.
     private let speechPowerThreshold: Float = -48
-    private let endSilenceSeconds: TimeInterval = 1.0
-    private let minimumTurnSeconds: TimeInterval = 0.55
+    private let requiredSpeechFrames = 3
+    private let endSilenceSeconds: TimeInterval = 1.25
+    private let minimumTurnSeconds: TimeInterval = 0.8
     private let maximumTurnSeconds: TimeInterval = 14
     private let idleRecycleSeconds: TimeInterval = 25
 
@@ -311,7 +355,7 @@ final class GroqLiveTranslationController: ObservableObject {
     func start(
         model: GroqWhisperModel,
         credential: String,
-        appleTranslation: NativeTranslationController,
+        sourceLanguageCode: String? = nil,
         speechOutput: SpeechOutputController
     ) async -> Bool {
         if isRunning { return true }
@@ -335,16 +379,17 @@ final class GroqLiveTranslationController: ObservableObject {
 
         self.model = model
         self.credential = key
-        self.appleTranslation = appleTranslation
+        self.sourceLanguageCode = Self.normalizedLanguageCode(sourceLanguageCode)
         self.speechOutput = speechOutput
         errorMessage = nil
         lastSourceText = ""
         lastTranslation = ""
+        recentTurns = []
         isRunning = true
 
         do {
             try startRecorder()
-            statusMessage = "Listening — auto-detecting language"
+            statusMessage = listeningStatus
             startMonitor()
             return true
         } catch {
@@ -362,12 +407,13 @@ final class GroqLiveTranslationController: ObservableObject {
         recorder = nil
         removeRecorderFile()
         heardSpeech = false
+        candidateSpeechFrames = 0
         lastSpeechAt = nil
         recordingStartedAt = nil
         speechOutput?.stop()
-        appleTranslation = nil
         speechOutput = nil
         credential = ""
+        sourceLanguageCode = nil
         inputRouteName = nil
         statusMessage = "Ready"
         SpeechInputAudioSession.deactivate()
@@ -396,6 +442,7 @@ final class GroqLiveTranslationController: ObservableObject {
         self.recorder = recorder
         recorderURL = url
         heardSpeech = false
+        candidateSpeechFrames = 0
         lastSpeechAt = nil
         recordingStartedAt = Date()
         inputRouteName = AVAudioSession.sharedInstance().currentRoute.inputs.first?.portName
@@ -419,9 +466,19 @@ final class GroqLiveTranslationController: ObservableObject {
                 let now = Date()
                 let elapsed = now.timeIntervalSince(started)
                 let power = recorder.averagePower(forChannel: 0)
+
                 if power >= speechPowerThreshold {
-                    heardSpeech = true
-                    lastSpeechAt = now
+                    if heardSpeech {
+                        lastSpeechAt = now
+                    } else {
+                        candidateSpeechFrames += 1
+                        if candidateSpeechFrames >= requiredSpeechFrames {
+                            heardSpeech = true
+                            lastSpeechAt = now
+                        }
+                    }
+                } else if !heardSpeech {
+                    candidateSpeechFrames = 0
                 }
 
                 if heardSpeech {
@@ -452,111 +509,117 @@ final class GroqLiveTranslationController: ObservableObject {
         self.recorder = nil
         recorderURL = nil
         heardSpeech = false
+        candidateSpeechFrames = 0
         lastSpeechAt = nil
         recordingStartedAt = nil
 
+        // Recording is finished before any network request or speech begins. Release HFP now so TTS
+        // can later open a clean media-playback route to the glasses instead of sharing a mic route.
+        SpeechInputAudioSession.deactivate()
+
         defer { try? FileManager.default.removeItem(at: audioURL) }
-        guard (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) ?? 0 > 1_500 else {
-            await resumeRecording()
+        let fileSize = (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard fileSize > 1_500 else {
+            await resumeListening()
             return
         }
 
-        statusMessage = model == .largeV3
-            ? "Whisper Large V3 → English…"
-            : "Whisper Turbo transcribing…"
         errorMessage = nil
+        statusMessage = "Whisper Large V3 transcribing…"
 
         do {
+            let transcription = try await client.transcribe(
+                audioURL: audioURL,
+                credential: credential,
+                model: model,
+                language: sourceLanguageCode
+            )
+            try Task.checkCancellation()
+            guard isRunning else { return }
+
+            guard transcription.containsCredibleSpeech else {
+                statusMessage = "Noise ignored"
+                await resumeListening()
+                return
+            }
+
+            let sourceText = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !sourceText.isEmpty else {
+                await resumeListening()
+                return
+            }
+            lastSourceText = sourceText
+            lastTranslation = ""
+
             let english: String
-            switch model {
-            case .largeV3:
-                lastSourceText = ""
+            if sourceLanguageCode.map(Self.languageBase) == "en" {
+                english = sourceText
+            } else {
+                // Groq mode means Groq/Whisper owns translation. Apple Translation is deliberately
+                // not part of this path. The same isolated audio file is sent to Whisper's direct
+                // audio→English translation endpoint regardless of whether the source was fixed or
+                // Auto Detect.
+                statusMessage = "Whisper Large V3 translating to English…"
                 english = try await client.translateToEnglish(
                     audioURL: audioURL,
                     credential: credential,
                     model: .largeV3
-                )
-
-            case .largeV3Turbo:
-                let sourceText = try await client.transcribe(
-                    audioURL: audioURL,
-                    credential: credential,
-                    model: .largeV3Turbo
-                )
-                try Task.checkCancellation()
-                lastSourceText = sourceText
-
-                if Self.isLikelyEnglish(sourceText) {
-                    english = sourceText
-                } else if let appleTranslation {
-                    do {
-                        statusMessage = "Translating transcript to English…"
-                        let result = try await appleTranslation.translate(
-                            sourceText,
-                            from: nil,
-                            to: Locale.Language(identifier: "en")
-                        )
-                        english = result.translatedText
-                    } catch {
-                        // Groq's public capability documentation has historically differed between
-                        // the generic API schema and its model capability table for Turbo translation.
-                        // Do not depend on an ambiguous behavior: if text translation cannot finish,
-                        // use the documented Large V3 direct audio→English path with the same audio.
-                        statusMessage = "Using Large V3 translation fallback…"
-                        english = try await client.translateToEnglish(
-                            audioURL: audioURL,
-                            credential: credential,
-                            model: .largeV3
-                        )
-                    }
-                } else {
-                    english = try await client.translateToEnglish(
-                        audioURL: audioURL,
-                        credential: credential,
-                        model: .largeV3
-                    )
-                }
+                ).text
             }
 
             try Task.checkCancellation()
             guard isRunning else { return }
             let cleanEnglish = english.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleanEnglish.isEmpty else { throw GroqSpeechTranslationError.invalidResponse }
+
             lastTranslation = cleanEnglish
+            recentTurns.insert(
+                LiveTranslationTurn(sourceText: sourceText, englishText: cleanEnglish),
+                at: 0
+            )
+            if recentTurns.count > 12 {
+                recentTurns.removeLast(recentTurns.count - 12)
+            }
 
             if let speechOutput {
                 statusMessage = "Speaking English…"
-                try SpeechInputAudioSession.activate()
                 try speechOutput.speak(
                     cleanEnglish,
                     languageCode: "en",
-                    audioSessionPolicy: .reuseCurrentSession
+                    audioSessionPolicy: .managedPlayback
                 )
                 while speechOutput.isSpeaking {
                     try Task.checkCancellation()
                     try await Task.sleep(for: .milliseconds(80))
                 }
             }
+
+            await resumeListening()
         } catch is CancellationError {
             return
         } catch {
             errorMessage = error.localizedDescription
+            await resumeListening()
         }
-
-        guard isRunning, !Task.isCancelled else { return }
-        await resumeRecording()
     }
 
-    private func resumeRecording() async {
-        guard isRunning else { return }
+    private func resumeListening() async {
+        guard isRunning, !Task.isCancelled else { return }
         do {
             try SpeechInputAudioSession.activate()
             try startRecorder()
-            statusMessage = "Listening — auto-detecting language"
+            statusMessage = listeningStatus
         } catch {
             errorMessage = error.localizedDescription
             await stop()
         }
+    }
+
+    private var listeningStatus: String {
+        guard let sourceLanguageCode else {
+            return "Listening — Auto Detect"
+        }
+        return "Listening — \(Self.languageName(sourceLanguageCode))"
     }
 
     private func removeRecorderFile() {
@@ -565,16 +628,19 @@ final class GroqLiveTranslationController: ObservableObject {
         self.recorderURL = nil
     }
 
-    private static func isLikelyEnglish(_ text: String) -> Bool {
-        guard text.count >= 3 else { return false }
-        let recognizer = NLLanguageRecognizer()
-        recognizer.processString(text)
-        let hypotheses = recognizer.languageHypotheses(withMaximum: 3)
-        let english = hypotheses
-            .filter { $0.key == .english }
-            .map(\.value)
-            .max() ?? 0
-        return english >= 0.60
+    private static func normalizedLanguageCode(_ code: String?) -> String? {
+        guard let code else { return nil }
+        let value = code.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return value.isEmpty ? nil : languageBase(value)
+    }
+
+    private static func languageBase(_ code: String) -> String {
+        let normalized = code.replacingOccurrences(of: "_", with: "-").lowercased()
+        return normalized.split(separator: "-").first.map(String.init) ?? normalized
+    }
+
+    private static func languageName(_ code: String) -> String {
+        Locale.current.localizedString(forLanguageCode: languageBase(code)) ?? code
     }
 }
 
