@@ -57,6 +57,7 @@ final class HeyCyanMediaTransferCoordinator {
     private let media: HeyCyanMediaClient
     private let responseDecoder = HeyCyanResponseDecoder()
     private var activeAccessPoint: HeyCyanAccessPoint?
+    private var lastKnownItems = [HeyCyanMediaItem]()
     private var activeOperationID: UUID?
     private var reportedDeviceIPv4Address: String?
     private var reportedNetworkError: Int?
@@ -92,6 +93,7 @@ final class HeyCyanMediaTransferCoordinator {
         do {
             reportedDeviceIPv4Address = nil
             reportedNetworkError = nil
+            lastKnownItems = []
 
             // Preserve the physically validated sync path: ask the glasses to enter their media
             // AP mode first, then move to Wi-Fi and inspect media.config over HTTP. A speculative
@@ -148,6 +150,7 @@ final class HeyCyanMediaTransferCoordinator {
                 timeout: readinessTimeout,
                 operationID: operationID
             )
+            lastKnownItems = items
             if items.isEmpty {
                 // An empty manifest is a successful check. Immediately return the glasses to their
                 // normal transport state rather than leaving an empty transfer session alive.
@@ -174,6 +177,7 @@ final class HeyCyanMediaTransferCoordinator {
         do {
             let items = try await media.mediaList(on: activeAccessPoint)
             try ensureOperationIsActive(operationID)
+            lastKnownItems = items
             state = .ready(items: items)
             return items
         } catch {
@@ -212,8 +216,14 @@ final class HeyCyanMediaTransferCoordinator {
                 total: 1,
                 subtitle: "Finishing \(item.fileName)"
             )
-            let items = try await media.mediaList(on: activeAccessPoint)
-            state = .ready(items: items)
+
+            // A sync batch owns one glasses Wi-Fi association. Do not re-fetch media.config after
+            // every successful file: that extra request is not needed to finish the downloaded
+            // item, and a transient manifest failure used to run recoverTransferMode(), dropping
+            // the hotspot in the middle of a multi-file sync. Keep the manifest captured during
+            // prepare()/refresh() as local batch state and leave transport teardown to finish().
+            lastKnownItems.removeAll { $0.id == item.id }
+            state = .ready(items: lastKnownItems)
             continuedWorkSucceeded = true
         } catch {
             recoverTransferMode(sendBluetoothFinish: true)
@@ -229,6 +239,7 @@ final class HeyCyanMediaTransferCoordinator {
         defer {
             wifi.leave()
             activeAccessPoint = nil
+            lastKnownItems = []
         }
 
         do {
@@ -249,6 +260,7 @@ final class HeyCyanMediaTransferCoordinator {
         finishManualNetworkJoin(with: .failure(CancellationError()))
         wifi.leave()
         activeAccessPoint = nil
+        lastKnownItems = []
         state = .idle
     }
 
@@ -468,6 +480,7 @@ final class HeyCyanMediaTransferCoordinator {
         finishManualNetworkJoin(with: .failure(CancellationError()))
         wifi.leave()
         activeAccessPoint = nil
+        lastKnownItems = []
 
         guard sendBluetoothFinish, session.state.isReady else { return }
         try? session.writeForCleanup(.finishMediaTransfer)
