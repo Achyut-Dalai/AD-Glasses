@@ -190,7 +190,7 @@ private struct LiveTranslateExperience: View {
             .buttonStyle(.plain)
             .disabled(isLiveRunning)
 
-            Text("AD first transcribes the isolated speech turn so you can verify what Whisper heard, then translates that transcript to English. Fixed language hints improve supported-language recognition. Whisper does not expose a fixed Odia/Oriya language token, so Odia must use Auto Detect and may be less reliable.")
+            Text("AD first transcribes each isolated speech turn so you can verify what Whisper heard, then translates that transcript to English. Fixed language hints improve supported-language recognition. Whisper does not expose a fixed Odia/Oriya language token, so Odia must use Auto Detect and may be less reliable.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -282,7 +282,7 @@ private struct LiveTranslateExperience: View {
                 }
 
                 Text(selectedEngine == .groq
-                     ? "AD records one fresh spoken turn, ignores low-confidence/no-speech turns, shows the recognized source text, speaks the English result, then starts a new recording. Previous audio is not appended to the next turn."
+                     ? "AD keeps listening while the previous phrase is being translated or spoken. Each completed turn is sent as its own audio file; old turns are never appended to a new Whisper request. Strong speech can interrupt English playback, and playback-only audio is discarded before the next clean turn."
                      : "AD transcribes and translates each completed utterance on the iPhone, speaks the English result, then resumes listening.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -329,6 +329,18 @@ private struct LiveTranslateExperience: View {
                         Text("Listening through \(inputRouteName)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+                }
+
+                if isLiveRunning {
+                    HStack(spacing: 8) {
+                        Image(systemName: app.speechOutput.outputRouteIsBluetooth
+                              ? "headphones"
+                              : "speaker.wave.2")
+                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? .green : .orange)
+                        Text("English output: \(app.speechOutput.outputRouteName)")
+                            .font(.footnote)
+                            .foregroundStyle(app.speechOutput.outputRouteIsBluetooth ? .secondary : .orange)
                     }
                 }
 
