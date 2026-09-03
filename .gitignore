@@ -49,6 +49,10 @@ firmware_dump/
 DerivedData/
 Pods/
 QCSDK.framework/
+# Core AI exports are generated locally and can be hundreds of MB.
+ios/.coreai/
+*.aimodel
+*.aimodelc/
 
 # Device data dumps
 com.glasssutdio.wear/
