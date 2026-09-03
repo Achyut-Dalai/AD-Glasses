@@ -122,25 +122,10 @@ enum LiveTranslationEngine: String, CaseIterable, Identifiable, Sendable {
 
 enum GroqWhisperModel: String, CaseIterable, Identifiable, Sendable {
     case largeV3 = "whisper-large-v3"
-    case largeV3Turbo = "whisper-large-v3-turbo"
 
     var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .largeV3: return "Whisper Large V3"
-        case .largeV3Turbo: return "Whisper Large V3 Turbo"
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .largeV3:
-            return "Accuracy-oriented multilingual transcription with English translation fallback."
-        case .largeV3Turbo:
-            return "Fast multilingual transcription with Large V3 English translation fallback."
-        }
-    }
+    var displayName: String { "Whisper Large V3" }
+    var detail: String { "Accuracy-oriented multilingual transcription with English translation fallback." }
 }
 
 enum GroqSpeechTranslationError: LocalizedError, Sendable {
@@ -191,6 +176,20 @@ struct GroqSpeechResult: Sendable {
     }
 }
 
+struct LiveTranslationTurn: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let sourceText: String
+    let englishText: String
+    let createdAt: Date
+
+    init(sourceText: String, englishText: String, createdAt: Date = Date()) {
+        id = UUID()
+        self.sourceText = sourceText
+        self.englishText = englishText
+        self.createdAt = createdAt
+    }
+}
+
 struct GroqAudioTranslationClient: Sendable {
     private let session: URLSession
 
@@ -215,7 +214,7 @@ struct GroqAudioTranslationClient: Sendable {
     func transcribe(
         audioURL: URL,
         credential: String,
-        model: GroqWhisperModel,
+        model: GroqWhisperModel = .largeV3,
         language: String? = nil
     ) async throws -> GroqSpeechResult {
         try await request(
@@ -326,6 +325,7 @@ final class GroqLiveTranslationController: ObservableObject {
     @Published private(set) var statusMessage = "Ready"
     @Published private(set) var lastSourceText = ""
     @Published private(set) var lastTranslation = ""
+    @Published private(set) var recentTurns: [LiveTranslationTurn] = []
     @Published private(set) var inputRouteName: String?
     @Published private(set) var errorMessage: String?
 
@@ -335,6 +335,8 @@ final class GroqLiveTranslationController: ObservableObject {
     private var recorder: AVAudioRecorder?
     private var recorderURL: URL?
     private var monitorTask: Task<Void, Never>?
+    private var processingTask: Task<Void, Never>?
+    private var pendingAudioURLs: [URL] = []
     private var model: GroqWhisperModel = .largeV3
     private var credential = ""
     private var sourceLanguageCode: String?
@@ -342,6 +344,7 @@ final class GroqLiveTranslationController: ObservableObject {
     private var candidateSpeechFrames = 0
     private var lastSpeechAt: Date?
     private var recordingStartedAt: Date?
+    private var lastSpokenEnglish = ""
 
     // A single loud meter sample used to be enough to submit a turn, which let camera clicks,
     // handling noise, or room transients reach Whisper. Require sustained speech-like energy while
@@ -352,6 +355,7 @@ final class GroqLiveTranslationController: ObservableObject {
     private let minimumTurnSeconds: TimeInterval = 0.8
     private let maximumTurnSeconds: TimeInterval = 14
     private let idleRecycleSeconds: TimeInterval = 25
+    private let maximumQueuedTurns = 8
 
     @discardableResult
     func start(
@@ -388,6 +392,9 @@ final class GroqLiveTranslationController: ObservableObject {
         errorMessage = nil
         lastSourceText = ""
         lastTranslation = ""
+        recentTurns = []
+        pendingAudioURLs.removeAll()
+        lastSpokenEnglish = ""
         isRunning = true
 
         do {
@@ -406,9 +413,15 @@ final class GroqLiveTranslationController: ObservableObject {
         isRunning = false
         monitorTask?.cancel()
         monitorTask = nil
+        processingTask?.cancel()
+        processingTask = nil
         recorder?.stop()
         recorder = nil
         removeRecorderFile()
+        for url in pendingAudioURLs {
+            try? FileManager.default.removeItem(at: url)
+        }
+        pendingAudioURLs.removeAll()
         heardSpeech = false
         candidateSpeechFrames = 0
         lastSpeechAt = nil
@@ -418,6 +431,7 @@ final class GroqLiveTranslationController: ObservableObject {
         speechOutput = nil
         credential = ""
         sourceLanguageCode = nil
+        lastSpokenEnglish = ""
         inputRouteName = nil
         statusMessage = "Ready"
         SpeechInputAudioSession.deactivate()
@@ -489,7 +503,7 @@ final class GroqLiveTranslationController: ObservableObject {
                     let silence = lastSpeechAt.map { now.timeIntervalSince($0) } ?? 0
                     if (silence >= endSilenceSeconds && elapsed >= minimumTurnSeconds) ||
                         elapsed >= maximumTurnSeconds {
-                        await finishCurrentTurn()
+                        await finishCaptureTurn()
                     }
                 } else if elapsed >= idleRecycleSeconds {
                     recorder.stop()
@@ -507,7 +521,10 @@ final class GroqLiveTranslationController: ObservableObject {
         }
     }
 
-    private func finishCurrentTurn() async {
+    /// Close only the finished capture and immediately open the next recorder. Network inference,
+    /// Apple Translation, and TTS happen on a separate serial processing task, so nearby speech is
+    /// still captured while the previous phrase is being translated or spoken.
+    private func finishCaptureTurn() async {
         guard isRunning, let recorder, let audioURL = recorderURL else { return }
         recorder.stop()
         self.recorder = nil
@@ -517,13 +534,55 @@ final class GroqLiveTranslationController: ObservableObject {
         lastSpeechAt = nil
         recordingStartedAt = nil
 
-        defer { try? FileManager.default.removeItem(at: audioURL) }
-        guard (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) ?? 0 > 1_500 else {
-            await resumeRecording()
+        let fileSize = (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+
+        do {
+            try startRecorder()
+        } catch {
+            try? FileManager.default.removeItem(at: audioURL)
+            errorMessage = error.localizedDescription
+            await stop()
             return
         }
 
-        statusMessage = "\(model.displayName) transcribing…"
+        guard fileSize > 1_500 else {
+            try? FileManager.default.removeItem(at: audioURL)
+            return
+        }
+
+        if pendingAudioURLs.count >= maximumQueuedTurns {
+            // Keep the newest speech rather than letting a stalled network create an unbounded
+            // memory/disk queue. The discarded turn is explicit in status instead of being mixed
+            // with another audio file.
+            let dropped = pendingAudioURLs.removeFirst()
+            try? FileManager.default.removeItem(at: dropped)
+            errorMessage = "Live Translation fell behind and skipped one older phrase."
+        }
+        pendingAudioURLs.append(audioURL)
+        statusMessage = pendingAudioURLs.count > 1
+            ? "Listening · \(pendingAudioURLs.count) phrases queued"
+            : "Listening · translating previous phrase"
+        startProcessingQueueIfNeeded()
+    }
+
+    private func startProcessingQueueIfNeeded() {
+        guard processingTask == nil else { return }
+        processingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            while isRunning, !Task.isCancelled, !pendingAudioURLs.isEmpty {
+                let audioURL = pendingAudioURLs.removeFirst()
+                await processCapturedTurn(audioURL)
+            }
+            processingTask = nil
+            if isRunning, !Task.isCancelled {
+                statusMessage = listeningStatus
+            }
+        }
+    }
+
+    private func processCapturedTurn(_ audioURL: URL) async {
+        defer { try? FileManager.default.removeItem(at: audioURL) }
+        statusMessage = "Whisper Large V3 transcribing · still listening"
         errorMessage = nil
 
         do {
@@ -536,20 +595,26 @@ final class GroqLiveTranslationController: ObservableObject {
             try Task.checkCancellation()
             guard isRunning else { return }
 
-            // Do not turn silence into UI text, translation, or TTS. The recorder file for this
-            // turn is unique and is deleted below; prior turns are never appended to this request.
+            // Do not turn silence into UI text, translation, or TTS. Every queued file represents
+            // exactly one isolated capture; prior audio is never appended to this request.
             guard transcription.containsCredibleSpeech else {
-                statusMessage = "Noise ignored — listening"
-                try? await Task.sleep(for: .milliseconds(200))
-                await resumeRecording()
+                statusMessage = "Noise ignored · still listening"
                 return
             }
 
             let sourceText = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !sourceText.isEmpty else {
-                await resumeRecording()
+            guard !sourceText.isEmpty else { return }
+
+            // Voice-chat mode provides system echo cancellation, but keep a second app-side guard
+            // for Auto Detect. If Whisper hears only AD's just-spoken English answer, do not feed it
+            // back into the translator as a new user utterance.
+            if sourceLanguageCode == nil,
+               Self.isLikelyEnglish(sourceText),
+               Self.isLikelySelfEcho(sourceText, of: lastSpokenEnglish) {
+                statusMessage = "AD speech echo ignored · still listening"
                 return
             }
+
             lastSourceText = sourceText
             lastTranslation = ""
 
@@ -559,7 +624,7 @@ final class GroqLiveTranslationController: ObservableObject {
                 english = sourceText
             } else if let appleTranslation {
                 do {
-                    statusMessage = "Translating transcript to English…"
+                    statusMessage = "Translating transcript to English · still listening"
                     let sourceLanguage = sourceLanguageCode.map { Locale.Language(identifier: $0) }
                     let result = try await appleTranslation.translate(
                         sourceText,
@@ -573,7 +638,7 @@ final class GroqLiveTranslationController: ObservableObject {
                     // Some Whisper languages are not available as an Apple Translation pair. Keep
                     // the accurate source transcript, then fall back to Large V3's documented
                     // direct audio→English translation path for the same isolated audio turn.
-                    statusMessage = "Using Whisper English translation fallback…"
+                    statusMessage = "Whisper translating to English · still listening"
                     english = try await client.translateToEnglish(
                         audioURL: audioURL,
                         credential: credential,
@@ -593,9 +658,17 @@ final class GroqLiveTranslationController: ObservableObject {
             let cleanEnglish = english.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleanEnglish.isEmpty else { throw GroqSpeechTranslationError.invalidResponse }
             lastTranslation = cleanEnglish
+            recentTurns.insert(
+                LiveTranslationTurn(sourceText: sourceText, englishText: cleanEnglish),
+                at: 0
+            )
+            if recentTurns.count > 12 {
+                recentTurns.removeLast(recentTurns.count - 12)
+            }
 
             if let speechOutput {
-                statusMessage = "Speaking English…"
+                lastSpokenEnglish = cleanEnglish
+                statusMessage = "Speaking English · still listening"
                 try SpeechInputAudioSession.activate()
                 try speechOutput.speak(
                     cleanEnglish,
@@ -611,21 +684,6 @@ final class GroqLiveTranslationController: ObservableObject {
             return
         } catch {
             errorMessage = error.localizedDescription
-        }
-
-        guard isRunning, !Task.isCancelled else { return }
-        await resumeRecording()
-    }
-
-    private func resumeRecording() async {
-        guard isRunning else { return }
-        do {
-            try SpeechInputAudioSession.activate()
-            try startRecorder()
-            statusMessage = listeningStatus
-        } catch {
-            errorMessage = error.localizedDescription
-            await stop()
         }
     }
 
@@ -667,6 +725,26 @@ final class GroqLiveTranslationController: ObservableObject {
             .map(\.value)
             .max() ?? 0
         return english >= 0.60
+    }
+
+    private static func isLikelySelfEcho(_ text: String, of spoken: String) -> Bool {
+        let lhs = normalizedWords(text)
+        let rhs = normalizedWords(spoken)
+        guard !lhs.isEmpty, !rhs.isEmpty else { return false }
+        if lhs == rhs { return true }
+
+        let left = Set(lhs)
+        let right = Set(rhs)
+        let overlap = left.intersection(right).count
+        let denominator = max(left.count, right.count)
+        guard denominator > 0 else { return false }
+        return Double(overlap) / Double(denominator) >= 0.78
+    }
+
+    private static func normalizedWords(_ value: String) -> [String] {
+        value.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
     }
 }
 
