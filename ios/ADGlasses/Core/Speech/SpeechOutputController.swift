@@ -60,6 +60,7 @@ enum SpeechOutputError: LocalizedError {
 final class SpeechOutputController: NSObject, ObservableObject {
     @Published private(set) var voices: [SpeechVoiceOption] = []
     @Published private(set) var isSpeaking = false
+    @Published private(set) var outputRouteName = "Not active"
     @Published var selectedVoiceIdentifier: String {
         didSet {
             guard selectedVoiceIdentifier != oldValue else { return }
@@ -89,6 +90,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
         super.init()
         synthesizer.delegate = self
         refreshVoices()
+        refreshOutputRouteName()
     }
 
     func refreshVoices() {
@@ -102,6 +104,10 @@ final class SpeechOutputController: NSObject, ObservableObject {
                 ?? ""
             return
         }
+    }
+
+    func refreshOutputRouteName() {
+        outputRouteName = audioSession.currentRoute.outputs.first?.portName ?? "No audio output"
     }
 
     func speak(
@@ -177,14 +183,14 @@ final class SpeechOutputController: NSObject, ObservableObject {
     }
 
     private func activateManagedAudioSession() throws {
-        // AD Glasses expose their speaker through the Classic Bluetooth HFP route. A `.playback`
-        // category can leave that route behind and put TTS on the iPhone instead. A finite
-        // communication session lets iOS select HFP bidirectionally; `.defaultToSpeaker` keeps a
-        // useful fallback when no HFP accessory is actually available.
+        // Important: `.defaultToSpeaker` is intentionally absent here. When HFP is available it can
+        // bias output back to the iPhone even after the Bluetooth microphone is selected. Configure
+        // an HFP-eligible communication session first; if HFP is absent, explicitly choose the
+        // iPhone speaker only as the fallback.
         try audioSession.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.allowBluetoothHFP, .defaultToSpeaker]
+            options: [.allowBluetoothHFP]
         )
         try audioSession.setActive(true)
 
@@ -192,19 +198,25 @@ final class SpeechOutputController: NSObject, ObservableObject {
             $0.portType == .bluetoothHFP
         }) {
             try audioSession.setPreferredInput(bluetoothInput)
+            try? audioSession.overrideOutputAudioPort(.none)
             ownsPreferredInput = true
         } else {
+            try? audioSession.setPreferredInput(nil)
+            try? audioSession.overrideOutputAudioPort(.speaker)
             ownsPreferredInput = false
         }
         ownsAudioSession = true
+        refreshOutputRouteName()
     }
 
     private func deactivateAudioSession() {
+        try? audioSession.overrideOutputAudioPort(.none)
         if ownsPreferredInput {
             try? audioSession.setPreferredInput(nil)
         }
         ownsPreferredInput = false
         try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        refreshOutputRouteName()
     }
 
     private func enqueue(
@@ -227,10 +239,12 @@ final class SpeechOutputController: NSObject, ObservableObject {
                     throw SpeechOutputError.audioRouteUnavailable(error.localizedDescription)
                 }
             case .reuseCurrentSession:
-                // Live Translation intentionally leaves its play-and-record/HFP route active so
-                // iOS does not bounce between media and communication volume domains each turn.
+                // Live Translation already established play-and-record/HFP. Do not overwrite that
+                // session with a speaker-biased category. Refresh the visible route so physical
+                // testing can confirm where translated speech is actually going.
                 ownsAudioSession = false
                 ownsPreferredInput = false
+                refreshOutputRouteName()
             }
         }
 
@@ -272,6 +286,8 @@ final class SpeechOutputController: NSObject, ObservableObject {
         isSpeaking = false
         if ownsAudioSession {
             deactivateAudioSession()
+        } else {
+            refreshOutputRouteName()
         }
         ownsAudioSession = false
         ownsPreferredInput = false
@@ -330,6 +346,7 @@ extension SpeechOutputController: @preconcurrency AVSpeechSynthesizerDelegate {
         guard queuedUtterances.contains(where: { $0 === utterance }) ||
                 queuedUtterances.contains(where: { $0.speechString == utterance.speechString }) else { return }
         isSpeaking = true
+        refreshOutputRouteName()
     }
 
     func speechSynthesizer(
