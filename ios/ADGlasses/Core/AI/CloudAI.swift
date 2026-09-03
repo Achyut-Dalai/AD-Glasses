@@ -1,6 +1,7 @@
 import Combine
 import CoreLocation
 import Foundation
+import MapKit
 import Security
 
 // MARK: - Cloud AI profiles
@@ -972,12 +973,15 @@ final class StructuredGroundingService {
         let coordinate: CLLocationCoordinate2D
         let label: String
         if let place = Self.weatherPlace(in: prompt) {
-            let placemarks = try await CLGeocoder().geocodeAddressString(place)
-            guard let first = placemarks.first, let value = first.location?.coordinate else {
+            guard let request = MKGeocodingRequest(addressString: place) else {
                 throw AIConfigurationError.requestFailed("The requested weather location could not be resolved.")
             }
-            coordinate = value
-            label = first.name ?? first.locality ?? place
+            let mapItems = try await request.mapItems
+            guard let first = mapItems.first else {
+                throw AIConfigurationError.requestFailed("The requested weather location could not be resolved.")
+            }
+            coordinate = first.location.coordinate
+            label = first.name ?? place
         } else {
             guard let current = await location.currentLocation() else {
                 throw AIConfigurationError.requestFailed("Local weather needs Location permission in Web & Maps settings and a current location fix.")
