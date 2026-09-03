@@ -1,7 +1,6 @@
 import SwiftUI
 import Translation
 
-@available(iOS 18.0, *)
 struct NativeTranslationHost<Content: View>: View {
     @StateObject private var controller = NativeTranslationController()
     @StateObject private var liveTranslation = LiveTranslationController()
@@ -17,10 +16,11 @@ struct NativeTranslationHost<Content: View>: View {
             .translationTask(controller.configuration) { session in
                 await controller.performPendingRequest(using: session)
             }
-            .task {
+            .task { [weak controller, weak liveTranslation] in
+                guard let controller, let liveTranslation else { return }
                 AssistantTranslationBridge.shared.install(
                     translate: { [weak controller] text, sourceLanguageCode, targetLanguageCode in
-                        guard let controller else { throw TextTranslationError.requiresIOS18 }
+                        guard let controller else { throw TextTranslationError.hostUnavailable }
                         return try await controller.translate(
                             text,
                             from: sourceLanguageCode.map { Locale.Language(identifier: $0) },
