@@ -1,9 +1,7 @@
 import AppIntents
 import BackgroundTasks
 import Combine
-#if canImport(FoundationModels)
 import FoundationModels
-#endif
 import SwiftUI
 import UIKit
 
@@ -33,7 +31,7 @@ final class AppOrientationController {
     }
 }
 
-/// Owns the iOS 26 continued-processing lease used by long user-initiated work. The actual work
+/// Owns the iOS 27 continued-processing lease used by long user-initiated work. The actual work
 /// still belongs to the feature/model that started it; this object only keeps the system task alive,
 /// reports progress, and closes it deterministically. If the scheduler can't grant a continued task,
 /// the foreground operation is still allowed to proceed normally.
@@ -83,11 +81,17 @@ final class ADContinuedProcessingCoordinator {
         // AD continued work is coupled to the foreground action that started it. Don't enqueue a
         // hardware/media job to run later after the relevant glasses session has changed.
         request.strategy = .fail
-        do {
-            try BGTaskScheduler.shared.submit(request)
-        } catch {
-            // Continued processing is an enhancement, not a prerequisite for the user action.
-            // The caller continues its foreground task and simply won't have a system lease.
+
+        // iOS 27 replaces synchronous submit(_:) with asynchronous task submission. Apple also
+        // recommends keeping submission off the main thread, so this best-effort system lease is
+        // requested independently from the user-visible foreground operation.
+        Task.detached(priority: .utility) {
+            do {
+                try await BGTaskScheduler.shared.submitTaskRequest(request)
+            } catch {
+                // Continued processing is an enhancement, not a prerequisite for the user action.
+                // The caller continues its foreground task and simply won't have a system lease.
+            }
         }
         return workID
     }
@@ -364,7 +368,6 @@ private enum AppleFoundationModelResponder {
     """
 
     static func response(to messages: [ConversationMessage]) async throws -> String? {
-#if canImport(FoundationModels)
         guard messages.allSatisfy({ $0.imageAttachment == nil }),
               let latest = messages.last(where: { $0.role == .user })?.text,
               isOfflineSafe(latest) else {
@@ -384,23 +387,15 @@ private enum AppleFoundationModelResponder {
             return cleaned(generated.content)
         }
 
-#if compiler(>=6.4)
-        if #available(iOS 27.0, *),
-           let cloudAnswer = try await privateCloudResponseIfAvailable(to: recentConversation) {
+        if let cloudAnswer = try await privateCloudResponseIfAvailable(to: recentConversation) {
             return cloudAnswer
         }
-#endif
         return nil
-#else
-        return nil
-#endif
     }
 
-#if compiler(>=6.4) && canImport(FoundationModels)
-    /// Xcode 27 / Swift 6.4 path. It is fully compiled out by Xcode 26.x, so the current iPhone 13
-    /// build has no dependency on iOS 27 beta symbols. PCC still requires an eligible Apple
-    /// Intelligence device/region and the appropriate Apple capability; otherwise this returns nil.
-    @available(iOS 27.0, *)
+    /// iOS 27 can use Private Cloud Compute as an additional Apple model route when the device,
+    /// account, region, and app capability make it available. Runtime availability remains the
+    /// source of truth so an iPhone 13 cleanly skips this route without model-name checks.
     private static func privateCloudResponseIfAvailable(to prompt: String) async throws -> String? {
         let model = PrivateCloudComputeLanguageModel()
         guard model.isAvailable else { return nil }
@@ -408,7 +403,6 @@ private enum AppleFoundationModelResponder {
         let generated = try await session.respond(to: prompt)
         return cleaned(generated.content)
     }
-#endif
 
     private static func cleaned(_ value: String) -> String? {
         let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
