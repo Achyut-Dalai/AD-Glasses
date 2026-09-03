@@ -121,3 +121,74 @@ enum SpeechPermissions {
         // Intentionally empty for SpeechAnalyzer external PCM.
     }
 }
+
+/// Shared PCM converter used by SpeechAnalyzer input paths. This is kept as an internal helper so
+/// both phone microphone buffers and provider-delivered glasses PCM use the same proven conversion
+/// behavior without duplicating AVAudioConverter state.
+@MainActor
+final class SpeechBufferConverter {
+    enum ConversionError: LocalizedError {
+        case failedToCreateConverter
+        case failedToCreateBuffer
+        case conversionFailed(NSError?)
+
+        var errorDescription: String? {
+            switch self {
+            case .failedToCreateConverter:
+                return "Could not create an audio converter for SpeechAnalyzer."
+            case .failedToCreateBuffer:
+                return "Could not allocate an audio buffer for SpeechAnalyzer."
+            case .conversionFailed(let error):
+                return error?.localizedDescription ?? "Audio conversion for SpeechAnalyzer failed."
+            }
+        }
+    }
+
+    private var converter: AVAudioConverter?
+
+    func convertBuffer(_ buffer: AVAudioPCMBuffer, to format: AVAudioFormat) throws -> AVAudioPCMBuffer {
+        let inputFormat = buffer.format
+        guard inputFormat != format else {
+            return buffer
+        }
+
+        if converter == nil || converter?.inputFormat != inputFormat || converter?.outputFormat != format {
+            converter = AVAudioConverter(from: inputFormat, to: format)
+            converter?.primeMethod = .none
+        }
+
+        guard let converter else {
+            throw ConversionError.failedToCreateConverter
+        }
+
+        let sampleRateRatio = converter.outputFormat.sampleRate / converter.inputFormat.sampleRate
+        let scaledInputFrameLength = Double(buffer.frameLength) * sampleRateRatio
+        let frameCapacity = max(1, AVAudioFrameCount(scaledInputFrameLength.rounded(.up)))
+
+        guard let conversionBuffer = AVAudioPCMBuffer(
+            pcmFormat: converter.outputFormat,
+            frameCapacity: frameCapacity
+        ) else {
+            throw ConversionError.failedToCreateBuffer
+        }
+
+        var conversionError: NSError?
+        var bufferProcessed = false
+
+        let status = converter.convert(to: conversionBuffer, error: &conversionError) { _, inputStatus in
+            defer { bufferProcessed = true }
+            inputStatus.pointee = bufferProcessed ? .noDataNow : .haveData
+            return bufferProcessed ? nil : buffer
+        }
+
+        guard status != .error else {
+            throw ConversionError.conversionFailed(conversionError)
+        }
+
+        return conversionBuffer
+    }
+
+    func reset() {
+        converter = nil
+    }
+}
