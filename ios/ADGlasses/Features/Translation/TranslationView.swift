@@ -46,7 +46,6 @@ private struct GroqSourceLanguageOption: Identifiable, Hashable {
     static let supported: [GroqSourceLanguageOption] = [
         GroqSourceLanguageOption(code: "", name: "Auto Detect"),
         GroqSourceLanguageOption(code: "hi", name: "Hindi"),
-        GroqSourceLanguageOption(code: "or", name: "Odia"),
         GroqSourceLanguageOption(code: "bn", name: "Bengali"),
         GroqSourceLanguageOption(code: "mr", name: "Marathi"),
         GroqSourceLanguageOption(code: "gu", name: "Gujarati"),
@@ -182,13 +181,16 @@ private struct LiveTranslateExperience: View {
                         }
                     }
                 }
+                Divider()
+                Button("Odia — use Auto Detect (no fixed Whisper language)") {}
+                    .disabled(true)
             } label: {
                 settingsRow(title: "Spoken language", value: groqSourceLanguageName)
             }
             .buttonStyle(.plain)
             .disabled(isLiveRunning)
 
-            Text("AD first transcribes the isolated speech turn so you can verify what Whisper heard, then translates that transcript to English. If the selected language is unavailable in Apple Translation, Large V3 audio translation is used as the fallback.")
+            Text("AD first transcribes the isolated speech turn so you can verify what Whisper heard, then translates that transcript to English. Fixed language hints improve supported-language recognition. Whisper does not expose a fixed Odia/Oriya language token, so Odia must use Auto Detect and may be less reliable.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
