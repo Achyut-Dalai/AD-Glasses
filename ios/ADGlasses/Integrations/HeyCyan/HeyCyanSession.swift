@@ -76,6 +76,7 @@ final class HeyCyanSession {
 
     private let codec: HeyCyanFrameCodec
     private let responseTimeout: Duration
+    private let assistantEndTimeout: Duration
     private let logger = Logger(subsystem: "com.achyutdalai.ADGlasses", category: "HeyCyanSession")
     private var streamDecoder: HeyCyanFrameStreamDecoder
     private var pendingRequests = [UInt8: PendingRequest]()
@@ -84,11 +85,13 @@ final class HeyCyanSession {
     init(
         transport: any HeyCyanByteTransport,
         codec: HeyCyanFrameCodec = .production,
-        responseTimeout: Duration = .seconds(10)
+        responseTimeout: Duration = .seconds(10),
+        assistantEndTimeout: Duration = .seconds(30)
     ) {
         self.transport = transport
         self.codec = codec
         self.responseTimeout = responseTimeout
+        self.assistantEndTimeout = assistantEndTimeout
         streamDecoder = HeyCyanFrameStreamDecoder(codec: codec)
 
         transport.onStateChange = { [weak self] transportState in
@@ -172,8 +175,12 @@ final class HeyCyanSession {
     private func waitForAssistantSessionToEndIfNeeded(for command: HeyCyanCommand) async throws {
         guard command.requiresAssistantIdle, isAssistantListening else { return }
 
+        // The app is allowed to finish SpeechAnalyzer early after acoustic silence, but that does
+        // not mean the glasses firmware has ended its own Assistant turn. Camera/recording commands
+        // must wait for the verified 0x73/0x0A end notification instead of racing it and failing
+        // after an arbitrary short delay. No speculative "stop listening" command is sent.
         let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: .seconds(3))
+        let deadline = clock.now.advanced(by: assistantEndTimeout)
         while isAssistantListening {
             try Task.checkCancellation()
             guard clock.now < deadline else {
