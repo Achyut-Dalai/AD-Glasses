@@ -286,9 +286,10 @@ struct ADGlassesAppShortcuts: AppShortcutsProvider {
 }
 
 /// Cloud remains the primary conversational backend. On Apple-Intelligence-capable hardware,
-/// the system Foundation Model is a privacy-preserving resilience fallback for offline-safe text
+/// Apple Foundation Models provide a privacy-preserving resilience path for offline-safe text
 /// requests when the configured cloud service fails before it streams any response. An iPhone 13
-/// simply reports the system model as unavailable and continues using the existing cloud path.
+/// reports both Apple Intelligence model routes as unavailable and continues using the existing
+/// cloud providers exactly as before.
 struct AdaptiveAIClient: AIResponding {
     private let cloud = CloudAIClient()
 
@@ -303,7 +304,7 @@ struct AdaptiveAIClient: AIResponding {
             throw CancellationError()
         } catch {
             if Self.canUseLocalFallback(after: error),
-               let answer = try? await AppleOnDeviceModelResponder.response(to: messages) {
+               let answer = try? await AppleFoundationModelResponder.response(to: messages) {
                 return answer
             }
             throw error
@@ -332,7 +333,7 @@ struct AdaptiveAIClient: AIResponding {
             let didStream = await MainActor.run { streamState.didStream }
             if !didStream,
                Self.canUseLocalFallback(after: error),
-               let answer = try? await AppleOnDeviceModelResponder.response(to: messages) {
+               let answer = try? await AppleFoundationModelResponder.response(to: messages) {
                 await onDelta(answer)
                 return answer
             }
@@ -356,7 +357,14 @@ private final class ADStreamingFallbackState {
     var didStream = false
 }
 
-private enum AppleOnDeviceModelResponder {
+private enum AppleFoundationModelResponder {
+    private static let instructions = """
+    You are AD, the concise companion for AD Glasses. Answer only from general knowledge
+    and the conversation supplied in the prompt. Never claim current weather, news, prices,
+    scores, nearby places, live location, or other changing facts. Do not pretend to control
+    the glasses. Keep the answer brief and useful.
+    """
+
     static func response(to messages: [ConversationMessage]) async throws -> String? {
 #if canImport(FoundationModels)
         guard messages.allSatisfy({ $0.imageAttachment == nil }),
@@ -365,29 +373,48 @@ private enum AppleOnDeviceModelResponder {
             return nil
         }
 
-        let model = SystemLanguageModel.default
-        guard case .available = model.availability else { return nil }
-
         let recentConversation = messages.suffix(8).map { message in
             let speaker = message.role == .user ? "User" : "AD"
             return "\(speaker): \(message.text)"
         }
         .joined(separator: "\n")
 
-        let session = LanguageModelSession(
-            instructions: """
-            You are AD, the concise companion for AD Glasses. Answer only from general knowledge
-            and the conversation supplied in the prompt. Never claim current weather, news, prices,
-            scores, nearby places, live location, or other changing facts. Do not pretend to control
-            the glasses. Keep the answer brief and useful.
-            """
-        )
-        let generated = try await session.respond(to: recentConversation)
-        let clean = generated.content.trimmingCharacters(in: .whitespacesAndNewlines)
-        return clean.isEmpty ? nil : clean
+        let onDeviceModel = SystemLanguageModel.default
+        if case .available = onDeviceModel.availability {
+            let session = LanguageModelSession(instructions: instructions)
+            let generated = try await session.respond(to: recentConversation)
+            return cleaned(generated.content)
+        }
+
+#if compiler(>=6.4)
+        if #available(iOS 27.0, *),
+           let cloudAnswer = try await privateCloudResponseIfAvailable(to: recentConversation) {
+            return cloudAnswer
+        }
+#endif
+        return nil
 #else
         return nil
 #endif
+    }
+
+#if compiler(>=6.4) && canImport(FoundationModels)
+    /// Xcode 27 / Swift 6.4 path. It is fully compiled out by Xcode 26.x, so the current iPhone 13
+    /// build has no dependency on iOS 27 beta symbols. PCC still requires an eligible Apple
+    /// Intelligence device/region and the appropriate Apple capability; otherwise this returns nil.
+    @available(iOS 27.0, *)
+    private static func privateCloudResponseIfAvailable(to prompt: String) async throws -> String? {
+        let model = PrivateCloudComputeLanguageModel()
+        guard model.isAvailable else { return nil }
+        let session = LanguageModelSession(model: model, instructions: instructions)
+        let generated = try await session.respond(to: prompt)
+        return cleaned(generated.content)
+    }
+#endif
+
+    private static func cleaned(_ value: String) -> String? {
+        let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return clean.isEmpty ? nil : clean
     }
 
     private static func isOfflineSafe(_ text: String) -> Bool {
