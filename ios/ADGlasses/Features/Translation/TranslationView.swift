@@ -7,37 +7,18 @@ struct TranslationView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-#if compiler(>=6.2)
-                if #available(iOS 26.0, *) {
-                    LiveTranslateExperience()
-                } else {
-                    translationUnavailable
+            LiveTranslateExperience()
+                .navigationTitle("Translate")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
                 }
-#else
-                translationUnavailable
-#endif
-            }
-            .navigationTitle("Translate")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
         }
-    }
-
-    private var translationUnavailable: some View {
-        ContentUnavailableView(
-            "Live Translation unavailable",
-            systemImage: "waveform.and.mic",
-            description: Text("Live Translation requires iOS 26 or later with Apple SpeechAnalyzer support.")
-        )
     }
 }
 
-@available(iOS 26.0, *)
 private struct TranslationLanguageOption: Identifiable, Hashable {
     let language: Locale.Language
     let code: String
@@ -56,30 +37,27 @@ private struct TranslationLanguageOption: Identifiable, Hashable {
     }
 }
 
-#if compiler(>=6.2)
-@available(iOS 26.0, *)
+@MainActor
 private struct LiveTranslateExperience: View {
     @EnvironmentObject private var translation: NativeTranslationController
     @EnvironmentObject private var app: AppModel
 
-    @StateObject private var liveTranslation = LiveTranslationController()
+    @StateObject private var appleLive = LiveTranslationController()
+    @StateObject private var groqLive = GroqLiveTranslationController()
 
-    @AppStorage("translation.sourceLanguage.v1") private var sourceLanguage = "hi"
-    @AppStorage("translation.targetLanguage.v1") private var targetLanguage = "en"
+    @AppStorage("translation.engine.v2") private var engineRaw = LiveTranslationEngine.groq.rawValue
+    @AppStorage("translation.groqWhisperModel.v1") private var groqModelRaw = GroqWhisperModel.largeV3.rawValue
+    @AppStorage("translation.appleSourceLanguage.v2") private var appleSourceLanguage = "hi"
 
-    @State private var allTranslationLanguages = [TranslationLanguageOption]()
-    @State private var sourceLanguages = [TranslationLanguageOption]()
-    @State private var targetLanguages = [TranslationLanguageOption]()
-    @State private var installedSpeechLanguageBases = Set<String>()
-    @State private var isLoadingLanguages = true
-    @State private var isLoadingTargets = false
+    @State private var appleSourceLanguages = [TranslationLanguageOption]()
+    @State private var isLoadingAppleLanguages = true
     @State private var languageError: String?
     @State private var liveStartError: String?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                languageCard
+                engineCard
                 liveTranslationCard
             }
             .frame(maxWidth: 680)
@@ -89,12 +67,20 @@ private struct LiveTranslateExperience: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .task { await loadLanguages() }
-        .onChange(of: sourceLanguage) { _, _ in
-            Task { await refreshTargets() }
+        .task { await loadAppleSourceLanguages() }
+        .onChange(of: engineRaw) { _, _ in
+            Task { await stopLiveTranslation() }
+        }
+        .onChange(of: groqModelRaw) { _, _ in
+            guard groqLive.isRunning else { return }
+            Task { await stopLiveTranslation() }
+        }
+        .onChange(of: appleSourceLanguage) { _, _ in
+            guard appleLive.isRunning else { return }
+            Task { await stopLiveTranslation() }
         }
         .onChange(of: app.isGlassesAssistantAudioActive) { _, isActive in
-            guard isActive, liveTranslation.isRunning else { return }
+            guard isActive, isLiveRunning else { return }
             Task { await stopLiveTranslation() }
         }
         .onDisappear {
@@ -102,70 +88,116 @@ private struct LiveTranslateExperience: View {
         }
     }
 
-    private var languageCard: some View {
+    private var engineCard: some View {
         TranslateCard {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Languages")
-                            .font(.headline)
-                        Text("The From list only includes languages Apple SpeechAnalyzer reports as transcribable on this iPhone.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer()
-                    if isLoadingLanguages || isLoadingTargets {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("English Live Translation")
+                        .font(.headline)
+                    Text("Translate nearby speech into English. Groq auto-detects the spoken language; Apple Offline stays available as the no-network fallback.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                if let languageError {
-                    Label(languageError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if sourceLanguages.isEmpty {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text("Checking Apple speech and translation languages…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                Picker("Engine", selection: engineBinding) {
+                    ForEach(LiveTranslationEngine.allCases) { engine in
+                        Text(engine.displayName).tag(engine)
                     }
+                }
+                .pickerStyle(.segmented)
+                .disabled(isLiveRunning)
+
+                if selectedEngine == .groq {
+                    groqSettings
                 } else {
-                    HStack(spacing: 10) {
-                        languageMenu(
-                            title: "From",
-                            selectionName: sourceLanguageName,
-                            options: sourceLanguages,
-                            selection: sourceLanguage
-                        ) { option in
-                            sourceLanguage = option.code
-                        }
-
-                        languageMenu(
-                            title: "To",
-                            selectionName: targetLanguageName,
-                            options: targetLanguages,
-                            selection: targetLanguage
-                        ) { option in
-                            targetLanguage = option.code
-                        }
-                    }
-
-                    HStack(spacing: 8) {
-                        Image(systemName: sourceSpeechModelInstalled ? "checkmark.circle.fill" : "arrow.down.circle")
-                            .foregroundStyle(sourceSpeechModelInstalled ? .green : .secondary)
-                        Text(sourceSpeechModelInstalled
-                             ? "SpeechAnalyzer model installed"
-                             : "SpeechAnalyzer model will be downloaded by Apple when Live Translation starts")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    appleSettings
                 }
             }
+        }
+    }
+
+    private var groqSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Menu {
+                ForEach(GroqWhisperModel.allCases) { model in
+                    Button {
+                        groqModelRaw = model.rawValue
+                    } label: {
+                        if model == selectedGroqModel {
+                            Label(model.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(model.displayName)
+                        }
+                    }
+                }
+            } label: {
+                settingsRow(title: "Speech model", value: selectedGroqModel.displayName)
+            }
+            .buttonStyle(.plain)
+            .disabled(isLiveRunning)
+
+            Text(selectedGroqModel.detail)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Image(systemName: groqProfile != nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(groqProfile != nil ? .green : .orange)
+                Text(groqProfile.map { "Using Groq profile: \($0.name)" }
+                     ?? "Add a Groq profile and API key in Settings → AI & Models.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Label("Auto-detect spoken language → English", systemImage: "globe")
+                .font(.footnote.weight(.medium))
+        }
+    }
+
+    private var appleSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if isLoadingAppleLanguages {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Checking offline speech and translation languages…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let languageError {
+                Label(languageError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Menu {
+                    ForEach(appleSourceLanguages) { option in
+                        Button {
+                            appleSourceLanguage = option.code
+                        } label: {
+                            if option.code == appleSourceLanguage {
+                                Label(option.name, systemImage: "checkmark")
+                            } else {
+                                Text(option.name)
+                            }
+                        }
+                    }
+                } label: {
+                    settingsRow(title: "Spoken language", value: appleSourceLanguageName)
+                }
+                .buttonStyle(.plain)
+                .disabled(isLiveRunning)
+
+                Label("\(appleSourceLanguageName) → English · on-device", systemImage: "iphone")
+                    .font(.footnote.weight(.medium))
+            }
+
+            Text("Apple Offline uses SpeechAnalyzer plus Translation with the low-latency strategy. Language assets may need to download once before offline use.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -182,21 +214,25 @@ private struct LiveTranslateExperience: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Live Translation")
                             .font(.headline)
-                        Text("\(sourceLanguageName) → \(targetLanguageName)")
+                        Text(selectedEngine == .groq
+                             ? "Any supported language → English"
+                             : "\(appleSourceLanguageName) → English")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
 
-                Text("AD listens for \(sourceLanguageName), translates each completed utterance to \(targetLanguageName), speaks the result, then resumes listening.")
+                Text(selectedEngine == .groq
+                     ? "AD records one spoken turn, stops the microphone before playback, sends the short audio segment to Groq, speaks the English result, then resumes listening."
+                     : "AD transcribes and translates each completed utterance on the iPhone, speaks the English result, then resumes listening.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button {
                     Task {
-                        if liveTranslation.isRunning {
+                        if isLiveRunning {
                             await stopLiveTranslation()
                         } else {
                             await startLiveTranslation()
@@ -204,8 +240,8 @@ private struct LiveTranslateExperience: View {
                     }
                 } label: {
                     HStack(spacing: 9) {
-                        Image(systemName: liveTranslation.isRunning ? "stop.circle.fill" : "waveform.and.mic")
-                        Text(liveTranslation.isRunning ? "Stop Live Translation" : "Start Live Translation")
+                        Image(systemName: isLiveRunning ? "stop.circle.fill" : "waveform.and.mic")
+                        Text(isLiveRunning ? "Stop Live Translation" : "Start Live Translation")
                     }
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -213,31 +249,22 @@ private struct LiveTranslateExperience: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(
-                    !liveTranslation.isRunning && (
-                        translation.isTranslating ||
-                            isLoadingLanguages ||
-                            isLoadingTargets ||
-                            sourceLanguages.isEmpty ||
-                            targetLanguages.isEmpty
-                    )
-                )
+                .disabled(!isLiveRunning && startDisabled)
 
                 HStack(spacing: 9) {
-                    if liveTranslation.isRunning {
+                    if isLiveRunning {
                         ProgressView()
                             .controlSize(.small)
                     } else {
                         Image(systemName: "checkmark.circle")
                             .foregroundStyle(.secondary)
                     }
-                    Text(liveTranslation.statusMessage)
+                    Text(activeStatusMessage)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(liveTranslation.isRunning ? .primary : .secondary)
+                        .foregroundStyle(isLiveRunning ? .primary : .secondary)
                 }
 
-                if let inputRouteName = liveTranslation.inputRouteName,
-                   liveTranslation.isRunning {
+                if let inputRouteName = activeInputRouteName, isLiveRunning {
                     HStack(spacing: 8) {
                         Image(systemName: "mic")
                             .foregroundStyle(.secondary)
@@ -247,97 +274,56 @@ private struct LiveTranslateExperience: View {
                     }
                 }
 
-                if !liveTranslation.currentTranscript.isEmpty {
+                if selectedEngine == .apple, !appleLive.currentTranscript.isEmpty {
+                    transcriptBlock(label: "Hearing", text: appleLive.currentTranscript, emphasized: false)
+                }
+
+                if !activeSourceText.isEmpty {
                     transcriptBlock(
-                        label: "Hearing",
-                        text: liveTranslation.currentTranscript,
+                        label: selectedEngine == .groq ? "Recognized speech" : appleSourceLanguageName,
+                        text: activeSourceText,
                         emphasized: false
                     )
                 }
 
-                if !liveTranslation.lastSourceText.isEmpty {
-                    transcriptBlock(
-                        label: sourceLanguageName,
-                        text: liveTranslation.lastSourceText,
-                        emphasized: false
-                    )
-                }
-
-                if !liveTranslation.lastTranslation.isEmpty {
-                    transcriptBlock(
-                        label: targetLanguageName,
-                        text: liveTranslation.lastTranslation,
-                        emphasized: true
-                    )
+                if !activeTranslation.isEmpty {
+                    transcriptBlock(label: "English", text: activeTranslation, emphasized: true)
                 }
 
                 if let liveStartError {
-                    Label(liveStartError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
+                    errorLabel(liveStartError)
                 }
-
-                if let error = liveTranslation.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
+                if let activeErrorMessage {
+                    errorLabel(activeErrorMessage)
                 }
             }
         }
     }
 
-    private func languageMenu(
-        title: String,
-        selectionName: String,
-        options: [TranslationLanguageOption],
-        selection: String,
-        onSelect: @escaping (TranslationLanguageOption) -> Void
-    ) -> some View {
-        Menu {
-            ForEach(options) { option in
-                Button {
-                    onSelect(option)
-                } label: {
-                    if option.code == selection {
-                        Label(option.name, systemImage: "checkmark")
-                    } else {
-                        Text(option.name)
-                    }
-                }
-            }
-        } label: {
+    private func settingsRow(title: String, value: String) -> some View {
+        HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                HStack(spacing: 5) {
-                    Text(selectionName)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    Spacer(minLength: 2)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.secondary)
-                }
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
             }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-            .background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
+            Spacer()
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
-        .disabled(liveTranslation.isRunning || translation.isTranslating || options.isEmpty)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .background(
+            Color(uiColor: .secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
     }
 
-    private func transcriptBlock(
-        label: String,
-        text: String,
-        emphasized: Bool
-    ) -> some View {
+    private func transcriptBlock(label: String, text: String, emphasized: Bool) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
                 .font(.caption.weight(.semibold))
@@ -354,104 +340,111 @@ private struct LiveTranslateExperience: View {
         )
     }
 
-    private var sourceLanguageName: String {
-        sourceLanguages.first(where: { $0.code == sourceLanguage })?.name
-            ?? Locale.current.localizedString(forIdentifier: sourceLanguage)
-            ?? sourceLanguage
+    private func errorLabel(_ text: String) -> some View {
+        Label(text, systemImage: "exclamationmark.triangle.fill")
+            .font(.footnote)
+            .foregroundStyle(.red)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var targetLanguageName: String {
-        targetLanguages.first(where: { $0.code == targetLanguage })?.name
-            ?? allTranslationLanguages.first(where: { $0.code == targetLanguage })?.name
-            ?? Locale.current.localizedString(forIdentifier: targetLanguage)
-            ?? targetLanguage
+    private var selectedEngine: LiveTranslationEngine {
+        LiveTranslationEngine(rawValue: engineRaw) ?? .groq
     }
 
-    private var sourceSpeechModelInstalled: Bool {
-        installedSpeechLanguageBases.contains(languageBase(sourceLanguage))
+    private var engineBinding: Binding<LiveTranslationEngine> {
+        Binding(
+            get: { selectedEngine },
+            set: { engineRaw = $0.rawValue }
+        )
     }
 
-    private func loadLanguages() async {
-        isLoadingLanguages = true
+    private var selectedGroqModel: GroqWhisperModel {
+        GroqWhisperModel(rawValue: groqModelRaw) ?? .largeV3
+    }
+
+    private var groqProfile: AIProfile? {
+        if let active = app.aiProfiles.activeProfile,
+           active.provider == .groq,
+           app.aiProfiles.hasCredential(for: active.id) {
+            return active
+        }
+        return app.aiProfiles.profiles.first {
+            $0.provider == .groq && app.aiProfiles.hasCredential(for: $0.id)
+        }
+    }
+
+    private var appleSourceLanguageName: String {
+        appleSourceLanguages.first(where: { $0.code == appleSourceLanguage })?.name
+            ?? Locale.current.localizedString(forIdentifier: appleSourceLanguage)
+            ?? appleSourceLanguage
+    }
+
+    private var isLiveRunning: Bool {
+        groqLive.isRunning || appleLive.isRunning
+    }
+
+    private var startDisabled: Bool {
+        if app.isGlassesAssistantAudioActive || translation.isTranslating { return true }
+        switch selectedEngine {
+        case .groq:
+            return groqProfile == nil
+        case .apple:
+            return isLoadingAppleLanguages || appleSourceLanguages.isEmpty
+        }
+    }
+
+    private var activeStatusMessage: String {
+        selectedEngine == .groq ? groqLive.statusMessage : appleLive.statusMessage
+    }
+
+    private var activeInputRouteName: String? {
+        selectedEngine == .groq ? groqLive.inputRouteName : appleLive.inputRouteName
+    }
+
+    private var activeSourceText: String {
+        selectedEngine == .groq ? groqLive.lastSourceText : appleLive.lastSourceText
+    }
+
+    private var activeTranslation: String {
+        selectedEngine == .groq ? groqLive.lastTranslation : appleLive.lastTranslation
+    }
+
+    private var activeErrorMessage: String? {
+        selectedEngine == .groq ? groqLive.errorMessage : appleLive.errorMessage
+    }
+
+    private func loadAppleSourceLanguages() async {
+        isLoadingAppleLanguages = true
         languageError = nil
+        defer { isLoadingAppleLanguages = false }
 
         async let translationSupported = translation.supportedLanguages()
         async let speechSupported = SpeechAnalyzerTranscriber.supportedSpeechLocales()
-        async let speechInstalled = SpeechAnalyzerTranscriber.installedSpeechLocales()
+        let translationLanguages = await translationSupported
+        let speechBases = Set((await speechSupported).map { languageBase($0.identifier) })
+        let english = Locale.Language(identifier: "en")
 
-        let translationOptions = makeOptions(from: await translationSupported)
-        let supportedSpeechBases = Set((await speechSupported).map { languageBase($0.identifier) })
-        installedSpeechLanguageBases = Set((await speechInstalled).map { languageBase($0.identifier) })
-
-        guard !Task.isCancelled else { return }
-        allTranslationLanguages = translationOptions
-        sourceLanguages = translationOptions.filter {
-            supportedSpeechBases.contains(languageBase($0.code))
-        }
-
-        guard !sourceLanguages.isEmpty else {
-            targetLanguages = []
-            languageError = "Apple SpeechTranscriber did not report any languages that can also be used by Apple Translation on this iPhone."
-            isLoadingLanguages = false
-            return
-        }
-
-        if !sourceLanguages.contains(where: { $0.code == sourceLanguage }) {
-            sourceLanguage = preferredInstalledSource(code: "hi")?.code
-                ?? preferredInstalledSource(code: "en")?.code
-                ?? sourceLanguages.first(where: { installedSpeechLanguageBases.contains(languageBase($0.code)) })?.code
-                ?? sourceLanguages[0].code
-        }
-
-        await refreshTargets()
-        isLoadingLanguages = false
-    }
-
-    private func refreshTargets() async {
-        guard sourceLanguages.contains(where: { $0.code == sourceLanguage }) else { return }
-        let requestedSource = sourceLanguage
-        isLoadingTargets = true
-        defer {
-            if sourceLanguage == requestedSource {
-                isLoadingTargets = false
-            }
-        }
-
-        let targets = await translation.supportedTargets(
-            from: Locale.Language(identifier: requestedSource)
-        )
-        guard !Task.isCancelled, sourceLanguage == requestedSource else { return }
-
-        let options = makeOptions(from: targets)
-        targetLanguages = options
-        guard !options.isEmpty else {
-            languageError = "Apple Translation did not report a target language for \(sourceLanguageName)."
-            return
-        }
-
-        languageError = nil
-        if !options.contains(where: { $0.code == targetLanguage }) {
-            targetLanguage = preferredOption(code: "en", in: options)?.code
-                ?? preferredOption(code: "hi", in: options)?.code
-                ?? options[0].code
-        }
-    }
-
-    private func makeOptions(
-        from languages: [Locale.Language]
-    ) -> [TranslationLanguageOption] {
+        var options = [TranslationLanguageOption]()
         var seen = Set<String>()
-        return languages
-            .map(TranslationLanguageOption.init)
-            .filter { seen.insert($0.code).inserted }
-            .sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-    }
+        for language in translationLanguages {
+            if Task.isCancelled { return }
+            let option = TranslationLanguageOption(language)
+            let base = languageBase(option.code)
+            guard base != "en", speechBases.contains(base), seen.insert(option.code).inserted else { continue }
+            let status = await translation.availability(from: language, to: english)
+            guard status != .unsupported else { continue }
+            options.append(option)
+        }
 
-    private func preferredInstalledSource(code: String) -> TranslationLanguageOption? {
-        preferredOption(code: code, in: sourceLanguages).flatMap { option in
-            installedSpeechLanguageBases.contains(languageBase(option.code)) ? option : nil
+        options.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        appleSourceLanguages = options
+        guard !options.isEmpty else {
+            languageError = "No SpeechAnalyzer language on this iPhone currently overlaps with Apple Translation → English."
+            return
+        }
+
+        if !options.contains(where: { $0.code == appleSourceLanguage }) {
+            appleSourceLanguage = preferredOption(code: "hi", in: options)?.code ?? options[0].code
         }
     }
 
@@ -459,16 +452,12 @@ private struct LiveTranslateExperience: View {
         code: String,
         in options: [TranslationLanguageOption]
     ) -> TranslationLanguageOption? {
-        let requestedBase = languageBase(code)
-        return options.first { languageBase($0.code) == requestedBase }
+        let base = languageBase(code)
+        return options.first { languageBase($0.code) == base }
     }
 
     private func startLiveTranslation() async {
         liveStartError = nil
-        guard languageBase(sourceLanguage) != languageBase(targetLanguage) else {
-            liveStartError = "Choose two different languages."
-            return
-        }
         guard !app.isGlassesAssistantAudioActive else {
             liveStartError = "Finish the current glasses voice turn before starting Live Translation."
             return
@@ -478,17 +467,44 @@ private struct LiveTranslateExperience: View {
         app.speechOutput.stop()
         await app.stopTranscription()
 
-        _ = await liveTranslation.start(
-            sourceLanguageCode: sourceLanguage,
-            targetLanguageCode: targetLanguage,
-            translation: translation,
-            speechOutput: app.speechOutput
-        )
+        switch selectedEngine {
+        case .groq:
+            guard let profile = groqProfile else {
+                liveStartError = GroqSpeechTranslationError.missingCredential.localizedDescription
+                return
+            }
+            do {
+                let credential = try app.aiProfiles.credential(for: profile.id)
+                _ = await groqLive.start(
+                    model: selectedGroqModel,
+                    credential: credential,
+                    appleTranslation: translation,
+                    speechOutput: app.speechOutput
+                )
+            } catch {
+                liveStartError = error.localizedDescription
+            }
+
+        case .apple:
+            guard appleSourceLanguages.contains(where: { $0.code == appleSourceLanguage }) else {
+                liveStartError = "Choose an available spoken language for Apple Offline."
+                return
+            }
+            _ = await appleLive.start(
+                sourceLanguageCode: appleSourceLanguage,
+                targetLanguageCode: "en",
+                translation: translation,
+                speechOutput: app.speechOutput
+            )
+        }
     }
 
     private func stopLiveTranslation() async {
-        if liveTranslation.isRunning {
-            await liveTranslation.stop()
+        if groqLive.isRunning {
+            await groqLive.stop()
+        }
+        if appleLive.isRunning {
+            await appleLive.stop()
         }
     }
 
@@ -499,7 +515,6 @@ private struct LiveTranslateExperience: View {
         return normalized.split(separator: "-").first.map(String.init) ?? normalized
     }
 }
-#endif
 
 private struct TranslateCard<Content: View>: View {
     let content: Content
@@ -513,12 +528,8 @@ private struct TranslateCard<Content: View>: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color(uiColor: .systemBackground),
+                Color(uiColor: .secondarySystemGroupedBackground),
                 in: RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-            }
     }
 }
