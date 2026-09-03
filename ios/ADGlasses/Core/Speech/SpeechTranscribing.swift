@@ -3,24 +3,24 @@ import Foundation
 
 /// Audio-session policy for an intentional, finite speech turn.
 ///
-/// The always-on wake path is gone. Voice input now opens Bluetooth HFP only while the user is
-/// actively dictating or the assistant is handling a phone-microphone turn, then releases it as
-/// soon as recognition finishes. Prefer the connected glasses/headset microphone when iOS exposes
-/// one, matching Android's communication-input policy without keeping that route alive all day.
+/// AD can receive Assistant audio over BLE while spoken output travels over the glasses' separate
+/// Classic-Bluetooth audio profile. Phone/live-translation microphone turns use `playAndRecord`, but
+/// must never force the iPhone speaker just because the glasses aren't currently exposing an HFP
+/// microphone. Many glasses present an A2DP output route even when their HFP input isn't selected.
 @MainActor
 enum SpeechInputAudioSession {
     static func activate(preferBluetoothHFP: Bool = true) throws {
         let session = AVAudioSession.sharedInstance()
 
-        // Do not set `.defaultToSpeaker` up front. With a connected HFP accessory that option can
-        // leave spoken output on the iPhone even after selecting the Bluetooth microphone. First
-        // establish a communication session that is eligible for HFP, then choose the HFP input.
-        // Because HFP is bidirectional, iOS routes the matching output to the headset as well.
+        // Permit both Bluetooth profiles. HFP is the preferred full-duplex route when iOS exposes
+        // it; A2DP remains eligible for spoken output when the input is the iPhone microphone.
+        // `.defaultToSpeaker` is deliberately absent because it can steal output from the glasses.
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.duckOthers, .allowBluetoothHFP]
+            options: [.duckOthers, .allowBluetoothHFP, .allowBluetoothA2DP]
         )
+        try? session.overrideOutputAudioPort(.none)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
         if preferBluetoothHFP,
@@ -32,10 +32,14 @@ enum SpeechInputAudioSession {
             return
         }
 
-        // No HFP route is available. Explicitly choose the iPhone speaker as the phone-only
-        // fallback rather than making it the default before Bluetooth route selection.
+        // No HFP input is available. Keep any system-selected Bluetooth/A2DP output instead of
+        // unconditionally switching to the phone speaker. Only choose the speaker when there is no
+        // Bluetooth output route at all.
         try? session.setPreferredInput(nil)
-        try? session.overrideOutputAudioPort(.speaker)
+        try? session.overrideOutputAudioPort(.none)
+        if !hasBluetoothOutput(session.currentRoute) {
+            try? session.overrideOutputAudioPort(.speaker)
+        }
     }
 
     static func deactivate() {
@@ -43,6 +47,19 @@ enum SpeechInputAudioSession {
         try? session.overrideOutputAudioPort(.none)
         try? session.setPreferredInput(nil)
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    static func hasBluetoothOutput(_ route: AVAudioSessionRouteDescription) -> Bool {
+        route.outputs.contains { isBluetoothOutputPort($0.portType) }
+    }
+
+    static func isBluetoothOutputPort(_ portType: AVAudioSession.Port) -> Bool {
+        switch portType {
+        case .bluetoothHFP, .bluetoothA2DP, .bluetoothLE:
+            return true
+        default:
+            return false
+        }
     }
 }
 
@@ -68,7 +85,7 @@ enum SpeechTranscriptionError: LocalizedError {
             // legacy SFSpeechRecognizer authorization path.
             return "SpeechAnalyzer permission is unavailable."
         case .recognizerUnavailable:
-            return "SpeechAnalyzer is unavailable. Voice input requires iOS 26 or later."
+            return "SpeechAnalyzer is unavailable. Voice input requires iOS 27 or later."
         case .localeUnsupported:
             return "The current language is not supported by SpeechAnalyzer."
         case .failedToCreateAudioInput:
