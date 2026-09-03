@@ -2,7 +2,7 @@ import Foundation
 
 /// SpeechAnalyzer-only factory for AD voice input.
 ///
-/// AD Glasses now targets iOS 26+, so there is no legacy recognizer, older-OS fallback, or runtime
+/// AD Glasses targets iOS 27+, so there is no legacy recognizer, older-OS fallback, or runtime
 /// availability branch. Model preparation/download failures stay inside the SpeechAnalyzer lifecycle
 /// instead of silently switching engines.
 enum AppleSpeechTranscriber {
