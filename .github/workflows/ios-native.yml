@@ -13,6 +13,10 @@ on:
       - "ios/**"
       - ".github/workflows/ios-native.yml"
 
+concurrency:
+  group: native-ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: xcode-27
