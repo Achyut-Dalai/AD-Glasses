@@ -8,7 +8,7 @@ struct TextTranslationResult: Equatable, Sendable {
 }
 
 enum TextTranslationError: LocalizedError, Sendable {
-    case requiresIOS18
+    case hostUnavailable
     case operationInProgress
     case sourceLanguageUndetermined
     case unsupportedLanguagePair
@@ -16,8 +16,8 @@ enum TextTranslationError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case .requiresIOS18:
-            return "Native translation requires iOS 18 or later."
+        case .hostUnavailable:
+            return "Apple Translation is not ready yet. Open AD Glasses and try again."
         case .operationInProgress:
             return "Another translation is already in progress."
         case .sourceLanguageUndetermined:
@@ -30,9 +30,9 @@ enum TextTranslationError: LocalizedError, Sendable {
     }
 }
 
-/// App-wide bridge used by deterministic AD shortcuts without making the iOS 17-compatible
-/// voice layer depend directly on the iOS 18 Translation framework types. NativeTranslationHost
-/// installs the closures while Apple's translationTask is alive.
+/// App-wide bridge used by deterministic AD shortcuts. NativeTranslationHost installs the closures
+/// while Apple's translationTask is alive, keeping Assistant routing independent of SwiftUI view
+/// lifetime while the app itself now targets iOS 27 and uses Translation directly.
 @MainActor
 final class AssistantTranslationBridge {
     static let shared = AssistantTranslationBridge()
@@ -83,7 +83,7 @@ final class AssistantTranslationBridge {
         sourceLanguageCode: String? = nil,
         targetLanguageCode: String
     ) async throws -> TextTranslationResult {
-        guard let translateHandler else { throw TextTranslationError.requiresIOS18 }
+        guard let translateHandler else { throw TextTranslationError.hostUnavailable }
         return try await translateHandler(text, sourceLanguageCode, targetLanguageCode)
     }
 
