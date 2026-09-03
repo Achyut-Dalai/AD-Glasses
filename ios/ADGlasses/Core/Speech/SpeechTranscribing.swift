@@ -11,24 +11,36 @@ import Foundation
 enum SpeechInputAudioSession {
     static func activate(preferBluetoothHFP: Bool = true) throws {
         let session = AVAudioSession.sharedInstance()
+
+        // Do not set `.defaultToSpeaker` up front. With a connected HFP accessory that option can
+        // leave spoken output on the iPhone even after selecting the Bluetooth microphone. First
+        // establish a communication session that is eligible for HFP, then choose the HFP input.
+        // Because HFP is bidirectional, iOS routes the matching output to the headset as well.
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.duckOthers, .allowBluetoothHFP, .defaultToSpeaker]
+            options: [.duckOthers, .allowBluetoothHFP]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
-        guard preferBluetoothHFP,
-              let bluetoothInput = session.availableInputs?.first(where: {
-                  $0.portType == .bluetoothHFP
-              }) else {
+        if preferBluetoothHFP,
+           let bluetoothInput = session.availableInputs?.first(where: {
+               $0.portType == .bluetoothHFP
+           }) {
+            try session.setPreferredInput(bluetoothInput)
+            try? session.overrideOutputAudioPort(.none)
             return
         }
-        try? session.setPreferredInput(bluetoothInput)
+
+        // No HFP route is available. Explicitly choose the iPhone speaker as the phone-only
+        // fallback rather than making it the default before Bluetooth route selection.
+        try? session.setPreferredInput(nil)
+        try? session.overrideOutputAudioPort(.speaker)
     }
 
     static func deactivate() {
         let session = AVAudioSession.sharedInstance()
+        try? session.overrideOutputAudioPort(.none)
         try? session.setPreferredInput(nil)
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
