@@ -27,19 +27,19 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var lastPhoneEndpointTranscript = ""
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
-    private var fastExternalEndpointRequested = false
 
     // Leave enough room for natural intra-sentence pauses. The earlier 1.1–1.2 second endpoint
     // favored speed but could finalize a turn while the user was still composing the next phrase.
     private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_500)
-    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_600)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(1_450)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
-    // Deliberately forgiving. If the environment is noisier than this, the logical early endpoint
-    // simply stays disabled and the verified glasses 0x73/0x0A end event remains the fallback. This
-    // is safer than cutting quiet or distant speech because a fixed transcript stopped changing.
-    private let externalSilencePeakThresholdDBFS: Float = -56
+    // RMS energy is intentionally used instead of peak energy. A single click/noise spike used to
+    // keep the glasses Assistant open for several extra seconds even after real speech had stopped.
+    // RMS tracks sustained voice energy while still keeping quiet/far-field speech above the normal
+    // silence floor. The verified glasses 0x73/0x0A event remains the final hardware boundary.
+    private let externalSilenceRMSThresholdDBFS: Float = -48
 
     private enum InputSource {
         case phoneMicrophone
@@ -263,8 +263,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
         let source = inputSource
         let wasUsingPhoneMicrophone = source == .phoneMicrophone
-        let useFastExternalClose = source == .externalPCM && fastExternalEndpointRequested
-        fastExternalEndpointRequested = false
 
         if wasUsingPhoneMicrophone {
             if audioEngine.isRunning {
@@ -280,24 +278,16 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         audioContinuation = nil
 
         if let analyzer {
-            if useFastExternalClose {
-                // The acoustic endpoint has already observed 1.6 s of quiet while the transcript
-                // remained unchanged. Waiting again for a full end-of-input finalization created a
-                // visible 1–2 s pause after the text was already correct. Preserve the stable
-                // volatile transcript and close the analyzer immediately for this one path only.
-                await analyzer.cancelAndFinishNow()
-            } else {
-                do {
-                    try await analyzer.finalizeAndFinishThroughEndOfInput()
-                } catch {
-                    onError?(error)
-                }
+            // Even an acoustically detected endpoint gets normal SpeechAnalyzer end-of-input
+            // finalization. The previous fast-cancel path saved roughly a second but could preserve
+            // a volatile, not-yet-corrected hypothesis. Accuracy matters more than that shortcut.
+            do {
+                try await analyzer.finalizeAndFinishThroughEndOfInput()
+            } catch {
+                onError?(error)
             }
         }
 
-        if useFastExternalClose {
-            resultTask?.cancel()
-        }
         await resultTask?.value
         resultTask = nil
         analyzerInputContinuation = nil
@@ -316,7 +306,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         try await SpeechPermissions.requestRecognition()
         let locale = try await prepareAssets()
         _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
-        fastExternalEndpointRequested = false
         inputSource = .externalPCM
         snapshot.isRunning = true
     }
@@ -329,15 +318,12 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     func finishExternalAudio() async {
         guard inputSource == .externalPCM else { return }
-        // A real provider/hardware end keeps the full finalization path for maximum accuracy.
-        fastExternalEndpointRequested = false
         await stop()
     }
 
     func resetTranscript() {
         finalizedTranscript = ""
         lastPhoneEndpointTranscript = ""
-        fastExternalEndpointRequested = false
         externalEndpointTask?.cancel()
         externalEndpointTask = nil
         snapshot.transcript = ""
@@ -428,11 +414,11 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         guard inputSource == .externalPCM,
               snapshot.isRunning,
               !snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let peakDBFS = Self.peakDBFS(buffer) else {
+              let rmsDBFS = Self.rmsDBFS(buffer) else {
             return
         }
 
-        if peakDBFS > externalSilencePeakThresholdDBFS {
+        if rmsDBFS > externalSilenceRMSThresholdDBFS {
             externalEndpointTask?.cancel()
             externalEndpointTask = nil
             return
@@ -442,7 +428,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_600))
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(1_450))
             } catch {
                 return
             }
@@ -452,44 +438,51 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == endpointTranscript else {
                 return
             }
-            fastExternalEndpointRequested = true
             await stop()
         }
     }
 
-    private static func peakDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
+    private static func rmsDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
         let frameCount = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
         guard frameCount > 0, channelCount > 0 else { return nil }
 
-        var peak: Float = 0
+        var squareSum = 0.0
+        var sampleCount = 0
+
         switch buffer.format.commonFormat {
         case .pcmFormatFloat32:
             guard let channels = buffer.floatChannelData else { return nil }
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    peak = max(peak, abs(samples[frame]))
+                    let value = Double(samples[frame])
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
         case .pcmFormatInt16:
             guard let channels = buffer.int16ChannelData else { return nil }
+            let scale = Double(Int16.max)
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    let magnitude = Float(abs(Int(samples[frame]))) / Float(Int16.max)
-                    peak = max(peak, magnitude)
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
         case .pcmFormatInt32:
             guard let channels = buffer.int32ChannelData else { return nil }
+            let scale = Double(Int32.max)
             for channel in 0..<channelCount {
                 let samples = channels[channel]
                 for frame in 0..<frameCount {
-                    let magnitude = Float(abs(Int64(samples[frame]))) / Float(Int32.max)
-                    peak = max(peak, magnitude)
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
                 }
             }
 
@@ -497,8 +490,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             return nil
         }
 
-        guard peak > 0 else { return -120 }
-        return Float(20.0 * log10(Double(peak)))
+        guard sampleCount > 0, squareSum > 0 else { return -120 }
+        let rms = sqrt(squareSum / Double(sampleCount))
+        return Float(20.0 * log10(rms))
     }
 
     private static func join(_ prefix: String, _ suffix: String) -> String {
@@ -681,7 +675,6 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     private func cancelPreparedPipeline() async {
         cancelEndpointTasks()
-        fastExternalEndpointRequested = false
         audioContinuation?.finish()
         await audioTask?.value
         audioTask = nil
