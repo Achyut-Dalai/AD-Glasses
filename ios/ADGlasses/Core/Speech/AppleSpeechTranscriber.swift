@@ -105,8 +105,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
         // en-IN SpeechAnalyzer asset as soon as AppModel creates the transcriber; this does not open
         // the microphone and does not start recognition. A later start still validates readiness.
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            _ = try? await base.prepareAssets()
+            _ = try? await self?.base.prepareAssets()
         }
     }
 
@@ -217,6 +216,16 @@ private actor LocalAssistantSemanticRepair {
 
     func repair(_ rawTranscript: String) async -> String {
         let original = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Do not pay an on-device model round trip for speech that already maps cleanly to a known
+        // deterministic command, or for the tiny observed one-word acoustic aliases below. Qwen is
+        // reserved for genuinely ambiguous command-like recognition where semantic repair helps.
+        if SemanticCommandRepairPolicy.isAlreadyCanonical(original) {
+            return original
+        }
+        if let fallback = SemanticCommandRepairPolicy.conservativeFallback(original) {
+            return fallback
+        }
         guard SemanticCommandRepairPolicy.isCandidate(original) else { return original }
 
 #if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
@@ -230,11 +239,7 @@ private actor LocalAssistantSemanticRepair {
         }
 #endif
 
-        // This tiny fallback is intentional: it covers the known acoustic failure mode that
-        // motivated semantic repair (for example "cling" for "click") even on a simulator or a
-        // development phone where the large Core AI asset has not been staged yet. It is not a
-        // general fuzzy-command engine.
-        return SemanticCommandRepairPolicy.conservativeFallback(original) ?? original
+        return original
     }
 
 #if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
@@ -310,6 +315,11 @@ private enum SemanticCommandRepairPolicy {
         "should", "tell", "explain"
     ]
     private static let negations: Set<String> = ["not", "dont", "never", "no"]
+
+    static func isAlreadyCanonical(_ text: String) -> Bool {
+        let normalized = normalizedWords(text).joined(separator: " ")
+        return ["click", "start video", "start audio", "read this text"].contains(normalized)
+    }
 
     static func isCandidate(_ text: String) -> Bool {
         let words = normalizedWords(text)

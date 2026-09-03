@@ -593,6 +593,21 @@ final class HeyCyanGlassesProvider: NSObject,
         statusRefreshTask = Task { [weak self] in
             guard let self else { return }
 
+            // The captured native ready sequence requests Classic Bluetooth audio/control as soon
+            // as BLE is ready. Do that first: clock, battery, info, or volume requests are optional
+            // status work and must never delay the one verified command that brings up the system
+            // audio profile used by spoken output.
+            do {
+                try await requestClassicBluetoothConnection()
+            } catch is CancellationError {
+                return
+            } catch {
+                await diagnostics.recordDiagnostic(
+                    "Classic Bluetooth connection request failed: \(error.localizedDescription)"
+                )
+            }
+
+            guard !Task.isCancelled else { return }
             do {
                 try await synchronizeClock()
             } catch is CancellationError {
@@ -633,17 +648,6 @@ final class HeyCyanGlassesProvider: NSObject,
             } catch {
                 await diagnostics.recordDiagnostic(
                     "Volume synchronization failed: \(error.localizedDescription)"
-                )
-            }
-
-            guard !Task.isCancelled else { return }
-            do {
-                try await requestClassicBluetoothConnection()
-            } catch is CancellationError {
-                return
-            } catch {
-                await diagnostics.recordDiagnostic(
-                    "Classic Bluetooth connection request failed: \(error.localizedDescription)"
                 )
             }
 
