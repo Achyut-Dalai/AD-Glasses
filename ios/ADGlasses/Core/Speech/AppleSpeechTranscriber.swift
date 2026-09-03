@@ -230,7 +230,7 @@ private actor LocalAssistantSemanticRepair {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "`", with: "")
             .replacingOccurrences(of: "\"", with: "")
-        let line = cleaned.split(whereSeparator: \.isNewline).first.map(String.init) ?? cleaned
+        let line = cleaned.split(whereSeparator: { $0.isNewline }).first.map(String.init) ?? cleaned
         let parts = line.split(separator: "|", maxSplits: 1).map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines)
         }
@@ -346,7 +346,7 @@ private enum SemanticCommandRepairPolicy {
                 let substitution = previous[j] + (left == right ? 0 : 1)
                 let insertion = current[j] + 1
                 let deletion = previous[j + 1] + 1
-                current[j + 1] = min(substitution, insertion, deletion)
+                current[j + 1] = Swift.min(substitution, Swift.min(insertion, deletion))
             }
             previous = current
         }
