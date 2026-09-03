@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - feature/ios-design-polish-v2
     paths:
       - "ios/**"
       - ".github/workflows/ios-native.yml"
