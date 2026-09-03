@@ -17,6 +17,34 @@ enum AppleSpeechTranscriber {
     /// en-US. This improves recognition of Indian names, pronunciation, and accent without changing
     /// the language of the Assistant response.
     static let assistantLocale = Locale(identifier: "en-IN")
+    static let localRouterModelName = "Qwen3 0.6B"
+
+    /// User-visible status for Settings. The local model is deliberately optional: cloud answers,
+    /// SpeechAnalyzer, and deterministic hardware routing remain available when Core AI is absent.
+    static var localRouterStatus: String {
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+        return FileManager.default.fileExists(atPath: localRouterModelURL.path)
+            ? "Ready on device"
+            : "Model not staged"
+#elseif targetEnvironment(simulator)
+        return "Physical iPhone required"
+#else
+        return "Core AI package not linked"
+#endif
+    }
+
+    static var localRouterDetail: String {
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+        if FileManager.default.fileExists(atPath: localRouterModelURL.path) {
+            return "Used only for bounded glasses-speech repair and semantic command routing. Normal Assistant answers still use your selected cloud model."
+        }
+        return "Core AI support is linked, but the exported Qwen3 0.6B resources have not been staged on this iPhone yet. Normal Assistant answers still use your selected cloud model."
+#elseif targetEnvironment(simulator)
+        return "The Qwen3 local router is intentionally disabled in Simulator. Test and stage it on the physical iPhone. Normal Assistant answers still use your selected cloud model."
+#else
+        return "The app is running without the CoreAILanguageModels package. Deterministic speech routing still works, but Qwen semantic repair is unavailable until Core AI is linked and the model is staged."
+#endif
+    }
 
     @MainActor
     static func make(locale: Locale = assistantLocale) -> any SpeechTranscribing {
@@ -26,6 +54,14 @@ enum AppleSpeechTranscriber {
         Task { await LocalAssistantSemanticRepair.shared.prewarm() }
         return SemanticRepairingSpeechTranscriber(locale: locale)
     }
+
+#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
+    fileprivate static var localRouterModelURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CoreAIModels", isDirectory: true)
+            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
+    }
+#endif
 }
 
 /// Wraps SpeechAnalyzer at the product boundary rather than teaching the speech engine about
@@ -150,17 +186,7 @@ private final class SemanticRepairingSpeechTranscriber: ExternalAudioSpeechTrans
 
     private static func engineName(base: String, locale: Locale) -> String {
         let localeName = locale.identifier.replacingOccurrences(of: "_", with: "-")
-#if canImport(CoreAILanguageModels) && !targetEnvironment(simulator)
-        let modelURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("CoreAIModels", isDirectory: true)
-            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
-        let router = FileManager.default.fileExists(atPath: modelURL.path)
-            ? "Qwen3 0.6B router ready"
-            : "Qwen3 router not staged"
-#else
-        let router = "Qwen3 router not linked"
-#endif
-        return "\(base) · \(localeName) · \(router)"
+        return "\(base) · \(localeName) · \(AppleSpeechTranscriber.localRouterModelName): \(AppleSpeechTranscriber.localRouterStatus)"
     }
 }
 
@@ -237,7 +263,7 @@ private actor LocalAssistantSemanticRepair {
         if loadAttempted { return nil }
         loadAttempted = true
 
-        let modelURL = Self.modelURL
+        let modelURL = AppleSpeechTranscriber.localRouterModelURL
         guard FileManager.default.fileExists(atPath: modelURL.path) else { return nil }
         let model = try await CoreAILanguageModel(resourcesAt: modelURL)
         let session = LanguageModelSession(
@@ -246,12 +272,6 @@ private actor LocalAssistantSemanticRepair {
         )
         self.session = session
         return session
-    }
-
-    private static var modelURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("CoreAIModels", isDirectory: true)
-            .appendingPathComponent("ADQwen3_0_6B_iOS", isDirectory: true)
     }
 
     private static func parseDecision(_ raw: String) -> Decision? {
