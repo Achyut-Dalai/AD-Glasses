@@ -57,25 +57,27 @@ private struct WelcomeView: View {
     @State private var isWaitingForLocationChoice = false
 
     var body: some View {
-        ZStack {
-            background
+        GeometryReader { proxy in
+            ZStack {
+                background
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    brand
-                    headline
-                        .padding(.top, 14)
-                    glassesStage
-                    statusArea
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        brand
+                        headline
+                            .padding(.top, 14)
+                        glassesStage
+                        statusArea
+                    }
+                    .frame(maxWidth: 620)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 22)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: max(proxy.size.height - 24, 0), alignment: .top)
                 }
-                .frame(maxWidth: 620)
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-                .padding(.bottom, 22)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: UIScreen.main.bounds.height - 24, alignment: .top)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .task { await attemptAutomaticConnection() }
         .onChange(of: location.authorizationStatus) { _, status in
@@ -324,7 +326,7 @@ private enum WelcomePhase: Equatable {
 private extension View {
     @ViewBuilder
     func welcomeSurface(reduceTransparency: Bool, cornerRadius: CGFloat) -> some View {
-        if #available(iOS 26.0, *), !reduceTransparency {
+        if !reduceTransparency {
             glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
         } else {
             background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
