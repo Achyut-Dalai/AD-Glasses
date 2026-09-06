@@ -67,13 +67,13 @@ internal fun WelcomeScreen(
 
     ADAmbientBackground(strong = true) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val compact = maxHeight < 720.dp || maxWidth < 360.dp
-            val heroHeight = if (compact) 205.dp else 245.dp
-            val sectionGap = if (compact) 14.dp else 20.dp
+            val compact = maxHeight < 760.dp || maxWidth < 390.dp
+            val heroHeight = if (compact) 180.dp else 215.dp
+            val sectionGap = if (compact) 12.dp else 16.dp
             val headlineStyle = if (compact) {
-                MaterialTheme.typography.headlineMedium
+                MaterialTheme.typography.headlineSmall
             } else {
-                MaterialTheme.typography.headlineLarge
+                MaterialTheme.typography.headlineMedium
             }
 
             Column(
@@ -84,20 +84,20 @@ internal fun WelcomeScreen(
                     .fillMaxSize()
                     .systemBarsPadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 18.dp),
+                    .padding(horizontal = 20.dp, vertical = if (compact) 8.dp else 14.dp),
                 verticalArrangement = Arrangement.spacedBy(sectionGap),
             ) {
                 Image(
                     painter = painterResource(R.drawable.ad_brand_icon),
                     contentDescription = "AD Glasses",
                     modifier = Modifier
-                        .size(if (compact) 32.dp else 36.dp)
-                        .clip(RoundedCornerShape(10.dp)),
+                        .size(if (compact) 30.dp else 34.dp)
+                        .clip(RoundedCornerShape(9.dp)),
                 )
 
                 Column(
-                    modifier = Modifier.padding(top = if (compact) 4.dp else 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(top = if (compact) 2.dp else 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                         Text(
@@ -119,24 +119,24 @@ internal fun WelcomeScreen(
                     }
                     Text(
                         "See more, remember more, and keep the moments that matter.",
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 ADGlassSurface(
                     modifier = Modifier.fillMaxWidth().height(heroHeight),
-                    cornerRadius = if (compact) 26.dp else 30.dp,
+                    cornerRadius = if (compact) 24.dp else 28.dp,
                 ) {
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .align(Alignment.TopEnd)
-                                .size(if (compact) 190.dp else 230.dp)
+                                .size(if (compact) 170.dp else 205.dp)
                                 .background(
                                     Brush.radialGradient(
                                         listOf(
-                                            ADAccent.Indigo.copy(alpha = 0.07f),
+                                            ADAccent.Indigo.copy(alpha = 0.08f),
                                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.025f),
                                             Color.Transparent,
                                         ),
@@ -151,8 +151,8 @@ internal fun WelcomeScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(
-                                    horizontal = if (compact) 12.dp else 10.dp,
-                                    vertical = if (compact) 12.dp else 16.dp,
+                                    horizontal = if (compact) 14.dp else 12.dp,
+                                    vertical = if (compact) 10.dp else 14.dp,
                                 ),
                         )
                     }
@@ -160,11 +160,11 @@ internal fun WelcomeScreen(
 
                 when (phase) {
                     WelcomePhase.Connecting -> Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = if (compact) 4.dp else 10.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = if (compact) 2.dp else 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.5.dp)
+                        CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.25.dp)
                         Text(
                             "Connecting",
                             style = MaterialTheme.typography.bodyMedium,
@@ -175,21 +175,21 @@ internal fun WelcomeScreen(
 
                     WelcomePhase.Choice -> Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
                         Button(
                             onClick = connectManually,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(15.dp),
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
                         ) { Text("Connect glasses") }
                         OutlinedButton(
                             onClick = continueWithoutGlasses,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(15.dp),
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
                         ) { Text("Continue without glasses") }
                     }
                 }
-                Spacer(Modifier.height(if (compact) 6.dp else 12.dp))
+                Spacer(Modifier.height(if (compact) 4.dp else 10.dp))
             }
         }
     }
