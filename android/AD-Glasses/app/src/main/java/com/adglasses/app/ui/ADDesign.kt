@@ -1,23 +1,34 @@
 package com.adglasses.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 internal object ADDimens {
     val screenGutter = 16.dp
@@ -40,6 +51,8 @@ internal object ADAccent {
     val Purple = Color(0xFF9333EA)
 }
 
+private val LocalADHazeState = compositionLocalOf<HazeState?> { null }
+
 @Composable
 internal fun ADAmbientBackground(
     modifier: Modifier = Modifier,
@@ -47,52 +60,65 @@ internal fun ADAmbientBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
+    val hazeState = rememberHazeState()
     val neutralAlpha = when {
-        strong && dark -> 0.08f
-        strong -> 0.05f
-        dark -> 0.055f
-        else -> 0.026f
+        strong && dark -> 0.10f
+        strong -> 0.065f
+        dark -> 0.075f
+        else -> 0.045f
     }
     val accentAlpha = when {
-        strong && dark -> 0.09f
-        strong -> 0.055f
-        dark -> 0.055f
-        else -> 0.032f
+        strong && dark -> 0.13f
+        strong -> 0.085f
+        dark -> 0.085f
+        else -> 0.060f
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
+    CompositionLocalProvider(LocalADHazeState provides hazeState) {
         Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .size(if (strong) 430.dp else 340.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            ADAccent.Indigo.copy(alpha = accentAlpha),
-                            MaterialTheme.colorScheme.onBackground.copy(alpha = neutralAlpha),
-                            Color.Transparent,
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            // Only this decorative layer is a Haze source. Product content is always rendered
+            // above it and is never captured into the blur source.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .hazeSource(state = hazeState)
+                    .background(MaterialTheme.colorScheme.background),
+            ) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(if (strong) 430.dp else 340.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    ADAccent.Indigo.copy(alpha = accentAlpha),
+                                    MaterialTheme.colorScheme.onBackground.copy(alpha = neutralAlpha),
+                                    Color.Transparent,
+                                ),
+                            ),
                         ),
-                    ),
-                ),
-        )
-        Box(
-            Modifier
-                .align(Alignment.BottomStart)
-                .size(if (strong) 360.dp else 280.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            ADAccent.Cyan.copy(alpha = accentAlpha * 0.55f),
-                            Color.Transparent,
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .size(if (strong) 360.dp else 280.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    ADAccent.Cyan.copy(alpha = accentAlpha * 0.72f),
+                                    Color.Transparent,
+                                ),
+                            ),
                         ),
-                    ),
-                ),
-        )
-        content()
+                )
+            }
+
+            content()
+        }
     }
 }
 
@@ -105,73 +131,99 @@ internal fun ADGlassSurface(
 ) {
     val dark = isSystemInDarkTheme()
     val scheme = MaterialTheme.colorScheme
+    val hazeState = LocalADHazeState.current
     val shape = RoundedCornerShape(cornerRadius)
-    val shadow = if (dark) 16.dp else 10.dp
-    val border = if (dark) {
-        Color.White.copy(alpha = 0.13f)
+
+    val borderColor = if (dark) {
+        Color.White.copy(alpha = 0.16f)
     } else {
-        Color.White.copy(alpha = 0.90f)
+        scheme.onSurface.copy(alpha = 0.085f)
     }
-    val glassFill = if (dark) {
-        Brush.linearGradient(
-            listOf(
-                scheme.surface.copy(alpha = 0.80f),
-                scheme.surfaceContainer.copy(alpha = 0.64f),
-                scheme.surface.copy(alpha = 0.72f),
-            ),
-        )
+    val fallbackColor = if (dark) {
+        scheme.surfaceContainer.copy(alpha = 0.94f)
     } else {
-        Brush.linearGradient(
-            listOf(
-                Color.White.copy(alpha = 0.74f),
-                scheme.surface.copy(alpha = 0.56f),
-                scheme.surfaceContainer.copy(alpha = 0.46f),
-            ),
-        )
+        scheme.surface.copy(alpha = 0.94f)
     }
-    val sheen = Brush.linearGradient(
-        listOf(
-            Color.White.copy(alpha = if (dark) 0.08f else 0.24f),
-            Color.Transparent,
-            ADAccent.Indigo.copy(alpha = if (dark) 0.035f else 0.022f),
+    val hazeStyle = HazeStyle(
+        backgroundColor = if (dark) scheme.background else scheme.surfaceContainerLowest,
+        tints = listOf(
+            HazeTint(
+                if (dark) {
+                    scheme.surfaceContainer.copy(alpha = 0.54f)
+                } else {
+                    Color.White.copy(alpha = 0.46f)
+                },
+            ),
+            HazeTint(
+                ADAccent.Indigo.copy(alpha = if (dark) 0.045f else 0.022f),
+            ),
         ),
+        blurRadius = 22.dp,
+        noiseFactor = if (dark) 0.08f else 0.05f,
+        fallbackTint = HazeTint(fallbackColor),
     )
-
-    val surfaceModifier = modifier.shadow(
-        elevation = shadow,
-        shape = shape,
-        ambientColor = Color.Black.copy(alpha = if (dark) 0.24f else 0.08f),
-        spotColor = Color.Black.copy(alpha = if (dark) 0.20f else 0.06f),
-    )
-
-    val glassContent: @Composable () -> Unit = {
-        Box(Modifier.background(glassFill)) {
-            Box(Modifier.fillMaxSize().background(sheen))
-            content()
-        }
+    val foregroundSheen = if (dark) {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.055f),
+                Color.Transparent,
+                ADAccent.Indigo.copy(alpha = 0.025f),
+            ),
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.22f),
+                Color.White.copy(alpha = 0.08f),
+                ADAccent.Indigo.copy(alpha = 0.018f),
+            ),
+        )
     }
+
+    var outerModifier = modifier
+        .shadow(
+            elevation = if (dark) 12.dp else 7.dp,
+            shape = shape,
+            ambientColor = Color.Black.copy(alpha = if (dark) 0.30f else 0.08f),
+            spotColor = Color.Black.copy(alpha = if (dark) 0.24f else 0.06f),
+        )
+        .clip(shape)
+        .border(0.75.dp, borderColor, shape)
 
     if (onClick != null) {
-        Surface(
-            onClick = onClick,
-            modifier = surfaceModifier,
-            shape = shape,
-            color = Color.Transparent,
-            border = BorderStroke(0.75.dp, border),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            content = glassContent,
+        outerModifier = outerModifier.clickable(onClick = onClick)
+    }
+
+    Box(modifier = outerModifier) {
+        // Haze owns only this empty background layer. If Haze fails or is unavailable, foreground
+        // content remains completely independent and the fallback surface still provides contrast.
+        if (hazeState != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .hazeEffect(state = hazeState, style = hazeStyle),
+            )
+        } else {
+            Box(Modifier.matchParentSize().background(fallbackColor))
+        }
+
+        // A stable scrim keeps text/icon contrast deterministic in both themes and also provides
+        // a visual fallback while the first blurred frame is being prepared.
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    if (dark) {
+                        scheme.surface.copy(alpha = 0.20f)
+                    } else {
+                        Color.White.copy(alpha = 0.16f)
+                    },
+                )
+                .background(foregroundSheen),
         )
-    } else {
-        Surface(
-            modifier = surfaceModifier,
-            shape = shape,
-            color = Color.Transparent,
-            border = BorderStroke(0.75.dp, border),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            content = glassContent,
-        )
+
+        // Foreground content is the measurement/content owner and is never attached to hazeEffect.
+        Box { content() }
     }
 }
 
@@ -185,6 +237,8 @@ internal fun ADGroupedCard(
         modifier = modifier,
         shape = RoundedCornerShape(cornerRadius),
         color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
         content = content,
     )
 }
