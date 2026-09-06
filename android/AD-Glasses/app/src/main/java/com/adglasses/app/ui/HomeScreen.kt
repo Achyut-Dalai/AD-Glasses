@@ -13,15 +13,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -47,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +58,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -139,27 +142,44 @@ fun HomeScreen(
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                ),
             )
         },
     ) { inner ->
         ADAmbientBackground(Modifier.padding(inner)) {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(148.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 8.dp,
-                    bottom = 88.dp,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    LensTile(openLens)
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val columnCount = when {
+                    maxWidth < 350.dp -> 1
+                    maxWidth < 620.dp -> 2
+                    else -> 3
                 }
-                items(features, key = { it.title }) { feature ->
-                    HomeFeatureTile(feature)
+                val compactLens = maxWidth < 390.dp
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columnCount),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .widthIn(max = 720.dp)
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp,
+                        bottom = 84.dp,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        LensTile(onClick = openLens, compact = compactLens)
+                    }
+                    items(features, key = { it.title }) { feature ->
+                        HomeFeatureTile(feature)
+                    }
                 }
             }
 
@@ -192,20 +212,24 @@ private fun ADBrandWordmark() {
 }
 
 @Composable
-private fun LensTile(onClick: () -> Unit) {
+private fun LensTile(onClick: () -> Unit, compact: Boolean) {
     ADGlassSurface(
-        modifier = Modifier.fillMaxWidth().height(148.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = if (compact) 142.dp else 148.dp),
         cornerRadius = 26.dp,
         onClick = onClick,
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (compact) 16.dp else 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     "Look. Ask. Understand.",
@@ -218,30 +242,40 @@ private fun LensTile(onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            LensVisionField()
+            LensVisionField(compact = compact)
         }
     }
 }
 
 @Composable
-private fun LensVisionField() {
+private fun LensVisionField(compact: Boolean) {
     val transition = rememberInfiniteTransition(label = "lens-scan")
+    val scanExtent = if (compact) 20f else 26f
     val scanOffset by transition.animateFloat(
-        initialValue = -26f,
-        targetValue = 26f,
+        initialValue = -scanExtent,
+        targetValue = scanExtent,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1750),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "lens-scan-offset",
     )
+
+    val fieldWidth = if (compact) 100.dp else 126.dp
+    val fieldHeight = if (compact) 92.dp else 112.dp
+    val halo = if (compact) 96.dp else 124.dp
+    val focus = if (compact) 60.dp else 76.dp
+    val center = if (compact) 46.dp else 58.dp
+    val camera = if (compact) 25.dp else 31.dp
+    val scanWidth = if (compact) 62.dp else 78.dp
+
     Box(
-        modifier = Modifier.size(width = 126.dp, height = 112.dp),
+        modifier = Modifier.size(width = fieldWidth, height = fieldHeight),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             Modifier
-                .size(124.dp)
+                .size(halo)
                 .background(
                     Brush.radialGradient(
                         listOf(
@@ -257,12 +291,12 @@ private fun LensVisionField() {
             Icons.Filled.CenterFocusWeak,
             contentDescription = null,
             tint = ADAccent.Indigo.copy(alpha = 0.34f),
-            modifier = Modifier.size(76.dp),
+            modifier = Modifier.size(focus),
         )
         Surface(
-            modifier = Modifier.size(58.dp),
+            modifier = Modifier.size(center),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.25f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.24f),
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
@@ -271,12 +305,12 @@ private fun LensVisionField() {
         Icon(
             Icons.Filled.CameraAlt,
             contentDescription = null,
-            modifier = Modifier.size(31.dp),
+            modifier = Modifier.size(camera),
         )
         Box(
             Modifier
                 .offset(y = scanOffset.dp)
-                .size(width = 78.dp, height = 2.dp)
+                .size(width = scanWidth, height = 2.dp)
                 .background(
                     Brush.horizontalGradient(
                         listOf(Color.Transparent, ADAccent.Indigo.copy(alpha = 0.72f), Color.Transparent),
@@ -290,13 +324,17 @@ private fun LensVisionField() {
 @Composable
 private fun HomeFeatureTile(feature: HomeFeature) {
     ADGlassSurface(
-        modifier = Modifier.fillMaxWidth().height(118.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 112.dp),
         cornerRadius = 20.dp,
         onClick = feature.action,
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Surface(
                 shape = RoundedCornerShape(11.dp),
@@ -320,9 +358,9 @@ private fun HomeFeatureTile(feature: HomeFeature) {
                 )
                 Text(
                     feature.detail,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 3,
                 )
             }
         }
@@ -335,16 +373,10 @@ private fun ConnectionPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(100.dp)
-    Surface(
+    ADGlassSurface(
         onClick = onClick,
-        modifier = modifier.shadow(8.dp, shape),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-        ),
+        modifier = modifier.widthIn(max = 340.dp),
+        cornerRadius = 100.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
