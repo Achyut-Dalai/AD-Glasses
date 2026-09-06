@@ -1,20 +1,26 @@
 package com.adglasses.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,6 +30,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,86 +42,177 @@ fun LibraryScreen(padding: PaddingValues, vm: ADViewModel, openDeviceCenter: () 
     val connection by vm.glasses.collectAsStateWithLifecycle()
     val media by vm.mediaItems.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text("Library", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(
-            "Original media stays original. Analysis, OCR and thumbnails are derivatives.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.PhotoLibrary, null)
-                    Column(Modifier.weight(1f)) {
-                        Text("Glasses media", fontWeight = FontWeight.SemiBold)
+    ADAmbientBackground(Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         Text(
-                            if (connection.isReady) {
-                                "One tap prepares BLE, joins the glasses Wi-Fi, syncs new originals and cleans up."
-                            } else {
-                                "Connect glasses to sync"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
+                            "Library",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Your originals stay untouched. AD keeps synced photos, videos and recordings together on this phone.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-                if (connection.isReady) {
-                    Button(onClick = vm::syncMediaConfig, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Outlined.CloudDownload, null)
-                        Text("  Sync Library")
-                    }
-                } else {
-                    OutlinedButton(onClick = openDeviceCenter, modifier = Modifier.fillMaxWidth()) {
-                        Text("Connect glasses")
-                    }
-                }
             }
-        }
 
-        if (media.isEmpty()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("No synced media yet", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Photos, videos and glasses recordings will appear here after sync.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            Text("On this phone • ${media.size}", fontWeight = FontWeight.SemiBold)
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(media, key = { it.fileName }) { item ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+            item {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    ADGroupedCard(
+                        modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+                        cornerRadius = 20.dp,
                     ) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
-                            Text(item.fileName, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${kindLabel(item.kind)} • ${formatBytes(item.bytes)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                LibraryIcon(Icons.Outlined.PhotoLibrary, ADAccent.Indigo)
+                                Column(Modifier.weight(1f)) {
+                                    Text("Glasses media", fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (connection.isReady) {
+                                            "Ready to sync new originals from your glasses."
+                                        } else {
+                                            "Connect your glasses to sync media."
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+
+                            if (connection.isReady) {
+                                Button(
+                                    onClick = vm::syncMediaConfig,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Outlined.CloudDownload, null)
+                                    Spacer(Modifier.size(8.dp))
+                                    Text("Sync new media")
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = openDeviceCenter,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Connect glasses")
+                                }
+                            }
                         }
                     }
                 }
-                item { HorizontalDivider(Modifier.padding(top = 4.dp)) }
+            }
+
+            if (media.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                LibraryIcon(Icons.Outlined.PhotoLibrary, MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("No synced media yet", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Photos, videos and glasses recordings will appear here after your first sync.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                        Text(
+                            "ON THIS PHONE · ${media.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                items(media, key = { it.fileName }) { item ->
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                LibraryIcon(kindIcon(item.kind), kindTint(item.kind))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        item.fileName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2,
+                                    )
+                                    Text(
+                                        "${kindLabel(item.kind)} · ${formatBytes(item.bytes)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun LibraryIcon(icon: ImageVector, tint: Color) {
+    Surface(
+        modifier = Modifier.size(42.dp),
+        shape = RoundedCornerShape(13.dp),
+        color = tint.copy(alpha = 0.10f),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+private fun kindIcon(kind: LocalMediaKind): ImageVector = when (kind) {
+    LocalMediaKind.Photo -> Icons.Outlined.Image
+    LocalMediaKind.Video -> Icons.Outlined.Movie
+    LocalMediaKind.Audio -> Icons.Outlined.GraphicEq
+}
+
+private fun kindTint(kind: LocalMediaKind): Color = when (kind) {
+    LocalMediaKind.Photo -> ADAccent.Teal
+    LocalMediaKind.Video -> ADAccent.Pink
+    LocalMediaKind.Audio -> ADAccent.Orange
 }
 
 private fun kindLabel(kind: LocalMediaKind): String = when (kind) {
