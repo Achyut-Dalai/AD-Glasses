@@ -37,6 +37,7 @@ import kotlinx.coroutines.withTimeout
 class ADViewModel : ViewModel() {
     val glasses: StateFlow<GlassesConnectionState> = AppGraph.glasses.state
     val scanned: StateFlow<List<ScannedGlasses>> = AppGraph.glasses.discovered
+    val classicBluetooth = AppGraph.classicBluetooth.state
     val messages: StateFlow<List<ChatMessage>> = AppGraph.conversationStore.messages
     val notifications: StateFlow<List<CapturedNotification>> = AppGraph.notifications.items
     val mediaItems: StateFlow<List<LocalMediaItem>> = AppGraph.mediaLibrary.items
@@ -55,8 +56,8 @@ class ADViewModel : ViewModel() {
     val translation = _translation.asStateFlow()
 
     /**
-     * Typed and glasses-originated turns share one unbounded ordered queue. A voice turn arriving
-     * while the AI is answering is therefore processed next rather than discarded.
+     * Typed, system-voice and glasses-originated turns share one unbounded ordered queue. A voice
+     * turn arriving while the AI is answering is therefore processed next rather than discarded.
      */
     private val assistantQueue = Channel<AssistantTurn>(capacity = Channel.UNLIMITED)
     private var conversationEpoch = 0L
@@ -87,7 +88,7 @@ class ADViewModel : ViewModel() {
                     GlassesSpeechStatus.Listening -> _notice.value = "Listening from glasses"
                     is GlassesSpeechStatus.Transcribing -> {
                         _notice.value = if (status.local) {
-                            "Transcribing on device"
+                            "Transcribing glasses mic on device"
                         } else {
                             "Preparing glasses voice transcript"
                         }
@@ -114,6 +115,8 @@ class ADViewModel : ViewModel() {
     fun disconnect() = AppGraph.glasses.disconnect()
     fun forget() = AppGraph.glasses.forget()
     fun clearNotice() { _notice.value = null }
+    fun ensureClassicBluetooth() = AppGraph.classicBluetooth.ensureLink(glasses.value.deviceName)
+    fun refreshClassicBluetooth() = AppGraph.classicBluetooth.refresh()
 
     fun takePhoto() = launchHardwareAction("Taking photo") { AppGraph.glasses.takePhoto(); "Photo command accepted" }
     fun startVideo() = launchHardwareAction("Starting video") { AppGraph.glasses.startVideo(); "Video recording started" }
@@ -122,14 +125,19 @@ class ADViewModel : ViewModel() {
     fun stopAudio() = launchHardwareAction("Stopping recording") { AppGraph.glasses.stopAudioRecording(); "Glasses recording stopped" }
     fun aiPhoto() = launchHardwareAction("Capturing for Lens") { AppGraph.glasses.requestAiPhoto(); "AI photo requested" }
 
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String) = enqueueAssistantTurn(text, AssistantTurnSource.Typed)
+
+    /** Text returned by Android's system speech recognizer, distinct from the BLE glasses mic. */
+    fun sendPhoneVoiceMessage(text: String) = enqueueAssistantTurn(text, AssistantTurnSource.PhoneSystem)
+
+    private fun enqueueAssistantTurn(text: String, source: AssistantTurnSource) {
         val cleaned = text.trim()
         if (cleaned.isEmpty()) return
         val result = assistantQueue.trySend(
             AssistantTurn(
                 text = cleaned,
                 epoch = conversationEpoch,
-                source = AssistantTurnSource.Typed,
+                source = source,
             )
         )
         if (result.isFailure) _notice.value = "Could not queue the Assistant turn"
@@ -306,7 +314,7 @@ class ADViewModel : ViewModel() {
             if (!configuration.configured || profile == null) {
                 val message = "Configure a Cloud AI profile from the Assistant settings first"
                 _notice.value = message
-                if (turn.isGlassesVoice) AppGraph.tts.speak(message)
+                if (turn.isVoice) AppGraph.tts.speak(message)
                 return
             }
 
@@ -319,7 +327,8 @@ class ADViewModel : ViewModel() {
             completeAssistantTurn(turn, answer)
 
             when (turn.source) {
-                AssistantTurnSource.GlassesLocal -> _notice.value = "Answered glasses voice • on-device speech"
+                AssistantTurnSource.PhoneSystem -> _notice.value = "Answered phone voice • Android speech recognizer"
+                AssistantTurnSource.GlassesLocal -> _notice.value = "Answered glasses voice • Moonshine on device"
                 AssistantTurnSource.GlassesGroq -> _notice.value = "Answered glasses voice • Groq Whisper fallback"
                 AssistantTurnSource.Typed -> Unit
             }
@@ -329,7 +338,7 @@ class ADViewModel : ViewModel() {
                 _notice.value = message
                 val response = "I couldn't complete that request. $message"
                 AppGraph.conversationStore.addAssistant(response)
-                if (turn.isGlassesVoice) AppGraph.tts.speak(response)
+                if (turn.isVoice) AppGraph.tts.speak(response)
             }
         } finally {
             _assistantWorking.value = false
@@ -416,7 +425,7 @@ class ADViewModel : ViewModel() {
         val cleaned = response.trim()
         if (cleaned.isEmpty()) return
         AppGraph.conversationStore.addAssistant(cleaned)
-        if (turn.isGlassesVoice) AppGraph.tts.speak(cleaned)
+        if (turn.isVoice) AppGraph.tts.speak(cleaned)
     }
 
     private fun launchHardwareAction(label: String, block: suspend () -> String) {
@@ -473,12 +482,15 @@ class ADViewModel : ViewModel() {
         val epoch: Long,
         val source: AssistantTurnSource,
     ) {
-        val isGlassesVoice: Boolean
+        val isVoice: Boolean
             get() = source != AssistantTurnSource.Typed
+        val isGlassesVoice: Boolean
+            get() = source == AssistantTurnSource.GlassesLocal || source == AssistantTurnSource.GlassesGroq
     }
 
     private enum class AssistantTurnSource {
         Typed,
+        PhoneSystem,
         GlassesLocal,
         GlassesGroq,
     }
