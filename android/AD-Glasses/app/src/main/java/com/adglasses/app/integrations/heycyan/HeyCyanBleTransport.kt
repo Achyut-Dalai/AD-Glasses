@@ -16,7 +16,9 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
+import com.adglasses.app.BuildConfig
 import com.adglasses.app.core.model.ScannedGlasses
 import java.util.ArrayDeque
 import java.util.UUID
@@ -30,6 +32,12 @@ class HeyCyanBleTransport(private val context: Context) {
         val LARGE_NOTIFY: UUID = UUID.fromString("de5bf729-d711-4e47-af26-65e3012a5dc7")
         val LARGE_WRITE: UUID = UUID.fromString("de5bf72a-d711-4e47-af26-65e3012a5dc7")
         private val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        private const val TAG = "AD/BLE"
+    }
+
+    enum class NotificationChannel {
+        Primary,
+        LargeData,
     }
 
     sealed interface Event {
@@ -38,7 +46,7 @@ class HeyCyanBleTransport(private val context: Context) {
         data object Connecting : Event
         data object Discovering : Event
         data object Ready : Event
-        data class Bytes(val bytes: ByteArray) : Event
+        data class Bytes(val channel: NotificationChannel, val bytes: ByteArray) : Event
         data class Disconnected(val status: Int) : Event
         data class Error(val message: String) : Event
     }
@@ -55,21 +63,48 @@ class HeyCyanBleTransport(private val context: Context) {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val device = result.device
-            val name = runCatching {
-                if (hasConnectPermission()) device.name else null
-            }.getOrNull() ?: result.scanRecord?.deviceName ?: "Nearby BLE device"
-            onEvent?.invoke(Event.ScanResultFound(ScannedGlasses(name, device.address, result.rssi)))
+            val recordName = result.scanRecord?.deviceName
+            val systemName = runCatching {
+                if (hasConnectPermission()) result.device.name else null
+            }.getOrNull()
+            val advertisedServices = result.scanRecord?.serviceUuids?.map { it.uuid }.orEmpty()
+
+            // Mirror the working iOS admission boundary. The physical AM01 family is observed as
+            // JS-01, while HeyCyan/Oudmon prefixes remain supported product identifiers. A name or
+            // advertised-service match only makes the device selectable: post-connect discovery of
+            // both verified GATT service families is still the authoritative safety check.
+            val names = listOfNotNull(recordName, systemName).map { it.trim() }
+            val supportedName = names.any { raw ->
+                val name = raw.lowercase()
+                name.startsWith("js-01") ||
+                    name.startsWith("js01") ||
+                    name.contains("heycyan") ||
+                    name.contains("hey cyan") ||
+                    name.startsWith("o_") ||
+                    name.startsWith("q_")
+            }
+            val supportedService = advertisedServices.any { it == PRIMARY_SERVICE }
+            if (!supportedName && !supportedService) return
+
+            val name = recordName ?: systemName ?: "HeyCyan glasses"
+            debug("candidate name=$name rssi=${result.rssi} services=${advertisedServices.joinToString()}")
+            onEvent?.invoke(
+                Event.ScanResultFound(
+                    ScannedGlasses(name, result.device.address, result.rssi),
+                ),
+            )
         }
 
         override fun onScanFailed(errorCode: Int) {
             scanning = false
+            debug("scan failed code=$errorCode")
             onEvent?.invoke(Event.Error("Bluetooth scan failed ($errorCode)"))
         }
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            debug("connection state status=$status newState=$newState")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     onEvent?.invoke(Event.Discovering)
@@ -85,6 +120,8 @@ class HeyCyanBleTransport(private val context: Context) {
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            val serviceList = gatt.services.joinToString { it.uuid.toString() }
+            debug("services discovered status=$status services=$serviceList")
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 onEvent?.invoke(Event.Error("Service discovery failed ($status)"))
                 return
@@ -110,6 +147,7 @@ class HeyCyanBleTransport(private val context: Context) {
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            debug("descriptor write characteristic=${descriptor.characteristic.uuid} status=$status")
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 onEvent?.invoke(Event.Error("Could not enable glasses notifications ($status)"))
                 return
@@ -119,7 +157,7 @@ class HeyCyanBleTransport(private val context: Context) {
 
         @Deprecated("Deprecated in API 33")
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            onEvent?.invoke(Event.Bytes(characteristic.value?.copyOf() ?: byteArrayOf()))
+            emitNotification(characteristic, characteristic.value?.copyOf() ?: byteArrayOf())
         }
 
         override fun onCharacteristicChanged(
@@ -127,7 +165,7 @@ class HeyCyanBleTransport(private val context: Context) {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray,
         ) {
-            onEvent?.invoke(Event.Bytes(value.copyOf()))
+            emitNotification(characteristic, value.copyOf())
         }
     }
 
@@ -158,20 +196,17 @@ class HeyCyanBleTransport(private val context: Context) {
             return
         }
 
-        // A previous scan can survive an Activity restart because the accessory service keeps the
-        // application process alive. Always restart the scan when the user explicitly taps Scan.
         if (scanning) {
             runCatching { scanner.stopScan(scanCallback) }
             scanning = false
         }
 
         scanning = true
+        debug("starting unfiltered BLE scan; supported candidates are admitted in callback")
         onEvent?.invoke(Event.Scanning)
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
 
-        // Do not filter on PRIMARY_SERVICE at advertisement time. The verified service is a GATT
-        // service discovered after connection; it is not evidence that every firmware advertises
-        // that UUID. Connection-time service discovery remains the authoritative device check.
+        // Verified GATT UUIDs are post-connect evidence, not a reliable advertisement-time filter.
         runCatching {
             scanner.startScan(null, settings, scanCallback)
         }.onFailure { error ->
@@ -184,6 +219,7 @@ class HeyCyanBleTransport(private val context: Context) {
         if (!scanning || !hasScanPermission()) return
         runCatching { adapter?.bluetoothLeScanner?.stopScan(scanCallback) }
         scanning = false
+        debug("scan stopped")
     }
 
     fun connect(address: String) {
@@ -191,18 +227,24 @@ class HeyCyanBleTransport(private val context: Context) {
             onEvent?.invoke(Event.Error("Bluetooth connect permission is required"))
             return
         }
+        val currentAdapter = adapter
+        if (currentAdapter == null || !currentAdapter.isEnabled) {
+            onEvent?.invoke(Event.Error("Turn on Bluetooth before connecting to glasses"))
+            return
+        }
         stopScan()
         close()
-        val device = runCatching { adapter?.getRemoteDevice(address) }.getOrNull() ?: run {
+        val device = runCatching { currentAdapter.getRemoteDevice(address) }.getOrNull() ?: run {
             onEvent?.invoke(Event.Error("The saved glasses address is invalid"))
             return
         }
+        debug("connectGatt name=${runCatching { device.name }.getOrNull() ?: "unknown"}")
         onEvent?.invoke(Event.Connecting)
         gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
 
-    fun writeLargeData(bytes: ByteArray): Boolean = write(largeWrite, bytes)
-    fun writePrimary(bytes: ByteArray): Boolean = write(primaryWrite, bytes)
+    fun writeLargeData(bytes: ByteArray): Boolean = write(largeWrite, bytes, "large")
+    fun writePrimary(bytes: ByteArray): Boolean = write(primaryWrite, bytes, "primary")
 
     fun close() {
         stopScan()
@@ -220,9 +262,11 @@ class HeyCyanBleTransport(private val context: Context) {
     private fun enableNextNotification(gatt: BluetoothGatt) {
         val characteristic = notifyQueue.removeFirstOrNullCompat()
         if (characteristic == null) {
+            debug("both verified notification paths are enabled")
             onEvent?.invoke(Event.Ready)
             return
         }
+        debug("enabling notify ${characteristic.uuid}")
         if (!gatt.setCharacteristicNotification(characteristic, true)) {
             onEvent?.invoke(Event.Error("Could not subscribe to a glasses notification characteristic"))
             return
@@ -247,10 +291,25 @@ class HeyCyanBleTransport(private val context: Context) {
         }
     }
 
+    private fun emitNotification(characteristic: BluetoothGattCharacteristic, bytes: ByteArray) {
+        val channel = when (characteristic.uuid) {
+            PRIMARY_NOTIFY -> NotificationChannel.Primary
+            LARGE_NOTIFY -> NotificationChannel.LargeData
+            else -> return
+        }
+        debug("rx channel=$channel bytes=${bytes.size}")
+        onEvent?.invoke(Event.Bytes(channel, bytes))
+    }
+
     @SuppressLint("MissingPermission")
-    private fun write(characteristic: BluetoothGattCharacteristic?, bytes: ByteArray): Boolean {
+    private fun write(
+        characteristic: BluetoothGattCharacteristic?,
+        bytes: ByteArray,
+        channel: String,
+    ): Boolean {
         val currentGatt = gatt ?: return false
         val target = characteristic ?: return false
+        debug("tx channel=$channel family=${bytes.getOrNull(1)?.toUByte()?.toString(16) ?: "??"} bytes=${bytes.size}")
         return if (Build.VERSION.SDK_INT >= 33) {
             currentGatt.writeCharacteristic(
                 target,
@@ -281,6 +340,10 @@ class HeyCyanBleTransport(private val context: Context) {
             largeWrite = null
             notifyQueue.clear()
         }
+    }
+
+    private fun debug(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message)
     }
 }
 
