@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -151,12 +152,16 @@ fun HomeScreen(
     ) { inner ->
         ADAmbientBackground(Modifier.padding(inner)) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
+                val fontScale = LocalDensity.current.fontScale
+                val largeText = fontScale >= 1.15f
                 val columnCount = when {
+                    largeText -> 1
                     maxWidth < 350.dp -> 1
                     maxWidth < 620.dp -> 2
                     else -> 3
                 }
-                val compactLens = maxWidth < 390.dp
+                val compactLens = maxWidth < 410.dp || largeText
+                val stackedLens = maxWidth < 350.dp || fontScale >= 1.30f
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columnCount),
@@ -175,7 +180,11 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        LensTile(onClick = openLens, compact = compactLens)
+                        LensTile(
+                            onClick = openLens,
+                            compact = compactLens,
+                            stacked = stackedLens,
+                        )
                     }
                     items(features, key = { it.title }) { feature ->
                         HomeFeatureTile(feature)
@@ -212,38 +221,59 @@ private fun ADBrandWordmark() {
 }
 
 @Composable
-private fun LensTile(onClick: () -> Unit, compact: Boolean) {
+private fun LensTile(onClick: () -> Unit, compact: Boolean, stacked: Boolean) {
     ADGlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = if (compact) 142.dp else 148.dp),
+            .heightIn(min = if (stacked) 190.dp else if (compact) 142.dp else 148.dp),
         cornerRadius = 26.dp,
         onClick = onClick,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = if (compact) 16.dp else 18.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
-        ) {
+        if (stacked) {
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Look. Ask. Understand.",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "Explore what’s in front of you.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                LensCopy()
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    LensVisionField(compact = true)
+                }
             }
-            LensVisionField(compact = compact)
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = if (compact) 16.dp else 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    LensCopy()
+                }
+                LensVisionField(compact = compact)
+            }
         }
+    }
+}
+
+@Composable
+private fun LensCopy() {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Look. Ask. Understand.",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Explore what’s in front of you.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
