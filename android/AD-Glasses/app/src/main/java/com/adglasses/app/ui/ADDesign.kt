@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -47,12 +48,19 @@ internal fun ADAmbientBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val glowAlpha = when {
-        strong && dark -> 0.075f
-        strong -> 0.045f
+    val neutralAlpha = when {
+        strong && dark -> 0.08f
+        strong -> 0.05f
         dark -> 0.055f
-        else -> 0.025f
+        else -> 0.026f
     }
+    val accentAlpha = when {
+        strong && dark -> 0.09f
+        strong -> 0.055f
+        dark -> 0.055f
+        else -> 0.032f
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -61,11 +69,25 @@ internal fun ADAmbientBackground(
         Box(
             Modifier
                 .align(Alignment.TopEnd)
-                .size(if (strong) 370.dp else 300.dp)
+                .size(if (strong) 430.dp else 340.dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.onBackground.copy(alpha = glowAlpha),
+                            ADAccent.Indigo.copy(alpha = accentAlpha),
+                            MaterialTheme.colorScheme.onBackground.copy(alpha = neutralAlpha),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomStart)
+                .size(if (strong) 360.dp else 280.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            ADAccent.Cyan.copy(alpha = accentAlpha * 0.55f),
                             Color.Transparent,
                         ),
                     ),
@@ -83,27 +105,73 @@ internal fun ADGlassSurface(
     content: @Composable () -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    val background = MaterialTheme.colorScheme.surface.copy(alpha = if (dark) 0.86f else 0.78f)
-    val border = if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.72f)
+    val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(cornerRadius)
-    val shadow = if (dark) 14.dp else 7.dp
+    val shadow = if (dark) 16.dp else 10.dp
+    val border = if (dark) {
+        Color.White.copy(alpha = 0.13f)
+    } else {
+        Color.White.copy(alpha = 0.90f)
+    }
+    val glassFill = if (dark) {
+        Brush.linearGradient(
+            listOf(
+                scheme.surface.copy(alpha = 0.80f),
+                scheme.surfaceContainer.copy(alpha = 0.64f),
+                scheme.surface.copy(alpha = 0.72f),
+            ),
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.74f),
+                scheme.surface.copy(alpha = 0.56f),
+                scheme.surfaceContainer.copy(alpha = 0.46f),
+            ),
+        )
+    }
+    val sheen = Brush.linearGradient(
+        listOf(
+            Color.White.copy(alpha = if (dark) 0.08f else 0.24f),
+            Color.Transparent,
+            ADAccent.Indigo.copy(alpha = if (dark) 0.035f else 0.022f),
+        ),
+    )
+
+    val surfaceModifier = modifier.shadow(
+        elevation = shadow,
+        shape = shape,
+        ambientColor = Color.Black.copy(alpha = if (dark) 0.24f else 0.08f),
+        spotColor = Color.Black.copy(alpha = if (dark) 0.20f else 0.06f),
+    )
+
+    val glassContent: @Composable () -> Unit = {
+        Box(Modifier.background(glassFill)) {
+            Box(Modifier.matchParentSize().background(sheen))
+            content()
+        }
+    }
 
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            modifier = modifier.shadow(shadow, shape),
+            modifier = surfaceModifier,
             shape = shape,
-            color = background,
+            color = Color.Transparent,
             border = BorderStroke(0.75.dp, border),
-            content = content,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            content = glassContent,
         )
     } else {
         Surface(
-            modifier = modifier.shadow(shadow, shape),
+            modifier = surfaceModifier,
             shape = shape,
-            color = background,
+            color = Color.Transparent,
             border = BorderStroke(0.75.dp, border),
-            content = content,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            content = glassContent,
         )
     }
 }
