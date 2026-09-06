@@ -67,6 +67,28 @@ class ClassicBluetoothManager(context: Context) {
     private var a2dpConnected = false
     private var headsetConnected = false
 
+    private val receiver: BroadcastReceiver by lazy {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                intent ?: return
+                when (intent.action) {
+                    BluetoothDevice.ACTION_FOUND -> bluetoothDeviceExtra(intent)?.let(::handleFound)
+                    BluetoothDevice.ACTION_BOND_STATE_CHANGED -> bluetoothDeviceExtra(intent)?.let(::handleBondChange)
+                    BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED,
+                    BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED -> handleProfileState(intent)
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                        if (_state.value is ClassicBluetoothState.Searching) {
+                            discoveryTimeout?.cancel()
+                            _state.value = ClassicBluetoothState.Failed(
+                                "Could not find the JS-01 calls/audio radio. Keep the glasses awake and retry."
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     init {
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
@@ -93,7 +115,9 @@ class ClassicBluetoothManager(context: Context) {
     fun ensureLink(bleName: String?) {
         targetName = bleName?.trim()?.takeIf { it.isNotBlank() }
         if (!hasConnectPermission() || !hasScanPermission()) {
-            _state.value = ClassicBluetoothState.Failed("Bluetooth nearby-device permission is required for calls and audio")
+            _state.value = ClassicBluetoothState.Failed(
+                "Bluetooth nearby-device permission is required for calls and audio"
+            )
             return
         }
 
@@ -144,7 +168,9 @@ class ClassicBluetoothManager(context: Context) {
             delay(DISCOVERY_TIMEOUT_MS)
             if (_state.value is ClassicBluetoothState.Searching) {
                 runCatching { currentAdapter.cancelDiscovery() }
-                _state.value = ClassicBluetoothState.Failed("Could not find the JS-01 calls/audio radio. Keep the glasses awake and retry.")
+                _state.value = ClassicBluetoothState.Failed(
+                    "Could not find the JS-01 calls/audio radio. Keep the glasses awake and retry."
+                )
             }
         }
     }
@@ -213,7 +239,9 @@ class ClassicBluetoothManager(context: Context) {
         if (device.bondState != BluetoothDevice.BOND_BONDED) return
         val name = safeName(device)
         val status = runCatching { device.connect() }.getOrElse {
-            _state.value = ClassicBluetoothState.Failed(it.message ?: "Could not connect glasses audio profiles")
+            _state.value = ClassicBluetoothState.Failed(
+                it.message ?: "Could not connect glasses audio profiles"
+            )
             return
         }
         if (status == BluetoothStatusCodes.SUCCESS) {
@@ -256,8 +284,10 @@ class ClassicBluetoothManager(context: Context) {
         val device = bluetoothDeviceExtra(intent) ?: return
         if (!matchesTarget(device)) return
         targetAddress = device.address
-        val connected = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, BluetoothProfile.STATE_DISCONNECTED) ==
-            BluetoothProfile.STATE_CONNECTED
+        val connected = intent.getIntExtra(
+            BluetoothProfile.EXTRA_STATE,
+            BluetoothProfile.STATE_DISCONNECTED,
+        ) == BluetoothProfile.STATE_CONNECTED
         when (intent.action) {
             BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> a2dpConnected = connected
             BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED -> headsetConnected = connected
@@ -278,24 +308,6 @@ class ClassicBluetoothManager(context: Context) {
             ClassicBluetoothState.Paired(name)
         } else {
             _state.value
-        }
-    }
-
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            intent ?: return
-            when (intent.action) {
-                BluetoothDevice.ACTION_FOUND -> bluetoothDeviceExtra(intent)?.let(::handleFound)
-                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> bluetoothDeviceExtra(intent)?.let(::handleBondChange)
-                BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED,
-                BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED -> handleProfileState(intent)
-                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-                    if (_state.value is ClassicBluetoothState.Searching) {
-                        discoveryTimeout?.cancel()
-                        _state.value = ClassicBluetoothState.Failed("Could not find the JS-01 calls/audio radio. Keep the glasses awake and retry.")
-                    }
-                }
-            }
         }
     }
 
@@ -348,8 +360,14 @@ class ClassicBluetoothManager(context: Context) {
         }
 
     private fun hasConnectPermission(): Boolean = Build.VERSION.SDK_INT < 31 ||
-        ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            appContext,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ) == PackageManager.PERMISSION_GRANTED
 
     private fun hasScanPermission(): Boolean = Build.VERSION.SDK_INT < 31 ||
-        ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            appContext,
+            Manifest.permission.BLUETOOTH_SCAN,
+        ) == PackageManager.PERMISSION_GRANTED
 }
