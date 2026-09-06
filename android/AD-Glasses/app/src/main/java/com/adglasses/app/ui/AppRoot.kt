@@ -112,12 +112,12 @@ fun ADGlassesRoot(vm: ADViewModel = viewModel()) {
     if (showSettings) AISettingsDialog(vm = vm, dismiss = { showSettings = false })
     if (showLens) ProductPreviewDialog(
         title = "Lens",
-        message = "Look, ask, and understand what is in front of you. The full parity Lens surface is the next UI batch.",
+        message = "Use a still from your glasses to ask what you’re looking at, extract visible text, and understand the scene.",
         dismiss = { showLens = false },
     )
     if (showSoundbite) ProductPreviewDialog(
         title = "Soundbite",
-        message = "Turn speech into a local note. The full parity Soundbite surface is the next UI batch.",
+        message = "Capture a spoken thought from your glasses and keep it as a local note you can revisit later.",
         dismiss = { showSoundbite = false },
     )
     if (notice != null || busy != null) {
