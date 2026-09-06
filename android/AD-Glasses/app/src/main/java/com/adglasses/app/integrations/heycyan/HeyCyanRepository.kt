@@ -34,6 +34,7 @@ sealed interface HeyCyanVoiceStreamEvent {
 class HeyCyanRepository(
     context: Context,
     private val transport: HeyCyanBleTransport,
+    private val onClassicBluetoothRequestFinished: (String?) -> Unit = {},
 ) {
     companion object {
         private const val PREFS = "heycyan_connection"
@@ -221,11 +222,11 @@ class HeyCyanRepository(
                 )
             }
             HeyCyanBleTransport.Event.Ready -> {
-                // Match the working iOS boundary: GATT + both verified notification subscriptions
-                // define a ready control transport. Status synchronization below is best effort and
-                // must never turn a valid BLE link into a fake connection failure.
+                // Verified GATT + both notification subscriptions define a usable control link.
+                // Product/status synchronization that follows is deliberately best effort: live
+                // hardware proved a status response can be absent while controls (Photo) work.
                 reconnectAttempt = 0
-                debug("state=ready; starting best-effort status refresh")
+                debug("state=ready; starting best-effort product setup")
                 _state.value = _state.value.copy(
                     phase = ConnectionPhase.Ready,
                     detail = null,
@@ -258,6 +259,13 @@ class HeyCyanRepository(
     private fun refreshKnownDeviceStatus() {
         statusRefreshJob?.cancel()
         statusRefreshJob = scope.launch {
+            // Ask the firmware to expose/coordinate its Classic audio/control side before Android
+            // starts BR/EDR discovery/bonding. Even when the response matcher times out, the write
+            // itself may already have put the headset side in the right state, so continue into the
+            // OS-owned pairing flow rather than requiring a second manual Settings step.
+            bestEffortStatus("classic-bluetooth", HeyCyanCommand.ClassicBluetooth)
+            onClassicBluetoothRequestFinished(_state.value.deviceName)
+
             bestEffortStatus("clock", HeyCyanCommand.SyncTime())
             bestEffortStatus("battery", HeyCyanCommand.Battery) { frame ->
                 val battery = HeyCyanResponseDecoder.battery(frame)
@@ -268,7 +276,6 @@ class HeyCyanRepository(
             }
             bestEffortStatus("device-info", HeyCyanCommand.DeviceInfo)
             bestEffortStatus("volume", HeyCyanCommand.ReadVolume)
-            bestEffortStatus("classic-bluetooth", HeyCyanCommand.ClassicBluetooth)
         }
     }
 
