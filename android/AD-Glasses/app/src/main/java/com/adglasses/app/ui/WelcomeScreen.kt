@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,112 +66,131 @@ internal fun WelcomeScreen(
     }
 
     ADAmbientBackground(strong = true) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ad_brand_icon),
-                contentDescription = "AD Glasses",
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-            )
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxHeight < 720.dp || maxWidth < 360.dp
+            val heroHeight = if (compact) 205.dp else 245.dp
+            val sectionGap = if (compact) 14.dp else 20.dp
+            val headlineStyle = if (compact) {
+                MaterialTheme.typography.headlineMedium
+            } else {
+                MaterialTheme.typography.headlineLarge
+            }
 
             Column(
-                modifier = Modifier.padding(top = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 18.dp),
+                verticalArrangement = Arrangement.spacedBy(sectionGap),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    Text(
-                        "Your glasses.",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "Your AI.",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = ADAccent.Blue,
-                    )
-                    Text(
-                        "Your data.",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Text(
-                    "See more, remember more, and keep the moments that matter.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Image(
+                    painter = painterResource(R.drawable.ad_brand_icon),
+                    contentDescription = "AD Glasses",
+                    modifier = Modifier
+                        .size(if (compact) 32.dp else 36.dp)
+                        .clip(RoundedCornerShape(10.dp)),
                 )
-            }
 
-            ADGlassSurface(
-                modifier = Modifier.fillMaxWidth().height(260.dp),
-                cornerRadius = 30.dp,
-            ) {
-                Box(Modifier.fillMaxSize()) {
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .size(240.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.035f),
-                                        Color.Transparent,
-                                    ),
-                                ),
-                                CircleShape,
-                            ),
-                    )
-                    Image(
-                        painter = painterResource(R.drawable.ad_glasses_hero),
-                        contentDescription = "Smart glasses",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp, vertical = 16.dp),
-                    )
-                }
-            }
-
-            when (phase) {
-                WelcomePhase.Connecting -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Column(
+                    modifier = Modifier.padding(top = if (compact) 4.dp else 10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    CircularProgressIndicator()
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        Text(
+                            "Your glasses.",
+                            style = headlineStyle,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Your AI.",
+                            style = headlineStyle,
+                            fontWeight = FontWeight.Bold,
+                            color = ADAccent.Blue,
+                        )
+                        Text(
+                            "Your data.",
+                            style = headlineStyle,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                     Text(
-                        "Connecting",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        "See more, remember more, and keep the moments that matter.",
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                WelcomePhase.Choice -> Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ADGlassSurface(
+                    modifier = Modifier.fillMaxWidth().height(heroHeight),
+                    cornerRadius = if (compact) 26.dp else 30.dp,
                 ) {
-                    Button(
-                        onClick = connectManually,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(15.dp),
-                    ) { Text("Connect glasses") }
-                    OutlinedButton(
-                        onClick = continueWithoutGlasses,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(15.dp),
-                    ) { Text("Continue without glasses") }
+                    Box(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .size(if (compact) 190.dp else 230.dp)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            ADAccent.Indigo.copy(alpha = 0.07f),
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.025f),
+                                            Color.Transparent,
+                                        ),
+                                    ),
+                                    CircleShape,
+                                ),
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ad_glasses_hero),
+                            contentDescription = "Smart glasses",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    horizontal = if (compact) 12.dp else 10.dp,
+                                    vertical = if (compact) 12.dp else 16.dp,
+                                ),
+                        )
+                    }
                 }
+
+                when (phase) {
+                    WelcomePhase.Connecting -> Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = if (compact) 4.dp else 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.5.dp)
+                        Text(
+                            "Connecting",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    WelcomePhase.Choice -> Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = connectManually,
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(15.dp),
+                        ) { Text("Connect glasses") }
+                        OutlinedButton(
+                            onClick = continueWithoutGlasses,
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(15.dp),
+                        ) { Text("Continue without glasses") }
+                    }
+                }
+                Spacer(Modifier.height(if (compact) 6.dp else 12.dp))
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
