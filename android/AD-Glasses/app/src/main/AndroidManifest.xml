@@ -31,7 +31,7 @@
         android:name=".ADGlassesApplication"
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/ad_brand_icon"
         android:label="AD Glasses"
         android:supportsRtl="true"
         android:theme="@style/Theme.ADGlasses"

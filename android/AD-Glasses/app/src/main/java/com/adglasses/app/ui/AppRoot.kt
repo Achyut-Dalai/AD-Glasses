@@ -1,18 +1,15 @@
 package com.adglasses.app.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,81 +18,64 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.adglasses.app.AppGraph
-import com.adglasses.app.core.background.CompanionLinkState
 
-private enum class AppTab(val label: String) { Home("Home"), Assistant("Assistant"), Library("Library") }
+private enum class AppTab(val label: String) {
+    Home("Home"),
+    Assistant("Assistant"),
+    Library("Library"),
+}
 
 @Composable
 fun ADGlassesRoot(vm: ADViewModel = viewModel()) {
+    var showWelcome by remember { mutableStateOf(true) }
     var tab by remember { mutableStateOf(AppTab.Home) }
     var showDeviceCenter by remember { mutableStateOf(false) }
     var showTranslation by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var showLens by remember { mutableStateOf(false) }
+    var showSoundbite by remember { mutableStateOf(false) }
     val notice by vm.notice.collectAsStateWithLifecycle()
     val busy by vm.busyMessage.collectAsStateWithLifecycle()
-    val companionLink by AppGraph.companionPresence.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
-    val communicationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
-    val requestCommunicationAccess = {
-        val missing = listOf(
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.SEND_SMS,
-        ).filter { permission ->
-            ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isNotEmpty()) communicationPermissionLauncher.launch(missing.toTypedArray())
-    }
-
-    val companionConsentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) {
-        AppGraph.companionPresence.refresh(vm.glasses.value.address)
-    }
-    val changeBackgroundLink = {
-        val address = vm.glasses.value.address
-        if (address == null) {
-            showDeviceCenter = true
-        } else if (companionLink is CompanionLinkState.Linked) {
-            AppGraph.companionPresence.disassociate(address)
-        } else if (companionLink !is CompanionLinkState.Unsupported) {
-            AppGraph.companionPresence.requestAssociation(address) { intentSender ->
-                companionConsentLauncher.launch(
-                    IntentSenderRequest.Builder(intentSender).build()
-                )
-            }
-        }
+    if (showWelcome) {
+        WelcomeScreen(
+            vm = vm,
+            connected = { showWelcome = false },
+            connectManually = {
+                showWelcome = false
+                showDeviceCenter = true
+            },
+            continueWithoutGlasses = { showWelcome = false },
+        )
+        return
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == AppTab.Home,
-                    onClick = { tab = AppTab.Home },
-                    icon = { Icon(Icons.Outlined.Home, null) },
-                    label = { Text(AppTab.Home.label) },
-                )
-                NavigationBarItem(
-                    selected = tab == AppTab.Assistant,
-                    onClick = { tab = AppTab.Assistant },
-                    icon = { Icon(Icons.Outlined.AutoAwesome, null) },
-                    label = { Text(AppTab.Assistant.label) },
-                )
-                NavigationBarItem(
-                    selected = tab == AppTab.Library,
-                    onClick = { tab = AppTab.Library },
-                    icon = { Icon(Icons.Outlined.PhotoLibrary, null) },
-                    label = { Text(AppTab.Library.label) },
-                )
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            ) {
+                AppTab.entries.forEach { item ->
+                    val icon = when (item) {
+                        AppTab.Home -> Icons.Filled.Home
+                        AppTab.Assistant -> Icons.Filled.AutoAwesome
+                        AppTab.Library -> Icons.Filled.ViewAgenda
+                    }
+                    NavigationBarItem(
+                        selected = tab == item,
+                        onClick = { tab = item },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(item.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent,
+                        ),
+                    )
+                }
             }
         },
     ) { padding ->
@@ -106,16 +86,41 @@ fun ADGlassesRoot(vm: ADViewModel = viewModel()) {
                 openAssistant = { tab = AppTab.Assistant },
                 openDeviceCenter = { showDeviceCenter = true },
                 openTranslation = { showTranslation = true },
-                requestCommunicationAccess = requestCommunicationAccess,
-                companionLink = companionLink,
-                changeBackgroundLink = changeBackgroundLink,
+                openLens = { showLens = true },
+                openSoundbite = { showSoundbite = true },
+                openSettings = { showSettings = true },
             )
-            AppTab.Assistant -> AssistantScreen(padding = padding, vm = vm)
-            AppTab.Library -> LibraryScreen(padding = padding, vm = vm, openDeviceCenter = { showDeviceCenter = true })
+            AppTab.Assistant -> AssistantScreen(
+                padding = padding,
+                vm = vm,
+                openSettings = { showSettings = true },
+            )
+            AppTab.Library -> LibraryScreen(
+                padding = padding,
+                vm = vm,
+                openDeviceCenter = { showDeviceCenter = true },
+            )
         }
     }
 
     if (showDeviceCenter) DeviceCenterDialog(vm = vm, dismiss = { showDeviceCenter = false })
     if (showTranslation) TranslationDialog(vm = vm, dismiss = { showTranslation = false })
-    if (notice != null || busy != null) StatusOverlay(text = busy ?: notice.orEmpty(), busy = busy != null, dismiss = if (busy == null) vm::clearNotice else null)
+    if (showSettings) AISettingsDialog(vm = vm, dismiss = { showSettings = false })
+    if (showLens) ProductPreviewDialog(
+        title = "Lens",
+        message = "Look, ask, and understand what is in front of you. The full parity Lens surface is the next UI batch.",
+        dismiss = { showLens = false },
+    )
+    if (showSoundbite) ProductPreviewDialog(
+        title = "Soundbite",
+        message = "Turn speech into a local note. The full parity Soundbite surface is the next UI batch.",
+        dismiss = { showSoundbite = false },
+    )
+    if (notice != null || busy != null) {
+        StatusOverlay(
+            text = busy ?: notice.orEmpty(),
+            busy = busy != null,
+            dismiss = if (busy == null) vm::clearNotice else null,
+        )
+    }
 }
