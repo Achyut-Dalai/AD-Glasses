@@ -1,44 +1,8 @@
-*.iml
-.gradle
-.kotlin
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.gradle/
+.idea/
 local.properties
-
-# Local environment / Cloud AI credentials (never commit secrets)
-.env
-.env.*
-secrets.properties
-cloud-secrets.properties
-cloud_ai_secrets.properties
-*.jks
-*.keystore
-*.p12
-*.pem
-
-# CLI relay server scratch
-/tools/_relay_tmp/
-
-# Signing (do not commit secrets)
-keystore.properties
-
-# APK files
-*.apk
-
-# Build artifacts
-*/build/
 build/
-moonshine-voice/build/
-
-# Termux server docs (local only)
-TERMUX_SSH_TAILSCALE_RUNBOOK.md
+**/build/
+*.iml
+captures/
+*.hprof

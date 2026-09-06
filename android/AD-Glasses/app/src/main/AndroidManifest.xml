@@ -1,178 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" android:usesPermissionFlags="neverForLocation" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Meeting capture (microphone) -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-
-    <!-- Storage -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-
-    <!-- Bluetooth -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:usesPermissionFlags="neverForLocation" />
-
-    <!-- Location -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" android:usesPermissionFlags="neverForLocation" />
-
-    <!-- Wi-Fi Direct / Nearby Devices -->
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" tools:targetApi="33" />
-
-    <!-- DAT uses the wearable camera; a phone camera is not required for install. -->
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.RECEIVE_USER_PRESENT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-
-    <!-- Android 11+ package visibility for installed speech/TTS services. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-        <intent>
-            <action android:name="android.speech.RecognitionService" />
-        </intent>
-    </queries>
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
 
     <application
-        android:name=".ui.MyApplication"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:localeConfig="@xml/locales_config"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:name=".ADGlassesApplication"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="AD Glasses"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ADGlassesManager"
-        android:usesCleartextTraffic="true"
-        android:networkSecurityConfig="@xml/network_security_config"
-        tools:targetApi="31">
-
-
-        <!-- Meta Wearables Device Access Toolkit (DAT) SDK Configuration -->
-        <meta-data android:name="com.meta.wearable.mwdat.APPLICATION_ID" android:value="1057183300587462" />
-        <meta-data android:name="com.meta.wearable.mwdat.CLIENT_TOKEN" android:value="AR|1057183300587462|77e92a3d9f02778279c80f220a2d81a2" />
-        <meta-data android:name="com.meta.wearable.mwdat.DAM_ENABLED" android:value="true" />
+        android:theme="@style/Theme.ADGlasses"
+        android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".ui.WelcomeActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="ad-glasses" />
-            </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity" android:exported="false" android:label="@string/app_name" android:screenOrientation="portrait" />
-        <activity android:name=".ui.DeviceBindActivity" android:exported="false" android:label="Connect glasses" android:screenOrientation="portrait" />
-
-        <!-- Compatibility aliases preserve inherited native intents while Compose owns presentation. -->
-        <activity android:name=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-        <activity android:name=".ui.adglasses.ADSettingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-        <activity android:name=".ui.adglasses.ADAiRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-        <activity android:name=".ui.adglasses.ADCapturesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-        <activity android:name=".ui.adglasses.ADRecordingsRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-        <activity android:name=".ui.adglasses.ADNotesRedirectActivity" android:exported="false" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.ADGlasses.Redirect" android:screenOrientation="portrait" />
-
-        <activity-alias android:name=".ui.ChatListActivity" android:targetActivity=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.ChatThreadActivity" android:targetActivity=".ui.adglasses.ADConversationsRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.SettingsActivity" android:targetActivity=".ui.adglasses.ADSettingsRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.appearance.AppearanceActivity" android:targetActivity=".ui.adglasses.ADSettingsRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.CommunityPluginsActivity" android:targetActivity=".ui.adglasses.ADAiRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.PublishPluginActivity" android:targetActivity=".ui.adglasses.ADAiRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.notes.NotesListActivity" android:targetActivity=".ui.adglasses.ADNotesRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.notes.NoteDetailActivity" android:targetActivity=".ui.adglasses.ADNotesRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.recordings.RecordingsListActivity" android:targetActivity=".ui.adglasses.ADRecordingsRedirectActivity" android:exported="false" />
-        <activity-alias android:name=".ui.recordings.SyncedMediaGalleryActivity" android:targetActivity=".ui.adglasses.ADCapturesRedirectActivity" android:exported="false" />
-
-        <service android:name=".devices.meizumyvu.MeizuMyvuConnectionService" android:exported="false" android:foregroundServiceType="connectedDevice" />
-
-        <activity android:name=".plugins.meetingsparknotes.MeetingSparkNotesSettingsActivity" android:exported="false" android:label="Soundbites settings" android:screenOrientation="portrait" />
-        <activity android:name=".plugins.livecaptionrelay.LiveCaptionRelaySettingsActivity" android:exported="false" android:label="Live Captions settings" android:screenOrientation="portrait" />
-        <activity android:name=".plugins.handsfreetranslator.HandsFreeTranslatorSettingsActivity" android:exported="false" android:label="Translator settings" android:screenOrientation="portrait" />
-        <activity android:name=".plugins.errandbrain.ErrandBrainSettingsActivity" android:exported="false" android:label="Cron settings" android:screenOrientation="portrait" />
-        <activity android:name=".ui.localagent.PendingActionsActivity" android:exported="false" android:label="Pending actions" android:screenOrientation="portrait" />
-        <activity android:name=".ui.localagent.AppBlacklistActivity" android:exported="false" android:label="Blacklist apps" android:screenOrientation="portrait" />
-        <activity android:name=".ui.localagent.DailyFactsActivity" android:exported="false" android:label="Daily facts" android:screenOrientation="portrait" />
-        <activity android:name=".ui.localagent.ScreenCapturesActivity" android:exported="false" android:label="Screen captures" android:screenOrientation="portrait" />
-        <activity android:name=".ui.localagent.DailySummaryActivity" android:exported="false" android:label="Daily summary" android:screenOrientation="portrait" />
-        <activity android:name=".ui.debug.TranscriptionDebugActivity" android:exported="false" android:label="Transcription diagnostics" android:screenOrientation="portrait" />
-        <activity android:name=".agent.CloudSettingsActivity" android:exported="false" android:label="Cloud AI" android:screenOrientation="portrait" />
-        <activity android:name=".ai.live.GeminiLiveActivity" android:exported="false" android:label="Live AI preview" android:screenOrientation="portrait" />
-        <activity android:name=".plugins.localagent.LocalAgentSettingsActivity" android:exported="false" android:label="Automation settings" android:screenOrientation="portrait" />
-        <activity android:name=".bridge.runtimes.evenhub.EvenHubRuntimeActivity" android:exported="false" android:screenOrientation="portrait" />
-
-        <service android:name=".ai.AiQuestionForegroundService" android:exported="false" android:foregroundServiceType="connectedDevice|dataSync|microphone" />
-        <service android:name=".ai.transcription.moonshine.MoonshineRecognitionService" android:exported="false">
-            <intent-filter>
-                <action android:name="android.speech.RecognitionService" />
-            </intent-filter>
-        </service>
-
         <service
-            android:name=".localagent.accessibility.LocalAgentAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:name=".core.background.AccessoryService"
             android:exported="false"
-            android:label="@string/local_agent_accessibility_service_label">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <service android:name=".plugins.meetingsparknotes.MeetingSparkNotesService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".plugins.livecaptionrelay.LiveCaptionRelayService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".plugins.handsfreetranslator.HandsFreeTranslatorService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".plugins.errandbrain.ErrandBrainService" android:exported="false" android:foregroundServiceType="microphone" />
-
-        <receiver android:name=".plugins.errandbrain.ErrandBrainReminderReceiver" android:exported="false" />
-        <service android:name=".audio.MeetingCaptureService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".localagent.LocalAgentService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <service android:name=".localagent.LocalAgentTelegramService" android:exported="false" android:foregroundServiceType="dataSync" />
-
-        <provider
-            android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="${applicationId}.shizuku"
-            android:enabled="true"
-            android:exported="true"
-            android:multiprocess="false"
-            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
-
+            android:foregroundServiceType="connectedDevice" />
 
         <service
-            android:name=".bridge.notifications.NotificationForwarderService"
+            android:name=".core.notifications.ADNotificationListener"
             android:exported="true"
             android:label="AD Glasses notification access"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
@@ -180,16 +55,5 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
-
-        <receiver android:name=".localagent.daily.DailyFactsReminderReceiver" android:exported="false" />
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
-        </provider>
     </application>
-
 </manifest>

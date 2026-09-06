@@ -1,62 +1,50 @@
-# AD Glasses — Android app
+# AD Glasses — Android reboot
 
-This is the primary Android application for AD Glasses.
+This directory is the clean Android implementation of AD Glasses. It intentionally does not inherit the previous Android application architecture.
 
-## Stack
+## Product baseline
 
-- Kotlin
-- Jetpack Compose
-- Coroutines / Android lifecycle APIs
-- Java 17-compatible Android toolchain
-- HeyCyan vendor integration
-- Android-only Moonshine speech dependency where used by the current voice pipeline
-
-The native iOS application is a separate SwiftUI project under `../../ios/`; this Android project is not an iOS host.
-
-## Hardware architecture
-
-HeyCyan is the first-class glasses path. Keep vendor BLE/Wi-Fi/media details below the app's hardware/provider boundary so Compose features work with capabilities rather than raw commands.
-
-Meta support is optional and should remain isolated behind its own provider/SDK boundary. Do not spread Meta SDK types through general feature code.
-
-Unsupported glasses families should not be restored as demo trees, SDK submodules, or app-wide conditionals. A future vendor should be added as a new adapter/provider.
-
-For the confirmed HeyCyan BLE-to-Wi-Fi media flow, read:
-
-- [`../AGENTS.md`](../AGENTS.md)
-- [`../../WIFI_TRANSFER_ARCHITECTURE.md`](../../WIFI_TRANSFER_ARCHITECTURE.md)
-
-## AI and tool architecture
-
-The Android app contains the mature assistant stack, including cloud/local model routing, structured external tools, spatial/provider integrations, meetings, media flows, and Android assistant-role behavior.
-
-Keep boundaries explicit:
-
-- UI does not call provider HTTP APIs directly.
-- Router/planner output stays semantic rather than encoding concrete vendor/API endpoints.
-- Provider configuration failures are explicit instead of silently falling back to unrelated services.
-- Hardware capability state is separate from vendor identity.
+- Kotlin + Jetpack Compose only.
+- iOS `main` is the visual/product reference, except the active conversation transcript, which uses a calmer reading-first Android layout instead of chat bubbles.
+- HeyCyan transport is implemented from the verified production protocol in `docs/heycyan/`, not from neighboring command guesses.
+- The retained vendor AAR lives at `../glasses_sdk_20250723_v01.aar` as a reference artifact. The application does not need it for the verified raw protocol foundation.
+- Destructive firmware, factory-reset, restart, and OTA operations are deliberately not executable.
 
 ## Build
 
-From this directory:
-
-```bash
-./gradlew assembleDebug
-```
-
-Unit tests:
+Use JDK 17 and Android SDK 37.
 
 ```bash
 ./gradlew testDebugUnitTest
+./gradlew assembleDebug
 ```
 
-Useful targeted builds/tests should be preferred while a feature is moving; run the full app validation when the feature reaches a release/checkpoint stage.
+The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Development rules
+## What works in this foundation
 
-- Preserve existing Android behavior unless the task targets that behavior.
-- Keep Activity-owned coroutines, recognition, image, and foreground-service work lifecycle-aware.
-- Do not log secrets, transcripts, tokens, media credentials, or private paths.
-- Do not guess proprietary hardware commands or service identifiers.
-- Keep iOS-specific UX/signing choices out of Android feature code.
+- verified HeyCyan BLE scan/connect and both GATT notification families;
+- production `0xBC` framing, little-endian payload length, payload-only CRC-16/MODBUS, CRC-valid stream resynchronization;
+- post-GATT initialization with time, battery, device-info, volume read and Classic Bluetooth request;
+- photo, video, glasses-local audio recording and AI-photo control requests;
+- glasses Assistant start/end events and preservation of fixed 40-byte `0x59` Opus packets;
+- AP media preparation from matched work-type `04` credentials plus device IP event, local-only Wi-Fi request and HTTP bound to the returned Android `Network`;
+- `/files/media.config` and safe `/files/<name>` reads;
+- foreground connected-device service with remembered reconnect;
+- NotificationListenerService integration;
+- call and SMS adapters with permission-aware dialer/composer fallbacks;
+- on-device ML Kit translation;
+- Android system TTS provider with a clean seam for Sherpa-ONNX/Kokoro;
+- local conversation persistence and Compose UI.
+
+## Next hardware-validation gates
+
+1. Validate BLE initialization and capture commands on the connected Samsung.
+2. Record the actual work-type `04` response on Android and validate AP versus P2P choice.
+3. Add the production Android Wi-Fi Direct path behind the same network-session interface.
+4. Feed `0x59` Opus into the selected phone-optimized decoder and speech pipeline.
+5. Add Sherpa-ONNX + Kokoro as the high-quality offline TTS provider after profiling real-time factor, memory and thermals on the target phone.
+6. Turn translation into a full listen → segment → translate → speak → resume loop, with echo suppression so AD does not transcribe its own speech.
+7. Promote notification, call and text tools into Assistant routing only after explicit permissions and contact resolution are in place.
+
+The app is private/sideloaded, but Android operating-system permission, role, foreground-service and background-start rules still apply even when Play Store policy does not.
