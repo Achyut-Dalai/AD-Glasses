@@ -11,13 +11,11 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.ParcelUuid
 import androidx.core.content.ContextCompat
 import com.adglasses.app.core.model.ScannedGlasses
 import java.util.ArrayDeque
@@ -60,7 +58,7 @@ class HeyCyanBleTransport(private val context: Context) {
             val device = result.device
             val name = runCatching {
                 if (hasConnectPermission()) device.name else null
-            }.getOrNull() ?: result.scanRecord?.deviceName ?: "AD Glasses"
+            }.getOrNull() ?: result.scanRecord?.deviceName ?: "Nearby BLE device"
             onEvent?.invoke(Event.ScanResultFound(ScannedGlasses(name, device.address, result.rssi)))
         }
 
@@ -138,21 +136,53 @@ class HeyCyanBleTransport(private val context: Context) {
             onEvent?.invoke(Event.Error("Bluetooth scan permission is required"))
             return
         }
-        val scanner = adapter?.bluetoothLeScanner ?: run {
-            onEvent?.invoke(Event.Error("Bluetooth is unavailable or turned off"))
+        if (!hasConnectPermission()) {
+            onEvent?.invoke(Event.Error("Bluetooth connect permission is required"))
             return
         }
-        if (scanning) return
+
+        val currentAdapter = adapter ?: run {
+            scanning = false
+            onEvent?.invoke(Event.Error("Bluetooth is unavailable on this phone"))
+            return
+        }
+        if (!currentAdapter.isEnabled) {
+            scanning = false
+            onEvent?.invoke(Event.Error("Turn on Bluetooth before scanning for glasses"))
+            return
+        }
+
+        val scanner = currentAdapter.bluetoothLeScanner ?: run {
+            scanning = false
+            onEvent?.invoke(Event.Error("Bluetooth scanner is unavailable"))
+            return
+        }
+
+        // A previous scan can survive an Activity restart because the accessory service keeps the
+        // application process alive. Always restart the scan when the user explicitly taps Scan.
+        if (scanning) {
+            runCatching { scanner.stopScan(scanCallback) }
+            scanning = false
+        }
+
         scanning = true
         onEvent?.invoke(Event.Scanning)
-        val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(PRIMARY_SERVICE)).build()
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
-        scanner.startScan(listOf(filter), settings, scanCallback)
+
+        // Do not filter on PRIMARY_SERVICE at advertisement time. The verified service is a GATT
+        // service discovered after connection; it is not evidence that every firmware advertises
+        // that UUID. Connection-time service discovery remains the authoritative device check.
+        runCatching {
+            scanner.startScan(null, settings, scanCallback)
+        }.onFailure { error ->
+            scanning = false
+            onEvent?.invoke(Event.Error(error.message ?: "Could not start Bluetooth scan"))
+        }
     }
 
     fun stopScan() {
         if (!scanning || !hasScanPermission()) return
-        adapter?.bluetoothLeScanner?.stopScan(scanCallback)
+        runCatching { adapter?.bluetoothLeScanner?.stopScan(scanCallback) }
         scanning = false
     }
 
