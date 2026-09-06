@@ -22,12 +22,29 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: '15859902'
-          packages: platform-tools
+      - name: Install current Android CLI
+        shell: bash
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+            | sudo tee /etc/apt/keyrings/google.asc >/dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google.asc] http://dl.google.com/android/cli/latest/debian/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/android-cli.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y android-cli
+          android update
       - name: Install Android SDK 37
-        run: sdkmanager 'platforms;android-37' 'build-tools;36.0.0'
+        shell: bash
+        run: |
+          SDK_ROOT="$HOME/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          android --sdk="$SDK_ROOT" sdk install \
+            platforms/android-37 \
+            build-tools/36.0.0 \
+            platform-tools
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests and debug APK
         working-directory: android/AD-Glasses
