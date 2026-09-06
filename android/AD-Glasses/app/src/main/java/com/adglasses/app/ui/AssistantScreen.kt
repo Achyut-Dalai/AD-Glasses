@@ -13,10 +13,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,7 +32,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.History
@@ -49,6 +50,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -112,9 +114,16 @@ fun AssistantScreen(
     Scaffold(
         modifier = Modifier.padding(padding),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
-                title = {},
+                title = {
+                    Text(
+                        "AD",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { }) {
                         Icon(Icons.Filled.History, contentDescription = "Conversation history")
@@ -128,6 +137,10 @@ fun AssistantScreen(
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                ),
             )
         },
         bottomBar = {
@@ -147,22 +160,24 @@ fun AssistantScreen(
             )
         },
     ) { inner ->
-        if (messages.isEmpty()) {
-            AssistantWelcome(
-                modifier = Modifier.fillMaxSize().padding(inner).padding(horizontal = 16.dp),
-                listening = glassesSpeech is GlassesSpeechStatus.Listening,
-            )
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(inner),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                item { ConversationHeader() }
-                items(messages, key = { it.id }) { message -> ConversationBubble(message) }
-                if (assistantWorking) item(key = "thinking") { AssistantThinking() }
-                item { Spacer(Modifier.height(12.dp)) }
+        ADAmbientBackground(Modifier.padding(inner)) {
+            if (messages.isEmpty()) {
+                AssistantWelcome(
+                    modifier = Modifier.fillMaxSize(),
+                    listening = glassesSpeech is GlassesSpeechStatus.Listening,
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    item { ConversationHeader() }
+                    items(messages, key = { it.id }) { message -> ConversationBubble(message) }
+                    if (assistantWorking) item(key = "thinking") { AssistantThinking() }
+                    item { Spacer(Modifier.height(12.dp)) }
+                }
             }
         }
     }
@@ -170,61 +185,77 @@ fun AssistantScreen(
 
 @Composable
 private fun AssistantWelcome(modifier: Modifier, listening: Boolean) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().height(220.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = Color.Transparent,
+    BoxWithConstraints(modifier) {
+        val compact = maxHeight < 520.dp || maxWidth < 380.dp
+        val heroHeight = if (compact) 174.dp else 202.dp
+
+        LazyColumn(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = 720.dp)
+                .fillMaxWidth()
+                .fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp),
         ) {
-            Box(
-                Modifier
-                    .background(
-                        Brush.linearGradient(listOf(ADAccent.Indigo, ADAccent.Blue)),
-                    )
-                    .padding(20.dp),
-            ) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .size(190.dp)
-                        .background(Color.White.copy(alpha = 0.11f), CircleShape),
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(130.dp)
-                        .background(ADAccent.Cyan.copy(alpha = 0.18f), CircleShape),
-                )
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween,
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().height(heroHeight),
+                    shape = RoundedCornerShape(if (compact) 24.dp else 28.dp),
+                    color = Color.Transparent,
                 ) {
-                    AssistantAvatar(54.dp)
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text(
-                            "Ask",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                    Box(
+                        Modifier
+                            .background(Brush.linearGradient(listOf(ADAccent.Indigo, ADAccent.Blue)))
+                            .padding(if (compact) 16.dp else 20.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .size(if (compact) 140.dp else 176.dp)
+                                .background(Color.White.copy(alpha = 0.10f), CircleShape),
                         )
-                        Text(
-                            "Talk it through, ask a question, or pick up where your glasses left off.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.82f),
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(if (compact) 92.dp else 118.dp)
+                                .background(ADAccent.Cyan.copy(alpha = 0.17f), CircleShape),
                         )
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            AssistantAvatar(if (compact) 44.dp else 50.dp)
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(
+                                    "Ask",
+                                    style = if (compact) {
+                                        MaterialTheme.typography.headlineMedium
+                                    } else {
+                                        MaterialTheme.typography.headlineLarge
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                )
+                                Text(
+                                    "Talk it through, ask a question, or pick up where your glasses left off.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.82f),
+                                )
+                            }
+                        }
                     }
                 }
             }
+            item {
+                AssistantSignalVisual(listening = listening, compact = compact)
+            }
         }
-        AssistantSignalVisual(listening = listening)
     }
 }
 
 @Composable
-private fun AssistantSignalVisual(listening: Boolean) {
+private fun AssistantSignalVisual(listening: Boolean, compact: Boolean) {
     val transition = rememberInfiniteTransition(label = "assistant-signal")
     val pulse by transition.animateFloat(
         initialValue = 0f,
@@ -236,12 +267,16 @@ private fun AssistantSignalVisual(listening: Boolean) {
         label = "signal-pulse",
     )
     val baseHeights = listOf(14f, 22f, 31f, 40f, 31f, 22f, 14f)
+    val ringSizes = if (compact) listOf(150.dp, 116.dp, 84.dp) else listOf(194.dp, 148.dp, 106.dp)
+    val centerSize = if (compact) 84.dp else 106.dp
 
     Box(
-        modifier = Modifier.fillMaxWidth().height(238.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (compact) 160.dp else 208.dp),
         contentAlignment = Alignment.Center,
     ) {
-        listOf(210.dp, 164.dp, 118.dp).forEachIndexed { index, size ->
+        ringSizes.forEachIndexed { index, size ->
             Surface(
                 modifier = Modifier.size(size),
                 shape = CircleShape,
@@ -256,7 +291,7 @@ private fun AssistantSignalVisual(listening: Boolean) {
         }
         Box(
             Modifier
-                .size(118.dp)
+                .size(centerSize)
                 .background(
                     Brush.radialGradient(
                         listOf(
@@ -269,16 +304,20 @@ private fun AssistantSignalVisual(listening: Boolean) {
                 ),
         )
         Row(
-            modifier = Modifier.height(52.dp),
+            modifier = Modifier.height(if (compact) 42.dp else 50.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp),
         ) {
             baseHeights.forEachIndexed { index, resting ->
                 val phase = if ((index % 2) == 0) pulse else 1f - pulse
-                val height = if (listening) 9f + (phase * 34f) else resting - 4f + (phase * 9f)
+                val height = if (listening) {
+                    8f + (phase * if (compact) 27f else 34f)
+                } else {
+                    (resting * if (compact) 0.78f else 1f) - 4f + (phase * 8f)
+                }
                 Box(
                     Modifier
-                        .size(width = 5.dp, height = height.dp)
+                        .size(width = if (compact) 4.dp else 5.dp, height = height.dp)
                         .background(
                             Brush.verticalGradient(listOf(ADAccent.Indigo, ADAccent.Cyan)),
                             RoundedCornerShape(100.dp),
@@ -399,17 +438,20 @@ private fun ADFloatingComposer(
     speaking: Boolean,
     glassesSpeech: GlassesSpeechStatus,
 ) {
-    Column(
+    Box(
         modifier = Modifier.fillMaxWidth().imePadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        contentAlignment = Alignment.Center,
     ) {
         ADGlassSurface(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 720.dp).padding(horizontal = 10.dp, vertical = 7.dp),
-            cornerRadius = 24.dp,
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+                .widthIn(max = 680.dp)
+                .fillMaxWidth(),
+            cornerRadius = 22.dp,
         ) {
             Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 ComposerStatus(working, speaking, glassesSpeech)
                 Row(
@@ -417,17 +459,14 @@ private fun ADFloatingComposer(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    IconButton(onClick = {}, modifier = Modifier.size(38.dp)) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add attachment")
-                    }
                     TextField(
                         value = draft,
                         onValueChange = onDraft,
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Message AD") },
                         minLines = 1,
-                        maxLines = 5,
-                        shape = RoundedCornerShape(18.dp),
+                        maxLines = 4,
+                        shape = RoundedCornerShape(17.dp),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
@@ -437,15 +476,15 @@ private fun ADFloatingComposer(
                         ),
                     )
                     when {
-                        working || speaking -> IconButton(onClick = { AppGraph.tts.stop() }, modifier = Modifier.size(38.dp)) {
+                        working || speaking -> IconButton(onClick = { AppGraph.tts.stop() }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Filled.Stop, contentDescription = "Stop response", tint = ADAccent.Red)
                         }
-                        draft.isBlank() -> IconButton(onClick = voice, modifier = Modifier.size(38.dp)) {
+                        draft.isBlank() -> IconButton(onClick = voice, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Filled.Mic, contentDescription = "Start voice input")
                         }
                         else -> Surface(
                             onClick = send,
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(42.dp),
                             shape = CircleShape,
                             color = Color.Transparent,
                         ) {
