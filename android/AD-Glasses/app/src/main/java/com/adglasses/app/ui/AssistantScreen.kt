@@ -72,7 +72,7 @@ fun AssistantScreen(padding: PaddingValues, vm: ADViewModel) {
     val speechLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val text = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
-            if (text.isNotBlank()) vm.sendMessage(text)
+            if (text.isNotBlank()) vm.sendPhoneVoiceMessage(text)
         }
     }
 
