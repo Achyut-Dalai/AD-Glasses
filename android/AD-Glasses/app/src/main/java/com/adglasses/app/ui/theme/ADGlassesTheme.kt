@@ -1,15 +1,11 @@
 package com.adglasses.app.ui.theme
 
-import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF2563EB),
@@ -51,16 +47,6 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun ADGlassesTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val scheme = if (dark) DarkColors else LightColors
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            (view.context as? Activity)?.window?.let { window ->
-                window.statusBarColor = scheme.background.toArgb()
-                window.navigationBarColor = scheme.background.toArgb()
-            }
-        }
-    }
+    val scheme = if (isSystemInDarkTheme()) DarkColors else LightColors
     MaterialTheme(colorScheme = scheme, content = content)
 }
