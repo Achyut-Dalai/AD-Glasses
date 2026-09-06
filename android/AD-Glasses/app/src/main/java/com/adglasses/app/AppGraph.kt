@@ -6,6 +6,7 @@ import com.adglasses.app.core.assistant.AIProviderKind
 import com.adglasses.app.core.assistant.CloudAIClient
 import com.adglasses.app.core.assistant.ConversationStore
 import com.adglasses.app.core.background.CompanionPresenceManager
+import com.adglasses.app.core.bluetooth.ClassicBluetoothManager
 import com.adglasses.app.core.communication.CommunicationManager
 import com.adglasses.app.core.media.MediaLibraryStore
 import com.adglasses.app.core.notifications.NotificationHub
@@ -43,6 +44,8 @@ object AppGraph {
         private set
     lateinit var companionPresence: CompanionPresenceManager
         private set
+    lateinit var classicBluetooth: ClassicBluetoothManager
+        private set
     lateinit var wifi: HeyCyanWifiCoordinator
         private set
     lateinit var media: HeyCyanMediaClient
@@ -66,9 +69,16 @@ object AppGraph {
         tts = SystemTtsEngine(app)
         communication = CommunicationManager(app)
         companionPresence = CompanionPresenceManager(app)
+        classicBluetooth = ClassicBluetoothManager(app)
         wifi = HeyCyanWifiCoordinator(app)
         media = HeyCyanMediaClient()
-        glasses = HeyCyanRepository(app, HeyCyanBleTransport(app))
+        glasses = HeyCyanRepository(
+            context = app,
+            transport = HeyCyanBleTransport(app),
+            onClassicBluetoothRequestFinished = { name ->
+                classicBluetooth.ensureLink(name)
+            },
+        )
         companionPresence.bindGlassesState(glasses.state)
 
         localSpeech = MoonshineSpeechEngine(app)
@@ -78,6 +88,7 @@ object AppGraph {
             localSpeech = localSpeech,
             cloudSpeech = cloudSpeech,
             groqAccess = ::resolveGroqSpeechAccess,
+            outputActive = tts::isOutputActive,
         )
     }
 
