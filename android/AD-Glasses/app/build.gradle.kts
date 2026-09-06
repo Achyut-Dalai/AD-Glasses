@@ -64,6 +64,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Backdrop blur is isolated to a dedicated background layer inside ADGlassSurface.
+    // Foreground content never lives on the Haze effect node, so a blur failure cannot blank UI.
+    implementation("dev.chrisbanes.haze:haze:1.7.2")
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.google.mlkit:translate:17.0.3")
 
