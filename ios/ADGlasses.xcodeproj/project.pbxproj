@@ -7,10 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0000000000000000000002B /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000002C /* CalendarManager.swift */; };
+		B00000000000000000000030 /* PhoneCallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000033 /* PhoneCallManager.swift */; };
 		B00000000000000000000001 /* ADGlassesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000001 /* ADGlassesApp.swift */; };
 		B00000000000000000000002 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* AppModel.swift */; };
 		B00000000000000000000003 /* SpeechTranscribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* SpeechTranscribing.swift */; };
 		B00000000000000000000004 /* AppleSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* AppleSpeechTranscriber.swift */; };
+		B000000000000000000000099 /* GroqWhisperSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A000000000000000000000099 /* GroqWhisperSpeechTranscriber.swift */; };
+
 		B00000000000000000000006 /* SpeechAnalyzerTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */; };
 		B00000000000000000000007 /* GlassesModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* GlassesModels.swift */; };
 		B00000000000000000000008 /* GlassesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* GlassesProvider.swift */; };
@@ -47,6 +51,8 @@
 		B00000000000000000000027 /* HeyCyanResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* HeyCyanResponses.swift */; };
 		B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */; };
 		B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* HeyCyanOpusDecoder.swift */; };
+		B0000000000000000000002B /* CameraCaptureSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002E /* CameraCaptureSettingsStore.swift */; };
+		B0000000000000000000002C /* CameraSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002F /* CameraSettingsView.swift */; };
 		B10000000000000000000001 /* HeyCyanProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* HeyCyanProtocolTests.swift */; };
 		B10000000000000000000002 /* GlassesManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* GlassesManagerTests.swift */; };
 		B10000000000000000000003 /* HeyCyanSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* HeyCyanSessionTests.swift */; };
@@ -68,10 +74,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C0000000000000000000002C /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		A00000000000000000000033 /* PhoneCallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneCallManager.swift; sourceTree = "<group>"; };
 		A00000000000000000000001 /* ADGlassesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADGlassesApp.swift; sourceTree = "<group>"; };
 		A00000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		A00000000000000000000003 /* SpeechTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscribing.swift; sourceTree = "<group>"; };
 		A00000000000000000000004 /* AppleSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriber.swift; sourceTree = "<group>"; };
+		A000000000000000000000099 /* GroqWhisperSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroqWhisperSpeechTranscriber.swift; sourceTree = "<group>"; };
+
 		A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechAnalyzerTranscriber.swift; sourceTree = "<group>"; };
 		A00000000000000000000007 /* GlassesModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000008 /* GlassesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesProvider.swift; sourceTree = "<group>"; };
@@ -111,6 +121,8 @@
 		A0000000000000000000002A /* HeyCyanResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanResponses.swift; sourceTree = "<group>"; };
 		A0000000000000000000002B /* HeyCyanThumbnailTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanThumbnailTransfer.swift; sourceTree = "<group>"; };
 		A0000000000000000000002C /* HeyCyanOpusDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanOpusDecoder.swift; sourceTree = "<group>"; };
+		A0000000000000000000002E /* CameraCaptureSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureSettingsStore.swift; sourceTree = "<group>"; };
+		A0000000000000000000002F /* CameraSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSettingsView.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* HeyCyanProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyCyanProtocolTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* GlassesManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesManagerTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* ADGlassesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ADGlassesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -140,6 +152,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C0000000000000000000002D /* Calendar */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000002C /* CalendarManager.swift */,
+			);
+			path = Calendar;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000001A /* Telephony */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000033 /* PhoneCallManager.swift */,
+			);
+			path = Telephony;
+			sourceTree = "<group>";
+		};
 		C00000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
@@ -184,6 +212,7 @@
 		C00000000000000000000005 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				C0000000000000000000002D /* Calendar */,
 				C00000000000000000000011 /* AI */,
 				C00000000000000000000006 /* Speech */,
 				C00000000000000000000007 /* Glasses */,
@@ -191,6 +220,7 @@
 				C00000000000000000000013 /* Translation */,
 				C00000000000000000000014 /* Lens */,
 				C00000000000000000000017 /* Library */,
+				C0000000000000000000001A /* Telephony */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -200,6 +230,8 @@
 			children = (
 				A00000000000000000000003 /* SpeechTranscribing.swift */,
 				A00000000000000000000004 /* AppleSpeechTranscriber.swift */,
+				A000000000000000000000099 /* GroqWhisperSpeechTranscriber.swift */,
+
 				A00000000000000000000006 /* SpeechAnalyzerTranscriber.swift */,
 				A0000000000000000000001E /* SpeechOutputController.swift */,
 			);
@@ -212,6 +244,7 @@
 				A00000000000000000000007 /* GlassesModels.swift */,
 				A00000000000000000000008 /* GlassesProvider.swift */,
 				A00000000000000000000009 /* GlassesManager.swift */,
+				A0000000000000000000002E /* CameraCaptureSettingsStore.swift */,
 			);
 			path = Glasses;
 			sourceTree = "<group>";
@@ -319,6 +352,7 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000014 /* SettingsView.swift */,
+				A0000000000000000000002F /* CameraSettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -442,9 +476,13 @@
 				TargetAttributes = {
 					D00000000000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
+						DevelopmentTeam = 2DWLRWL9NV;
+						ProvisioningStyle = Automatic;
 					};
 					D10000000000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
+						DevelopmentTeam = 2DWLRWL9NV;
+						ProvisioningStyle = Automatic;
 						TestTargetID = D00000000000000000000001;
 					};
 				};
@@ -491,10 +529,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0000000000000000000002B /* CalendarManager.swift in Sources */,
 				B00000000000000000000001 /* ADGlassesApp.swift in Sources */,
 				B00000000000000000000002 /* AppModel.swift in Sources */,
 				B00000000000000000000003 /* SpeechTranscribing.swift in Sources */,
 				B00000000000000000000004 /* AppleSpeechTranscriber.swift in Sources */,
+				B000000000000000000000099 /* GroqWhisperSpeechTranscriber.swift in Sources */,
+
 				B00000000000000000000006 /* SpeechAnalyzerTranscriber.swift in Sources */,
 				B00000000000000000000007 /* GlassesModels.swift in Sources */,
 				B00000000000000000000008 /* GlassesProvider.swift in Sources */,
@@ -530,6 +571,9 @@
 				B00000000000000000000027 /* HeyCyanResponses.swift in Sources */,
 				B00000000000000000000028 /* HeyCyanThumbnailTransfer.swift in Sources */,
 				B00000000000000000000029 /* HeyCyanOpusDecoder.swift in Sources */,
+				B0000000000000000000002B /* CameraCaptureSettingsStore.swift in Sources */,
+				B00000000000000000000030 /* PhoneCallManager.swift in Sources */,
+				B0000000000000000000002C /* CameraSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -696,6 +740,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -716,6 +761,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -736,6 +782,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2DWLRWL9NV;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;

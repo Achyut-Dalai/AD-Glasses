@@ -1,3 +1,4 @@
+import UserNotifications
 import AppIntents
 import BackgroundTasks
 import Combine
@@ -150,12 +151,84 @@ final class ADContinuedProcessingCoordinator {
 }
 
 @MainActor
-final class ADGlassesAppDelegate: NSObject, UIApplicationDelegate {
+final class ADGlassesAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        return [.banner, .sound, .badge, .list]
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let action = response.actionIdentifier
+        let userInfo = response.notification.request.content.userInfo
+
+        // 1. Handle single or multi-call actions
+        var dialedNumber: String? = nil
+        if action == PhoneCallManager.callActionIdentifier || action == UNNotificationDefaultActionIdentifier {
+            dialedNumber = (userInfo["phoneNumber"] as? String) ?? (userInfo["number_1"] as? String)
+        } else if action == PhoneCallManager.callAction1Identifier {
+            dialedNumber = userInfo["number_1"] as? String
+        } else if action == PhoneCallManager.callAction2Identifier {
+            dialedNumber = userInfo["number_2"] as? String
+        } else if action == PhoneCallManager.callAction3Identifier {
+            dialedNumber = userInfo["number_3"] as? String
+        }
+
+        if let rawNumber = dialedNumber, userInfo["messageBody"] == nil {
+            let sanitized = PhoneCallManager.sanitizePhoneNumber(rawNumber)
+            if action == UNNotificationDefaultActionIdentifier {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                if let url = URL(string: "tel:\(sanitized)") {
+                    UIApplication.shared.open(url, options: [:]) { success in
+                        if !success, let promptURL = URL(string: "telprompt:\(sanitized)") {
+                            UIApplication.shared.open(promptURL, options: [:], completionHandler: nil)
+                        }
+                    }
+                }
+            } else {
+                if let url = URL(string: "tel:\(sanitized)") {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                }
+            }
+            return
+        }
+
+        // 2. Handle single or multi-SMS actions
+        var textedNumber: String? = nil
+        if action == PhoneCallManager.smsActionIdentifier || action == UNNotificationDefaultActionIdentifier {
+            textedNumber = (userInfo["phoneNumber"] as? String) ?? (userInfo["number_1"] as? String)
+        } else if action == PhoneCallManager.smsAction1Identifier {
+            textedNumber = userInfo["number_1"] as? String
+        } else if action == PhoneCallManager.smsAction2Identifier {
+            textedNumber = userInfo["number_2"] as? String
+        } else if action == PhoneCallManager.smsAction3Identifier {
+            textedNumber = userInfo["number_3"] as? String
+        }
+
+        if let rawNumber = textedNumber, let body = userInfo["messageBody"] as? String {
+            let sanitized = PhoneCallManager.sanitizePhoneNumber(rawNumber)
+            var allowed = CharacterSet.urlQueryAllowed
+            allowed.remove(charactersIn: "+&?#")
+            let encodedBody = body.addingPercentEncoding(withAllowedCharacters: allowed) ?? body
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            if let url = URL(string: "sms:\(sanitized)&body=\(encodedBody)") {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+            return
+        }
+    }
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         ADContinuedProcessingCoordinator.shared.register()
+        UNUserNotificationCenter.current().delegate = self
+        PhoneCallManager.shared.registerNotificationCategories()
+        PhoneCallManager.shared.requestNotificationPermissionIfNeeded()
         return true
     }
 
@@ -173,6 +246,7 @@ private enum ADPendingSystemAction: String {
     case photo
     case video
     case audio
+    case announceNotification
 }
 
 private enum ADPendingSystemActionStore {
@@ -252,6 +326,27 @@ struct ToggleADGlassesAudioIntent: AppIntent {
     }
 }
 
+
+struct AnnounceNotificationIntent: AppIntent {
+    static let title: LocalizedStringResource = "Announce Notification to AD Glasses"
+    static let description = IntentDescription("Speaks a notification text into the connected AD Glasses audio speakers.")
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
+
+    @Parameter(title: "Notification Text", description: "The text or message to announce (e.g. from Uber, WhatsApp, Messages)")
+    var text: String
+
+    @Parameter(title: "App Name", description: "The name of the app sending the notification (optional)")
+    var appName: String?
+
+    func perform() async throws -> some IntentResult {
+        let prefix = (appName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? "\(appName!): " : ""
+        let announcement = "\(prefix)\(text)"
+        UserDefaults.standard.set(announcement, forKey: "system.pending-announcement.v1")
+        ADPendingSystemActionStore.enqueue(.announceNotification)
+        return .result()
+    }
+}
+
 struct ADGlassesAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -283,6 +378,15 @@ struct ADGlassesAppShortcuts: AppShortcutsProvider {
             phrases: ["Toggle recording on \(.applicationName)"],
             shortTitle: "Toggle Audio",
             systemImageName: "waveform"
+        )
+        AppShortcut(
+            intent: AnnounceNotificationIntent(),
+            phrases: [
+                "Announce with \(.applicationName)",
+                "Read alert with \(.applicationName)"
+            ],
+            shortTitle: "Announce Alert",
+            systemImageName: "speaker.wave.2.fill"
         )
     }
 }
@@ -504,6 +608,13 @@ struct ADGlassesApp: App {
                 }
                 guard glassesManager.connectionState.isConnected else { return }
                 _ = await glassesManager.toggleAudioRecording()
+
+            case .announceNotification:
+                if let message = UserDefaults.standard.string(forKey: "system.pending-announcement.v1"),
+                   !message.isEmpty {
+                    UserDefaults.standard.removeObject(forKey: "system.pending-announcement.v1")
+                    appModel.speakNotification(message)
+                }
             }
         }
     }

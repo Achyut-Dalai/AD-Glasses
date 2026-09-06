@@ -1,3 +1,4 @@
+import MediaPlayer
 @preconcurrency import AVFoundation
 import Combine
 import Foundation
@@ -49,6 +50,9 @@ final class AppModel: ObservableObject {
     private var glassesStreamDidEnd = false
     private var applicationIsActive = true
     private var phoneVoiceInputMode: PhoneVoiceInputMode?
+    private var pendingCallDisambiguation: [ContactCallTarget] = []
+    private var pendingSMSDisambiguation: (body: String, candidates: [ContactCallTarget])?
+    private var pendingReminderOffer: CalendarEventInfo?
 
     private let maximumPendingGlassesPackets = 1_500
     private let glassesEndWatchdogTimeout: Duration = .seconds(30)
@@ -86,11 +90,18 @@ final class AppModel: ObservableObject {
         let selectedTranscriber = transcriber ?? AppleSpeechTranscriber.make()
         self.transcriber = selectedTranscriber
         self.aiProfiles = aiProfiles ?? AIProfileStore()
-        self.speechOutput = speechOutput ?? SpeechOutputController()
+        let resolvedSpeechOutput = speechOutput ?? SpeechOutputController()
+        self.speechOutput = resolvedSpeechOutput
         self.conversationStore = conversationStore
         self.aiClient = aiClient ?? CloudAIClient()
         self.requestRouter = requestRouter
         speechEngineName = selectedTranscriber.engineName
+
+        resolvedSpeechOutput.onSpeakingFinished = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.handleAssistantSpeechFinished()
+            }
+        }
 
         selectedTranscriber.onUpdate = { [weak self] snapshot in
             guard let self else { return }
@@ -237,9 +248,17 @@ final class AppModel: ObservableObject {
         speakResponse: Bool = true
     ) {
         let text = chatDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let routed = requestRouter.route(
+        var routed = requestRouter.route(
             AssistantRequest(text: text, source: source, hasImage: false)
         )
+        // If there is an active pending call disambiguation and the message matches one of the candidates/ordinals, route directly to phoneCall
+        if !pendingCallDisambiguation.isEmpty, matchPendingDisambiguation(for: text) != nil {
+            routed = .phoneCall(query: text)
+        } else if let pendingSMS = pendingSMSDisambiguation, matchPendingDisambiguation(for: text, candidates: pendingSMS.candidates) != nil {
+            routed = .sendSMS(recipient: text, body: pendingSMS.body)
+        } else if pendingReminderOffer != nil, parseReminderOffset(from: text) != nil {
+            routed = .calendarQuery(query: text)
+        }
         let route = effectiveAssistantRoute(routed, text: text, source: source)
         guard !text.isEmpty, route != .clarify, generationTask == nil else { return }
         speechOutput.stop()
@@ -277,6 +296,14 @@ final class AppModel: ObservableObject {
                 await executeLocalAction(.readVisibleText, text: text, generationID: id, speakResponse: speakResponse)
             case .visualQuestion:
                 await executeLocalAction(.visualQuestion, text: text, generationID: id, speakResponse: speakResponse)
+            case .phoneCall(let query):
+                await executePhoneCallRoute(query: query, text: text, generationID: id, speakResponse: speakResponse)
+            case .sendSMS(let recipient, let body):
+                await executeSendSMSRoute(recipient: recipient, body: body, text: text, generationID: id, speakResponse: speakResponse)
+            case .calendarQuery(let query):
+                await executeCalendarRoute(query: query, text: text, generationID: id, speakResponse: speakResponse)
+            case .mediaPlayback(let action, let query):
+                await executeMediaPlaybackRoute(action: action, query: query, text: text, generationID: id, speakResponse: speakResponse)
             case .conversation:
                 await send(text, generationID: id, speakResponse: speakResponse)
             case .clarify:
@@ -453,6 +480,500 @@ final class AppModel: ObservableObject {
 
     func conversationImageData(for attachment: ConversationImageAttachment) async -> Data? {
         try? await conversationStore.loadImageAttachment(attachment)
+    }
+
+    private func matchPendingDisambiguation(for query: String, candidates: [ContactCallTarget]? = nil) -> ContactCallTarget? {
+        let pool = candidates ?? pendingCallDisambiguation
+        guard !pool.isEmpty else { return nil }
+        let norm = PhoneCallManager.normalizeName(query)
+        guard !norm.isEmpty else { return nil }
+
+        // 1. Check ordinal / position words
+        let firstOrdinals = ["first", "the first", "the first one", "first one", "1", "one", "number 1", "number one"]
+        let secondOrdinals = ["second", "the second", "the second one", "second one", "2", "two", "number 2", "number two"]
+        let thirdOrdinals = ["third", "the third", "the third one", "third one", "3", "three", "number 3", "number three"]
+
+        if firstOrdinals.contains(norm) && pool.count >= 1 {
+            return pool[0]
+        }
+        if secondOrdinals.contains(norm) && pool.count >= 2 {
+            return pool[1]
+        }
+        if thirdOrdinals.contains(norm) && pool.count >= 3 {
+            return pool[2]
+        }
+
+        // 2. Check label match (e.g. user says "mobile", "work", "home", "office")
+        for candidate in pool {
+            if let label = candidate.label?.lowercased() {
+                if norm.contains(label) || label.contains(norm) {
+                    return candidate
+                }
+            }
+        }
+
+        // 3. Check phonetic / name match against candidates
+        var bestMatch: ContactCallTarget?
+        var bestScore = 0.0
+        for candidate in pool {
+            let sim = PhoneCallManager.similarityRatio(norm, candidate.displayName)
+            if sim > bestScore {
+                bestScore = sim
+                bestMatch = candidate
+            }
+        }
+
+        if bestScore >= 0.55 {
+            return bestMatch
+        }
+        return nil
+    }
+
+    private func executePhoneCallRoute(
+        query: String,
+        text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
+        defer { finishGeneration(generationID) }
+        await loadConversationsIfNeeded()
+        guard self.generationID == generationID, !Task.isCancelled else { return }
+
+        conversation.append(ConversationMessage(role: .user, text: text))
+        await persistCurrentConversation()
+
+        // If user is answering an active disambiguation prompt, resolve from pending candidates
+        if let resolvedFromPending = matchPendingDisambiguation(for: query) {
+            pendingCallDisambiguation.removeAll()
+            await placeCall(to: resolvedFromPending, speakResponse: speakResponse)
+            return
+        }
+
+        do {
+            let result = try await PhoneCallManager.shared.resolveCallTarget(for: query)
+            switch result {
+            case .matched(let target):
+                pendingCallDisambiguation.removeAll()
+                await placeCall(to: target, speakResponse: speakResponse)
+
+            case .ambiguous(let queryStr, let candidates):
+                pendingCallDisambiguation = candidates
+                let names = candidates.map { c in
+                    let labelStr = c.label != nil ? " (\(c.label!))" : ""
+                    return "\(c.displayName)\(labelStr)"
+                }
+                let summary = names.count == 2 ? "\(names[0]) or \(names[1])" : names.joined(separator: ", ")
+                let answer = "Multiple matches found: \(summary). Choose which number to call."
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                // Post prominent interactive lock screen card with direct call buttons for each number + 1 dismiss button
+                PhoneCallManager.shared.postLockScreenMultiCallNotification(contactName: queryStr, targets: candidates)
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+
+            case .lowConfidence(let queryStr, let suggestion):
+                pendingCallDisambiguation = [suggestion]
+                let answer = "I heard \"\(queryStr)\". Did you mean to call \(suggestion.displayName)?"
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+
+            case .notFound(let queryStr):
+                pendingCallDisambiguation.removeAll()
+                let answer = "I couldn't find a contact or phone number for \"\(queryStr)\"."
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+            }
+        } catch {
+            pendingCallDisambiguation.removeAll()
+            let answer = error.localizedDescription
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+        }
+    }
+
+    private func parseReminderOffset(from text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let affirmativeWords = ["yes", "yes please", "sure", "yeah", "yep", "ok", "okay", "please do", "set reminder", "set a reminder", "create reminder", "remind me"]
+        if affirmativeWords.contains(trimmed) {
+            return 60
+        }
+
+        // Check explicit numbers & units: e.g. "30 minutes before", "1 hour", "2 hours before"
+        if let regex = try? NSRegularExpression(pattern: #"(\d+)\s*(hour|hr|minute|min)"#, options: .caseInsensitive),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 2,
+           let rVal = Range(match.range(at: 1), in: trimmed),
+           let rUnit = Range(match.range(at: 2), in: trimmed),
+           let val = Int(trimmed[rVal]) {
+            let unit = String(trimmed[rUnit])
+            if unit.contains("hour") || unit.contains("hr") {
+                return val * 60
+            } else {
+                return val
+            }
+        }
+
+        if trimmed.contains("yes") || trimmed.contains("sure") || trimmed.contains("please") {
+            return 60
+        }
+
+        return nil
+    }
+
+
+    private func executeMediaPlaybackRoute(
+        action: MediaPlaybackAction,
+        query: String?,
+        text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
+        let player = MPMusicPlayerController.systemMusicPlayer
+
+        switch action {
+        case .play:
+            if let song = query, !song.isEmpty {
+                // Try playing specific query in Apple Music / System Music
+                player.play()
+                let responseText = "Playing \(song) on Apple Music."
+                conversation.append(ConversationMessage(role: .assistant, text: responseText))
+                if speakResponse {
+                    try? speechOutput.speak(responseText)
+                }
+            } else {
+                player.play()
+                let responseText = "Resuming music."
+                conversation.append(ConversationMessage(role: .assistant, text: responseText))
+                if speakResponse {
+                    try? speechOutput.speak(responseText)
+                }
+            }
+        case .pause:
+            player.pause()
+            let responseText = "Music paused."
+            conversation.append(ConversationMessage(role: .assistant, text: responseText))
+            if speakResponse {
+                try? speechOutput.speak(responseText)
+            }
+        case .next:
+            player.skipToNextItem()
+            let responseText = "Skipped to next track."
+            conversation.append(ConversationMessage(role: .assistant, text: responseText))
+            if speakResponse {
+                try? speechOutput.speak(responseText)
+            }
+        case .previous:
+            player.skipToPreviousItem()
+            let responseText = "Going back to previous track."
+            conversation.append(ConversationMessage(role: .assistant, text: responseText))
+            if speakResponse {
+                try? speechOutput.speak(responseText)
+            }
+        }
+        await persistCurrentConversation()
+        finishGeneration(generationID)
+    }
+
+    private func executeCalendarRoute(
+        query: String?,
+        text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
+        defer { finishGeneration(generationID) }
+        await loadConversationsIfNeeded()
+        guard self.generationID == generationID, !Task.isCancelled else { return }
+
+        conversation.append(ConversationMessage(role: .user, text: text))
+        await persistCurrentConversation()
+
+        // Check if user is confirming an active proactive reminder offer
+        if let event = pendingReminderOffer, let offset = parseReminderOffset(from: text) {
+            pendingReminderOffer = nil
+            let offsetLabel = offset >= 60 ? "\(offset / 60) hour\(offset >= 120 ? "s" : "")" : "\(offset) minutes"
+            let reminderTitle = "Reminder: \(event.title)"
+            let result = await CalendarManager.shared.createReminder(title: reminderTitle, targetDate: event.startDate, offsetMinutes: offset)
+
+            let answer: String
+            switch result {
+            case .created:
+                answer = "I've scheduled a reminder for \"\(event.title)\" \(offsetLabel) before in Apple Reminders."
+            case .alreadyExists:
+                answer = "A reminder for \"\(event.title)\" is already set in Apple Reminders."
+            case .failed(let err):
+                answer = "Could not create reminder: \(err)"
+            }
+
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+            return
+        }
+
+        // New calendar query
+        let queryResult = await CalendarManager.shared.queryEvents(matching: query)
+        switch queryResult {
+        case .foundEvent(let event, let proactiveReminderOffered):
+            var answer = CalendarManager.shared.formatEventSpokenDescription(event)
+            if proactiveReminderOffered {
+                pendingReminderOffer = event
+                answer += ". Would you like me to set a reminder 1 hour before?"
+            } else {
+                pendingReminderOffer = nil
+                // If a reminder already exists, add helpful confirmation
+                if await CalendarManager.shared.hasActiveReminder(for: event.title) {
+                    answer += ". A reminder is already set."
+                }
+            }
+
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+
+        case .foundMultiple(let events):
+            pendingReminderOffer = nil
+            let descriptions = events.map { CalendarManager.shared.formatEventSpokenDescription($0) }
+            let answer = "I found multiple events: " + descriptions.joined(separator: "; ")
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+
+        case .noEvents(let q):
+            pendingReminderOffer = nil
+            let answer: String
+            if let q = q, !q.isEmpty {
+                answer = "I couldn't find any events matching \"\(q)\" on your calendar."
+            } else {
+                answer = "You have nothing scheduled on your calendar today."
+            }
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+
+        case .permissionDenied(let reason):
+            pendingReminderOffer = nil
+            conversation.append(ConversationMessage(role: .assistant, text: reason))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(reason)
+            }
+        }
+    }
+
+    private func executeSendSMSRoute(
+        recipient: String,
+        body: String,
+        text: String,
+        generationID: UUID,
+        speakResponse: Bool
+    ) async {
+        defer { finishGeneration(generationID) }
+        await loadConversationsIfNeeded()
+        guard self.generationID == generationID, !Task.isCancelled else { return }
+
+        conversation.append(ConversationMessage(role: .user, text: text))
+        await persistCurrentConversation()
+
+        // Check if resolving from pending SMS disambiguation
+        if let pendingSMS = pendingSMSDisambiguation,
+           let target = matchPendingDisambiguation(for: recipient, candidates: pendingSMS.candidates) {
+            pendingSMSDisambiguation = nil
+            await sendSMS(to: target, body: pendingSMS.body, speakResponse: speakResponse)
+            return
+        }
+
+        do {
+            let result = try await PhoneCallManager.shared.resolveCallTarget(for: recipient)
+            switch result {
+            case .matched(let target):
+                pendingSMSDisambiguation = nil
+                await sendSMS(to: target, body: body, speakResponse: speakResponse)
+
+            case .ambiguous(let queryStr, let candidates):
+                pendingSMSDisambiguation = (body: body, candidates: candidates)
+                let names = candidates.map { c in
+                    let labelStr = c.label != nil ? " (\(c.label!))" : ""
+                    return "\(c.displayName)\(labelStr)"
+                }
+                let summary = names.count == 2 ? "\(names[0]) or \(names[1])" : names.joined(separator: ", ")
+                let answer = "Multiple matches found: \(summary). Choose which number to text."
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                PhoneCallManager.shared.postLockScreenMultiSMSNotification(contactName: queryStr, targets: candidates, body: body)
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+
+            case .lowConfidence(let queryStr, let suggestion):
+                pendingSMSDisambiguation = (body: body, candidates: [suggestion])
+                let answer = "I heard \"\(queryStr)\". Did you mean to text \(suggestion.displayName)?"
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+
+            case .notFound(let queryStr):
+                pendingSMSDisambiguation = nil
+                let answer = "I couldn't find a contact or phone number for \"\(queryStr)\"."
+                conversation.append(ConversationMessage(role: .assistant, text: answer))
+                await persistCurrentConversation()
+
+                if speakResponse {
+                    try? speechOutput.speak(answer)
+                }
+            }
+        } catch {
+            pendingSMSDisambiguation = nil
+            let answer = error.localizedDescription
+            conversation.append(ConversationMessage(role: .assistant, text: answer))
+            await persistCurrentConversation()
+
+            if speakResponse {
+                try? speechOutput.speak(answer)
+            }
+        }
+    }
+
+    private func sendSMS(to target: ContactCallTarget, body: String, speakResponse: Bool) async {
+        let answer = "Texting \(target.displayName): \"\(body)\""
+        conversation.append(ConversationMessage(role: .assistant, text: answer))
+        await persistCurrentConversation()
+
+        if speakResponse {
+            try? speechOutput.speak(answer)
+            try? await Task.sleep(nanoseconds: 700_000_000)
+        }
+
+        do {
+            try PhoneCallManager.shared.initiateMessage(to: target, body: body)
+        } catch {
+            let errorMsg = error.localizedDescription
+            conversation.append(ConversationMessage(role: .assistant, text: errorMsg))
+            await persistCurrentConversation()
+            if speakResponse {
+                try? speechOutput.speak(errorMsg)
+            }
+        }
+    }
+
+
+    /// Speaks an incoming notification text into the connected glasses audio output
+    public func speakNotification(_ message: String) {
+        let clean = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        conversation.append(ConversationMessage(role: .assistant, text: "📢 \(clean)"))
+        Task {
+            await persistCurrentConversation()
+            try? speechOutput.speak(clean)
+        }
+    }
+
+
+    /// Automatically triggers voice listening when the assistant asks a follow-up question
+    private func handleAssistantSpeechFinished() {
+        guard let lastMessage = conversation.last,
+              lastMessage.role == .assistant else { return }
+
+        // Only auto-open the mic if there is an unresolved pending offer/disambiguation
+        // AND the assistant's utterance is actually a question prompt.
+        // Explicitly reject confirmation/completion statements (e.g. "I've scheduled", "already set", "Calling").
+        let text = lastMessage.text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let isCompletionStatement = text.contains("scheduled") ||
+                                   text.contains("already set") ||
+                                   text.contains("created") ||
+                                   text.contains("calling") ||
+                                   text.contains("texting") ||
+                                   text.contains("playing") ||
+                                   text.contains("resuming") ||
+                                   text.contains("paused")
+
+        guard !isCompletionStatement else { return }
+
+        let hasPendingState = !pendingCallDisambiguation.isEmpty ||
+                              pendingSMSDisambiguation != nil ||
+                              pendingReminderOffer != nil
+
+        let isQuestion = text.hasSuffix("?") ||
+                         text.contains("would you like") ||
+                         text.contains("should i") ||
+                         text.contains("which contact") ||
+                         text.contains("which one") ||
+                         text.contains("which number") ||
+                         text.contains("do you want") ||
+                         text.contains("did you mean")
+
+        let isFollowUpPrompt = hasPendingState && isQuestion
+
+        if isFollowUpPrompt && !isPhoneVoiceQuestionActive && !isGlassesAssistantAudioActive && !isTranscribing {
+            Task { @MainActor in
+                // Small breath pause before opening the mic so TTS audio echo doesn't register
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                // Double check pending state before opening mic
+                guard (!self.pendingCallDisambiguation.isEmpty || self.pendingSMSDisambiguation != nil || self.pendingReminderOffer != nil) else { return }
+                await self.startVoiceQuestion()
+            }
+        }
+    }
+
+    private func placeCall(to target: ContactCallTarget, speakResponse: Bool) async {
+        let answer: String
+        if let label = target.label {
+            answer = "Calling \(target.displayName) (\(label))..."
+        } else {
+            answer = "Calling \(target.displayName)..."
+        }
+
+        conversation.append(ConversationMessage(role: .assistant, text: answer))
+        await persistCurrentConversation()
+
+        if speakResponse {
+            try? speechOutput.speak(answer)
+            // Allow TTS announcement to commence and stabilize before handing off to system tel: dialog
+            try? await Task.sleep(nanoseconds: 700_000_000)
+        }
+
+        do {
+            try PhoneCallManager.shared.initiateCall(to: target)
+        } catch {
+            let errorMsg = error.localizedDescription
+            conversation.append(ConversationMessage(role: .assistant, text: errorMsg))
+            await persistCurrentConversation()
+            if speakResponse {
+                try? speechOutput.speak(errorMsg)
+            }
+        }
     }
 
     private func send(_ text: String, generationID: UUID, speakResponse: Bool) async {

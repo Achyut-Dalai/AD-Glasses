@@ -204,6 +204,119 @@ struct GlassesVolumeProfile: Equatable, Sendable {
     }
 }
 
+/// Camera capture and recording settings for smart glasses.
+/// Physical captures on the hardware sensor save in full resolution to flash storage
+/// and are retrieved losslessly over local Wi-Fi.
+enum GlassesVideoDurationLimit: Int, CaseIterable, Identifiable, Sendable {
+    case fifteenSeconds = 15
+    case thirtySeconds = 30
+    case sixtySeconds = 60
+    case threeMinutes = 180
+    case fiveMinutes = 300
+    case nineMinutes = 540
+    case twelveMinutes = 720
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .fifteenSeconds: return "15s"
+        case .thirtySeconds: return "30s"
+        case .sixtySeconds: return "1m (Standard)"
+        case .threeMinutes: return "3m"
+        case .fiveMinutes: return "5m"
+        case .nineMinutes: return "9m"
+        case .twelveMinutes: return "12m (Maximum)"
+        }
+    }
+}
+
+enum GlassesAudioDurationLimit: Int, CaseIterable, Identifiable, Sendable {
+    case thirtyMinutes = 1800
+    case oneHour = 3600
+    case twoHours = 7200
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .thirtyMinutes: return "30m"
+        case .oneHour: return "1h (Standard)"
+        case .twoHours: return "2h (Maximum)"
+        }
+    }
+}
+
+
+enum GlassesAIVisionQuality: String, CaseIterable, Identifiable, Sendable {
+    case fast = "fast"
+    case detailed = "detailed"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .fast: return "Fast (Sub-second response)"
+        case .detailed: return "High Detail (Fine text & distance)"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .fast:
+            return "Optimized lightweight frame sent to AI for instant voice answers."
+        case .detailed:
+            return "Higher resolution frame sent to AI when analyzing fine text, books, or distant objects."
+        }
+    }
+}
+
+enum GlassesPhotoQuality: String, CaseIterable, Identifiable, Sendable {
+    case fullResolution = "full"
+    case standard = "standard"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .fullResolution: return "Full Resolution (12MP Original)"
+        case .standard: return "Standard Quality"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .fullResolution:
+            return "Pristine uncompressed captures stored directly to glasses flash memory and transferred in full quality over Wi-Fi."
+        case .standard:
+            return "Compressed captures to optimize on-device storage space."
+        }
+    }
+}
+
+enum GlassesCaptureIngestionMode: String, CaseIterable, Identifiable, Sendable {
+    case wifiSync = "wifiSync"
+    case bleThumbnailOnly = "bleThumbnail"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .wifiSync: return "Wi-Fi Transfer (Full Quality)"
+        case .bleThumbnailOnly: return "Bluetooth Thumbnails Only"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .wifiSync:
+            return "Full resolution photos and videos are downloaded directly from the glasses Wi-Fi access point without quality degradation."
+        case .bleThumbnailOnly:
+            return "Only low-resolution previews are pulled over BLE. Full media remains safely on the glasses flash storage."
+        }
+    }
+}
+
 enum GlassesConnectionState: Equatable, Sendable {
     case disconnected
     case scanning
@@ -259,7 +372,7 @@ enum GlassesProviderError: LocalizedError {
         case .deviceNotFound:
             return "The selected glasses are no longer available. Scan again."
         case .connectionFailed(let reason):
-            return "Could not connect to the glasses: \(reason)"
+            return reason
         case .notConfigured(let reason):
             return reason
         }

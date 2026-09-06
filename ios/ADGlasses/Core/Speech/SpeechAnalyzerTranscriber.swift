@@ -1,10 +1,17 @@
 @preconcurrency import AVFoundation
 import Foundation
 import Speech
+import os
+
+private let speechLogger = Logger(subsystem: "com.achyutdalai.ADGlasses", category: "SpeechTranscriber")
 
 @MainActor
 final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
-    let engineName = "SpeechAnalyzer (on-device)"
+    var engineName: String {
+        groqCredentialProvider != nil
+            ? "SpeechAnalyzer + Groq Whisper Large v3 Turbo"
+            : "SpeechAnalyzer (on-device)"
+    }
     var onUpdate: ((SpeechTranscriptionSnapshot) -> Void)?
     var onError: ((Error) -> Void)?
 
@@ -13,6 +20,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     }
 
     private let requestedLocale: Locale
+    private let groqCredentialProvider: (@MainActor @Sendable () -> String?)?
     private let audioEngine = AVAudioEngine()
     private let bufferConverter = SpeechBufferConverter()
     private var analyzer: SpeechAnalyzer?
@@ -27,53 +35,40 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
     private var lastPhoneEndpointTranscript = ""
     private var inputSource: InputSource?
     private var preparedLocale: Locale?
+    private var turnAudioBuffers = [AVAudioPCMBuffer]()
 
     // Phone dictation keeps a generous pause because the user may still be composing a sentence.
     // Glasses Assistant is a short Ask turn and already has a verified hardware end notification as
     // a fallback, so once SpeechAnalyzer has recognized speech we can commit after a much shorter
     // acoustic tail instead of waiting several seconds for firmware to close the stream.
-    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(1_500)
-    private let externalAcousticSilenceDelay: Duration = .milliseconds(900)
+    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(2_200)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(2_000)
     private let initialNoSpeechDelay: Duration = .seconds(6)
     private let postDownloadStatusChecks = 60
 
-    // RMS energy is intentionally used instead of peak energy. The previous -48 dBFS threshold was
-    // below the steady noise floor on the physical glasses often enough that silence never armed and
-    // the app waited for the much later 0x73/0x0A event. -42 dBFS still requires a recognized
-    // transcript before endpointing and ignores brief spikes, while allowing normal room noise to
-    // count as silence after the user finishes speaking.
-    private let externalSilenceRMSThresholdDBFS: Float = -42
+    // RMS energy is intentionally used instead of peak energy. Conversational voice at the glasses
+    // temple microphone typically arrives around -40 to -48 dBFS, while quiet room noise is below
+    // -55 dBFS. -49 dBFS accurately detects voice activity even for quiet or natural speech without
+    // falsely treating pauses between words as immediate silence or skipping Groq Whisper.
+    private let externalSilenceRMSThresholdDBFS: Float = -49
 
     private enum InputSource {
         case phoneMicrophone
         case externalPCM
     }
 
-    private static let assistantContextualStrings = [
-        "AD Glasses",
-        "click",
-        "photo",
-        "picture",
-        "take photo",
-        "video",
-        "record",
-        "recording",
-        "start recording",
-        "stop recording",
-        "stop",
-        "read",
-        "read text",
-        "Lens",
-        "translate",
-        "translation"
-    ]
+    private static let assistantContextualStrings: [String] = []
 
-    init(locale: Locale) {
+    init(
+        locale: Locale,
+        groqCredentialProvider: (@MainActor @Sendable () -> String?)? = nil
+    ) {
         requestedLocale = locale
+        self.groqCredentialProvider = groqCredentialProvider
         snapshot = SpeechTranscriptionSnapshot(
             transcript: "",
             isRunning: false,
-            engineName: engineName
+            engineName: groqCredentialProvider != nil ? "SpeechAnalyzer + Groq Whisper Large v3 Turbo" : "SpeechAnalyzer (on-device)"
         )
     }
 
@@ -201,6 +196,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         if snapshot.isRunning { return }
         try await SpeechPermissions.requestAll()
         await stop()
+        turnAudioBuffers.removeAll(keepingCapacity: true)
 
         let locale: Locale
         if let explicitPreparedLocale {
@@ -298,6 +294,9 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         analyzer = nil
         bufferConverter.reset()
         inputSource = nil
+
+        await performGroqWhisperFinalizationIfNeeded()
+
         snapshot.isRunning = false
         if wasUsingPhoneMicrophone {
             await SpeechInputAudioSession.deactivate()
@@ -306,6 +305,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
 
     func startExternalAudio() async throws {
         if snapshot.isRunning { await stop() }
+        turnAudioBuffers.removeAll(keepingCapacity: true)
         try await SpeechPermissions.requestRecognition()
         let locale = try await prepareAssets()
         _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
@@ -329,6 +329,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         lastPhoneEndpointTranscript = ""
         externalEndpointTask?.cancel()
         externalEndpointTask = nil
+        turnAudioBuffers.removeAll(keepingCapacity: true)
         snapshot.transcript = ""
     }
 
@@ -373,6 +374,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
             }
+            phoneEndpointTask = nil
             await stop()
         }
     }
@@ -398,6 +400,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                       snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
                     return
                 }
+                phoneEndpointTask = nil
                 await stop()
             }
 
@@ -431,7 +434,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         externalEndpointTask = Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(900))
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(2_000))
             } catch {
                 return
             }
@@ -441,6 +444,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
                   snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == endpointTranscript else {
                 return
             }
+            externalEndpointTask = nil
             await stop()
         }
     }
@@ -588,6 +592,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
             for await buffer in audioStream {
                 do {
                     let converted = try bufferConverter.convertBuffer(buffer, to: analyzerFormat)
+                    await self.appendTurnAudio(converted)
                     analyzerInputContinuation.yield(AnalyzerInput(buffer: converted))
                 } catch {
                     onError?(error)
@@ -669,6 +674,96 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         NSLog("%@", message)
     }
 
+    private func appendTurnAudio(_ buffer: AVAudioPCMBuffer) {
+        turnAudioBuffers.append(buffer)
+    }
+
+    private func performGroqWhisperFinalizationIfNeeded() async {
+        guard let provider = groqCredentialProvider,
+              let key = provider(),
+              !key.isEmpty else {
+            speechLogger.info("[SpeechTranscriber] No Groq credential available; keeping SpeechAnalyzer transcript: \"\(self.snapshot.transcript, privacy: .public)\"")
+            turnAudioBuffers.removeAll(keepingCapacity: true)
+            return
+        }
+
+        let buffers = turnAudioBuffers
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+
+        guard !buffers.isEmpty,
+              let wavData = AudioWAVEncoder.encode(buffers: buffers) else {
+            speechLogger.info("[SpeechTranscriber] No audio buffers captured for Groq Whisper; keeping SpeechAnalyzer transcript: \"\(self.snapshot.transcript, privacy: .public)\"")
+            return
+        }
+
+        let sampleRate = buffers.first?.format.sampleRate ?? 16_000
+        let totalFrames = buffers.reduce(0) { $0 + Int($1.frameLength) }
+        let durationSec = Double(totalFrames) / (sampleRate > 0 ? sampleRate : 16_000)
+
+        let preliminaryDraft = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let peakRMS = buffers.compactMap { Self.rmsDBFS($0) }.max() ?? -100
+        let hasSpokenAudio = peakRMS > externalSilenceRMSThresholdDBFS
+
+        // Guard against sub-threshold audio energy: when peak acoustic energy is below the speech
+        // threshold (e.g. -42 dBFS), Whisper models hallucinate random subtitle phrases like
+        // "Very sad part of the story." or "Thank you." while Apple on-device ASR handles faint speech.
+        if !hasSpokenAudio {
+            speechLogger.info("[GroqWhisper] Audio energy is below speech threshold (peak RMS: \(peakRMS, format: .fixed(precision: 1)) dBFS); keeping SpeechAnalyzer fallback: \"\(self.snapshot.transcript, privacy: .public)\"")
+            return
+        }
+
+        speechLogger.notice("[GroqWhisper] Transcribing \(buffers.count) buffers (\(wavData.count) bytes, \(String(format: "%.2f", durationSec))s, peak: \(peakRMS, format: .fixed(precision: 1)) dBFS) via whisper-large-v3...")
+
+        let languageCode = (preparedLocale ?? requestedLocale).language.languageCode?.identifier ?? "en"
+
+        // Execute transcription in a detached task immune to any caller task cancellation.
+        // We do NOT pass preliminaryDraft as prompt: when Apple SpeechAnalyzer misrecognizes words
+        // (e.g. "smart" instead of "Meta"), passing it as a prompt primes Whisper to repeat the mistake!
+        let groqResult: String? = await withCheckedContinuation { continuation in
+            Task.detached(priority: .userInitiated) {
+                do {
+                    let text = try await GroqWhisperClient.shared.transcribe(
+                        wavData: wavData,
+                        credential: key,
+                        model: .largeV3,
+                        language: languageCode,
+                        prompt: "AI assistant on smart glasses, conversations and questions."
+                    )
+                    continuation.resume(returning: text)
+                } catch {
+                    speechLogger.error("[GroqWhisper] Transcription failed: \(error.localizedDescription, privacy: .public); keeping SpeechAnalyzer fallback")
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+
+        if let groqResult {
+            let trimmed = groqResult.trimmingCharacters(in: .whitespacesAndNewlines)
+            let lower = trimmed.lowercased()
+
+            // Filter known Whisper silence hallucinations when Apple SpeechAnalyzer heard nothing
+            let knownHallucinations: Set<String> = [
+                "thank you.", "thank you", "thanks for watching.", "thanks for watching!",
+                "thank you for watching.", "thank you for watching!", "subtitles by", "you",
+                "bye.", "bye!", "peace.", "peace!", "silence", "i don't know.", "i don't know"
+            ]
+
+            if knownHallucinations.contains(lower) && (!hasSpokenAudio || preliminaryDraft.isEmpty) {
+                speechLogger.warning("[GroqWhisper] Discarded silence hallucination: \"\(trimmed, privacy: .public)\"")
+                return
+            }
+
+            if !trimmed.isEmpty {
+                speechLogger.notice("[GroqWhisper] Overriding transcript with Groq result: \"\(trimmed, privacy: .public)\" (was SpeechAnalyzer: \"\(self.snapshot.transcript, privacy: .public)\")")
+                finalizedTranscript = trimmed
+                snapshot.transcript = trimmed
+                onUpdate?(snapshot)
+            } else {
+                speechLogger.warning("[GroqWhisper] Groq returned empty transcript; keeping SpeechAnalyzer transcript")
+            }
+        }
+    }
+
     private func cancelEndpointTasks() {
         phoneEndpointTask?.cancel()
         phoneEndpointTask = nil
@@ -694,6 +789,7 @@ final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
         self.analyzer = nil
         bufferConverter.reset()
         inputSource = nil
+        turnAudioBuffers.removeAll(keepingCapacity: true)
     }
 }
 

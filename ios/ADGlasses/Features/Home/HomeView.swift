@@ -1403,6 +1403,17 @@ private struct DeviceCenterSheet: View {
                 }
 
                 if glasses.connectionState.isConnected,
+                   glasses.supports(.photoCapture) || glasses.supports(.videoRecording) {
+                    Section("Camera & Capture") {
+                        NavigationLink {
+                            CameraSettingsView(store: CameraCaptureSettingsStore())
+                        } label: {
+                            LabeledContent("Photo & Video Settings", value: "Full 12MP · Wi-Fi")
+                        }
+                    }
+                }
+
+                if glasses.connectionState.isConnected,
                    glasses.supports(.volumeControl) {
                     Section("Audio") {
                         NavigationLink {
@@ -1994,16 +2005,16 @@ private struct LensVisionField: View {
                     .frame(width: 78, height: 2)
                     .offset(y: scanForward ? 26 : -26)
                     .opacity(reduceMotion ? 0.45 : 0.85)
+                    .animation(
+                        reduceMotion || isUnavailable
+                            ? nil
+                            : .easeInOut(duration: 1.75).repeatForever(autoreverses: true),
+                        value: scanForward
+                    )
             }
         }
         .frame(width: 126, height: 112)
         .clipped()
-        .animation(
-            reduceMotion || isUnavailable
-                ? nil
-                : .easeInOut(duration: 1.75).repeatForever(autoreverses: true),
-            value: scanForward
-        )
         .onAppear {
             scanForward = !reduceMotion && !isUnavailable
         }

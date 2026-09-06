@@ -313,8 +313,9 @@ final class HeyCyanGlassesProvider: NSObject,
                 Task { [weak self] in
                     guard let self else { return }
                     do {
+                        let isDetailed = UserDefaults.standard.string(forKey: "adglasses.settings.camera.ai_vision_quality") == "detailed"
                         let frame = try await session.send(
-                            .requestAIPhoto(quality: .detailed)
+                            .requestAIPhoto(quality: isDetailed ? .detailed : .quick)
                         )
                         _ = try responseDecoder.decodeControlAcknowledgement(
                             frame,

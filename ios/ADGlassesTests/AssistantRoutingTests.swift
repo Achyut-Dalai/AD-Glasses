@@ -58,6 +58,87 @@ final class AssistantRoutingTests: XCTestCase {
             router.route(AssistantRequest(text: "Don't take a picture", source: .glassesVoice, hasImage: false)),
             .conversation
         )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Call Mom", source: .glassesVoice, hasImage: false)),
+            .phoneCall(query: "Mom")
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Please call John Smith", source: .glassesVoice, hasImage: false)),
+            .phoneCall(query: "John Smith")
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Dial 1234567890", source: .phoneVoice, hasImage: false)),
+            .phoneCall(query: "1234567890")
+        )
+        XCTAssertEqual(
+            router.route(AssistantRequest(text: "Don't call Mom", source: .glassesVoice, hasImage: false)),
+            .conversation
+        )
+    }
+
+    func testCalendarQueryMatcher() {
+        let q1 = CalendarQueryMatcher.match("what time is my movie")
+        XCTAssertEqual(q1, "movie")
+
+        let q2 = CalendarQueryMatcher.match("What time is my movie?")
+        XCTAssertEqual(q2, "movie")
+
+        let q3 = CalendarQueryMatcher.match("When is my dentist appointment")
+        XCTAssertEqual(q3, "dentist appointment")
+
+        let q4 = CalendarQueryMatcher.match("Check my calendar for flight")
+        XCTAssertEqual(q4, "flight")
+
+        let q5 = CalendarQueryMatcher.match("What is on my schedule today?")
+        XCTAssertEqual(q5, "")
+
+        let q6 = CalendarQueryMatcher.match("What time is it")
+        XCTAssertNil(q6)
+    }
+
+    func testTextMessageMatcher() {
+        let r1 = TextMessageMatcher.match("Text mom I am busy")
+        XCTAssertNotNil(r1)
+        XCTAssertEqual(r1?.recipient, "mom")
+        XCTAssertEqual(r1?.body, "I am busy")
+
+        let r2 = TextMessageMatcher.match("Text Mom that I am running late")
+        XCTAssertNotNil(r2)
+        XCTAssertEqual(r2?.recipient, "Mom")
+        XCTAssertEqual(r2?.body, "I am running late")
+
+        let r3 = TextMessageMatcher.match("Message John saying I will call you later")
+        XCTAssertNotNil(r3)
+        XCTAssertEqual(r3?.recipient, "John")
+        XCTAssertEqual(r3?.body, "I will call you later")
+
+        let r4 = TextMessageMatcher.match("Send a text to Dad saying Happy Birthday")
+        XCTAssertNotNil(r4)
+        XCTAssertEqual(r4?.recipient, "Dad")
+        XCTAssertEqual(r4?.body, "Happy Birthday")
+
+        let r5 = TextMessageMatcher.match("Text 1234567890 Hello world")
+        XCTAssertNotNil(r5)
+        XCTAssertEqual(r5?.recipient, "1234567890")
+        XCTAssertEqual(r5?.body, "Hello world")
+
+        let r6 = TextMessageMatcher.match("Text me back")
+        XCTAssertNil(r6)
+    }
+
+    func testPhoneNumberSanitization() {
+        XCTAssertEqual(PhoneCallManager.sanitizePhoneNumber(" +91 98765 43210 "), "+919876543210")
+        XCTAssertEqual(PhoneCallManager.sanitizePhoneNumber("(555) 123-4567"), "5551234567")
+        XCTAssertEqual(PhoneCallManager.sanitizePhoneNumber("+1-800-555-0199"), "+18005550199")
+        XCTAssertEqual(PhoneCallManager.sanitizePhoneNumber("  +44 20 7946 0958 "), "+442079460958")
+    }
+
+    func testLevenshteinAndSimilarityScoring() {
+        XCTAssertEqual(PhoneCallManager.similarityRatio("John", "John"), 1.0)
+        XCTAssertEqual(PhoneCallManager.similarityRatio("john", "JOHN"), 1.0)
+        XCTAssertGreaterThan(PhoneCallManager.similarityRatio("Jon", "John"), 0.70)
+        XCTAssertGreaterThan(PhoneCallManager.similarityRatio("Sara", "Sarah"), 0.75)
+        XCTAssertLessThan(PhoneCallManager.similarityRatio("Alex", "Christopher"), 0.3)
     }
 
     func testConversationRequestBudgetKeepsNewestMessages() {

@@ -27,6 +27,17 @@ enum AssistantRoute: Equatable, Sendable {
     case startAudio
     case stopAudio
     case stopRecording
+    case phoneCall(query: String)
+    case sendSMS(recipient: String, body: String)
+    case calendarQuery(query: String?)
+    case mediaPlayback(action: MediaPlaybackAction, query: String?)
+}
+
+enum MediaPlaybackAction: Equatable, Sendable {
+    case play
+    case pause
+    case next
+    case previous
 }
 
 /// Owns deterministic Assistant shortcuts. Hardware, OCR, and visual-capture commands are resolved
@@ -46,6 +57,22 @@ struct AssistantRequestRouter: Sendable {
         // Never execute a local action from an explicitly negated command. The conversational model
         // can answer the sentence normally instead of the app guessing what part was negated.
         guard words.isDisjoint(with: ["not", "dont", "never"]) else { return .conversation }
+
+        if let calendarTarget = CalendarQueryMatcher.match(text) {
+            return .calendarQuery(query: calendarTarget.isEmpty ? nil : calendarTarget)
+        }
+
+        if let messageTarget = TextMessageMatcher.match(text) {
+            return .sendSMS(recipient: messageTarget.recipient, body: messageTarget.body)
+        }
+
+        if let (action, query) = MediaPlaybackMatcher.match(text) {
+            return .mediaPlayback(action: action, query: query)
+        }
+
+        if let callTarget = PhoneCallMatcher.match(text) {
+            return .phoneCall(query: callTarget)
+        }
 
         let captureVerb = !words.isDisjoint(with: ["take", "capture", "click", "snap", "shoot"])
         let photoSubject = !words.isDisjoint(with: ["photo", "picture", "photograph"])
@@ -99,6 +126,228 @@ struct AssistantRequestRouter: Sendable {
 
     private static func containsAny(_ text: String, _ phrases: [String]) -> Bool {
         phrases.contains(where: text.contains)
+    }
+}
+
+
+// MARK: - Media / Music Playback Matcher
+
+enum MediaPlaybackMatcher {
+    /// Matches voice commands for music playback like "Play music", "Play Beatles", "Pause music", "Resume", "Next song", "Skip"
+    static func match(_ text: String) -> (MediaPlaybackAction, String?)? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let lower = trimmed.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        if ["pause", "pause music", "stop music", "stop the music", "pause playback"].contains(lower) {
+            return (.pause, nil)
+        }
+        if ["next song", "next track", "skip", "skip song", "skip track"].contains(lower) {
+            return (.next, nil)
+        }
+        if ["previous song", "previous track", "go back song", "last song"].contains(lower) {
+            return (.previous, nil)
+        }
+        if ["resume", "resume music", "play", "play music", "start music"].contains(lower) {
+            return (.play, nil)
+        }
+
+        // Check pattern: "play <query>" e.g. "play coldplay" or "play my favorites"
+        let playPattern = #"(?i)^(?:please\s+)?play\s+(.+)$"#
+        if let regex = try? NSRegularExpression(pattern: playPattern),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 1,
+           let range = Range(match.range(at: 1), in: trimmed) {
+            let songQuery = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !songQuery.isEmpty && !["with me", "along", "game", "games", "dumb"].contains(songQuery.lowercased()) {
+                return (.play, songQuery)
+            }
+        }
+
+        return nil
+    }
+}
+
+// MARK: - Phone Call Request Matcher
+
+enum PhoneCallMatcher {
+    /// Extracts a contact name or phone number from natural voice commands.
+    /// Examples: "Call John", "Call Mom", "Phone Dad", "Dial 1234567890", "Place a call to Sarah", "Make a call to Alex"
+    static func match(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let pattern = #"(?i)^(?:please\s+)?(?:call|phone|dial|make\s+a\s+call\s+to|place\s+a\s+call\s+to|ring)\s+(?:up\s+)?(.+)$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+              match.numberOfRanges > 1 else {
+            return nil
+        }
+
+        let range = Range(match.range(at: 1), in: trimmed)!
+        var candidate = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip trailing punctuation like periods or question marks
+        candidate = candidate.trimmingCharacters(in: CharacterSet(charactersIn: ".?!,"))
+
+        // Disallow phrases that are conversational idioms
+        let lower = candidate.lowercased()
+        let nonTargets = ["it a day", "it quits", "of duty", "me back", "you later", "off", "back"]
+        if nonTargets.contains(lower) {
+            return nil
+        }
+
+        return candidate.isEmpty ? nil : candidate
+    }
+}
+
+// MARK: - Text Message Request Matcher
+
+enum TextMessageMatcher {
+    struct MatchResult: Equatable {
+        let recipient: String
+        let body: String
+    }
+
+    private static let pronounsAndVerbs: Set<String> = [
+        "i", "im", "i'm", "we", "we're", "you", "he", "she", "it", "they",
+        "can", "cant", "can't", "will", "wont", "won't", "are", "is", "am",
+        "dont", "don't", "please", "thanks", "thank", "let", "lets", "let's",
+        "see", "call", "tell", "meet", "how", "what", "where", "when", "why", "going"
+    ]
+
+    /// Extracts recipient and message body from natural voice commands.
+    /// Examples:
+    /// - "Text mom I am busy"
+    /// - "Text Mom that I am running late"
+    /// - "Message John saying I will call you later"
+    /// - "Send a text to Dad saying Happy Birthday"
+    /// - "Send a message to Sarah: on my way"
+    static func match(_ text: String) -> MatchResult? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // 1. Explicit delimiter patterns (saying, that, colon, comma)
+        let explicitPatterns = [
+            #"(?i)^(?:please\s+)?send\s+(?:a\s+)?(?:text|message)\s+to\s+(.+?)\s+(?:saying|that)\s+(.+)$"#,
+            #"(?i)^(?:please\s+)?send\s+(?:a\s+)?(?:text|message)\s+to\s+([A-Za-z0-9\+\s]+?)\s*[:,-]\s*(.+)$"#,
+            #"(?i)^(?:please\s+)?(?:text|message)\s+(.+?)\s+(?:saying|that)\s+(.+)$"#,
+            #"(?i)^(?:please\s+)?(?:text|message)\s+([A-Za-z0-9\+\s]+?)\s*[:,-]\s*(.+)$"#
+        ]
+
+        for pattern in explicitPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+               match.numberOfRanges > 2,
+               let range1 = Range(match.range(at: 1), in: trimmed),
+               let range2 = Range(match.range(at: 2), in: trimmed) {
+                let rec = String(trimmed[range1]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let body = String(trimmed[range2]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !rec.isEmpty, !body.isEmpty {
+                    return MatchResult(recipient: rec, body: body)
+                }
+            }
+        }
+
+        // 2. Pattern: "send a text/message to <recipient> <body...>"
+        let sendToPattern = #"(?i)^(?:please\s+)?send\s+(?:a\s+)?(?:text|message)\s+to\s+(.+)$"#
+        if let regex = try? NSRegularExpression(pattern: sendToPattern),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 1,
+           let range = Range(match.range(at: 1), in: trimmed) {
+            let rest = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let tokens = rest.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+            if tokens.count >= 2 {
+                if tokens.count >= 3 && pronounsAndVerbs.contains(tokens[2].lowercased()) {
+                    let rec = tokens[0...1].joined(separator: " ")
+                    let body = tokens[2...].joined(separator: " ")
+                    return MatchResult(recipient: rec, body: body)
+                } else {
+                    let rec = tokens[0]
+                    let body = tokens[1...].joined(separator: " ")
+                    return MatchResult(recipient: rec, body: body)
+                }
+            }
+        }
+
+        // 3. Pattern: "text/message <recipient> <body...>"
+        let directPattern = #"(?i)^(?:please\s+)?(?:text|message)\s+(.+)$"#
+        if let regex = try? NSRegularExpression(pattern: directPattern),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 1,
+           let range = Range(match.range(at: 1), in: trimmed) {
+            let rest = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let tokens = rest.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+            if tokens.count >= 2 {
+                let firstLower = tokens[0].lowercased()
+                let nonRecipients: Set<String> = ["me", "back", "you", "them", "us", "message", "it", "this"]
+                if !nonRecipients.contains(firstLower) {
+                    if pronounsAndVerbs.contains(tokens[1].lowercased()) {
+                        let rec = tokens[0]
+                        let body = tokens[1...].joined(separator: " ")
+                        return MatchResult(recipient: rec, body: body)
+                    } else if tokens.count >= 3 && pronounsAndVerbs.contains(tokens[2].lowercased()) {
+                        let rec = tokens[0...1].joined(separator: " ")
+                        let body = tokens[2...].joined(separator: " ")
+                        return MatchResult(recipient: rec, body: body)
+                    } else {
+                        let rec = tokens[0]
+                        let body = tokens[1...].joined(separator: " ")
+                        return MatchResult(recipient: rec, body: body)
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+}
+
+// MARK: - Calendar Query Matcher
+
+enum CalendarQueryMatcher {
+    /// Matches questions about calendar events or upcoming schedule.
+    /// Returns query keyword (e.g. "movie", "dentist", "flight") or empty string "" for full schedule.
+    static func match(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // 1. "what time is my/the <event>" or "when is my/the <event>"
+        let timePattern = #"(?i)^(?:please\s+)?(?:what\s+time\s+is|when\s+is)\s+(?:my\s+|the\s+)?(.+?)(?:\s+today|\s+scheduled|\s+coming\s+up|\s+happening|\?)?$"#
+        if let regex = try? NSRegularExpression(pattern: timePattern),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 1,
+           let range = Range(match.range(at: 1), in: trimmed) {
+            let candidate = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "?."))
+            let lower = candidate.lowercased()
+            if !["it", "now"].contains(lower) {
+                return candidate
+            }
+        }
+
+        // 2. "check my calendar/schedule for <event>"
+        let checkPattern = #"(?i)^(?:please\s+)?(?:check|look\s+at)\s+(?:my\s+)?(?:calendar|schedule)\s+(?:for\s+)?(.+?)$"#
+        if let regex = try? NSRegularExpression(pattern: checkPattern),
+           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
+           match.numberOfRanges > 1,
+           let range = Range(match.range(at: 1), in: trimmed) {
+            let candidate = String(trimmed[range]).trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "?."))
+            if !candidate.isEmpty {
+                return candidate
+            }
+        }
+
+        // 3. "what's on my calendar/schedule (today)?"
+        let schedulePattern = #"(?i)^(?:what's|whats|what\s+is)\s+(?:on\s+)?(?:my\s+)?(?:calendar|schedule)(?:\s+for\s+today|\s+today|\s+coming\s+up)?\??$"#
+        if let regex = try? NSRegularExpression(pattern: schedulePattern),
+           let _ = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)) {
+            return ""
+        }
+
+        return nil
     }
 }
 

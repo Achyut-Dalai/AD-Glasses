@@ -9,6 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject private var glasses: GlassesManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var grounding = GroundingSettingsStore()
+    @StateObject private var cameraSettings = CameraCaptureSettingsStore()
     @State private var diagnosticsEnabled = false
     @State private var diagnosticsURL: URL?
     @State private var diagnosticsError: String?
@@ -25,6 +26,14 @@ struct SettingsView: View {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote)
                             .foregroundStyle(.red)
+                    }
+                }
+
+                Section("Camera & Capture") {
+                    NavigationLink {
+                        CameraSettingsView(store: cameraSettings)
+                    } label: {
+                        LabeledContent("Photo & Video", value: "Full 12MP · Wi-Fi")
                     }
                 }
 
@@ -60,6 +69,20 @@ struct SettingsView: View {
 
                 Section {
                     NavigationLink("About AD Glasses") { AboutSettingsView() }
+                }
+
+                Section("Hardware & GATT Services") {
+                    let gattServices = UserDefaults.standard.string(forKey: "last_discovered_gatt_services") ?? "Connect glasses to discover services"
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Discovered BLE Services:")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Text(gattServices)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 Section("Diagnostics") {

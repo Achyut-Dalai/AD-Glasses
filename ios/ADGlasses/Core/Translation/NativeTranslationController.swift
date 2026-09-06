@@ -350,7 +350,7 @@ final class LiveTranslationController: ObservableObject {
                 await transcriber.stop()
             }
         }
-        await SpeechInputAudioSession.deactivate()
+        SpeechInputAudioSession.deactivate()
         resetSessionState(keepError: true)
         statusMessage = "Ready"
     }
@@ -400,7 +400,7 @@ final class LiveTranslationController: ObservableObject {
             speechOutput.stop()
             transcriber.onUpdate = nil
             transcriber.onError = nil
-            await SpeechInputAudioSession.deactivate()
+            SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
             statusMessage = "Ready"
             return
@@ -433,7 +433,7 @@ final class LiveTranslationController: ObservableObject {
 
             // Apple Offline owns one communication-style audio route for its entire session. Audio
             // session activation itself is off-main; the synthesizer reuses the established route.
-            try await SpeechInputAudioSession.activate()
+            try SpeechInputAudioSession.activate()
             try speechOutput.speak(
                 result.translatedText,
                 languageCode: result.targetLanguage,
@@ -478,7 +478,7 @@ final class LiveTranslationController: ObservableObject {
             transcriber.onUpdate = nil
             transcriber.onError = nil
             await transcriber.stop()
-            await SpeechInputAudioSession.deactivate()
+            SpeechInputAudioSession.deactivate()
             resetSessionState(keepError: true)
         }
     }

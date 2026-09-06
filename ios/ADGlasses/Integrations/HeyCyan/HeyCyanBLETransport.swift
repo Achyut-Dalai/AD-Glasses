@@ -403,7 +403,7 @@ final class HeyCyanBLETransport: NSObject, HeyCyanByteTransport {
         currentName = peripheral.name ?? currentName
         resetGATTState()
         state = .discoveringServices(name: currentName)
-        peripheral.discoverServices([GATT.baseService, GATT.largeDataService])
+        peripheral.discoverServices(nil)
         startConnectionTimeout(for: peripheral, readinessPhase: true)
     }
 
@@ -869,6 +869,18 @@ extension HeyCyanBLETransport: @preconcurrency CBPeripheralDelegate {
         }
 
         let services = peripheral.services ?? []
+        let discoveredUUIDs = services.map { $0.uuid.uuidString }.joined(separator: ", ")
+        logger.info("[GATT DISCOVERY] Connected glasses exposed \(services.count) services: \(discoveredUUIDs, privacy: .public)")
+        UserDefaults.standard.set(discoveredUUIDs, forKey: "last_discovered_gatt_services")
+        for s in services {
+            // Check for standard Apple or Bluetooth Special Interest Group services
+            if s.uuid.uuidString.uppercased().contains("7905") {
+                logger.notice("[GATT DISCOVERY] Found Apple Notification Center Service (ANCS): \(s.uuid.uuidString, privacy: .public)")
+            } else if s.uuid.uuidString.uppercased().contains("1812") {
+                logger.notice("[GATT DISCOVERY] Found Human Interface Device (HID) Service: \(s.uuid.uuidString, privacy: .public)")
+            }
+        }
+
         guard let baseService = services.first(where: { $0.uuid == GATT.baseService }) else {
             failPreparation(.missingService(GATT.baseService.uuidString), peripheral: peripheral)
             return

@@ -33,6 +33,16 @@
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>AD Glasses uses Bluetooth to discover and connect to supported glasses.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>AD Glasses accesses your calendar so you can check events and schedule details hands-free through the smart glasses assistant.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>AD Glasses accesses your calendar so you can check events and schedule details hands-free through the smart glasses assistant.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>AD Glasses accesses your reminders so you can schedule reminders and alarms for upcoming events hands-free.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>AD Glasses accesses your reminders so you can schedule reminders and alarms for upcoming events hands-free.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>AD Glasses uses your contacts to find numbers and place phone calls when requested through the voice assistant.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>AD Glasses connects to the private Wi-Fi network created by your glasses to transfer your photos, videos, and recordings.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -56,5 +66,22 @@
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 </dict>
 </plist>

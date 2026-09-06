@@ -261,7 +261,11 @@ struct ADVisualAIClient: Sendable {
         let value = message.lowercased()
         return value.contains("image input") || value.contains("vision") || value.contains("multimodal") ||
             value.contains("image_url") || value.contains("does not support image") ||
-            value.contains("unsupported modality") || value.contains("input modalities")
+            value.contains("unsupported modality") || value.contains("input modalities") ||
+            value.contains("content must be a string") || value.contains("expected a string") ||
+            value.contains("content: string") || value.contains("messages 1 content") ||
+            value.contains("messages.1.content") || value.contains("messages[1].content") ||
+            value.contains("string or null expected")
     }
 }
 

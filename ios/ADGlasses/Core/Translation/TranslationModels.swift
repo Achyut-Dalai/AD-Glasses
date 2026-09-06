@@ -334,7 +334,7 @@ final class GroqLiveTranslationController: ObservableObject {
 
         do {
             try await SpeechPermissions.requestAll()
-            try await SpeechInputAudioSession.activate()
+            try SpeechInputAudioSession.activate()
         } catch {
             errorMessage = error.localizedDescription
             return false
@@ -381,7 +381,7 @@ final class GroqLiveTranslationController: ObservableObject {
         selectedSourceLanguageCode = nil
         inputRouteName = nil
         statusMessage = "Ready"
-        await SpeechInputAudioSession.deactivate()
+        SpeechInputAudioSession.deactivate()
     }
 
     private func startRecorder() throws {
@@ -487,7 +487,7 @@ final class GroqLiveTranslationController: ObservableObject {
         lastSpeechAt = nil
         recordingStartedAt = nil
 
-        await SpeechInputAudioSession.deactivate()
+        SpeechInputAudioSession.deactivate()
 
         defer { try? FileManager.default.removeItem(at: audioURL) }
         let fileSize = (try? audioURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
@@ -549,7 +549,7 @@ final class GroqLiveTranslationController: ObservableObject {
     private func resumeListening() async {
         guard isRunning, !Task.isCancelled else { return }
         do {
-            try await SpeechInputAudioSession.activate()
+            try SpeechInputAudioSession.activate()
             try startRecorder()
             statusMessage = listeningStatus
         } catch {
@@ -587,7 +587,7 @@ final class GroqLiveTranslationController: ObservableObject {
     }
 }
 
-private extension Data {
+extension Data {
     mutating func appendString(_ string: String) {
         append(Data(string.utf8))
     }

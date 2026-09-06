@@ -59,6 +59,7 @@ enum SpeechOutputError: LocalizedError {
 final class SpeechOutputController: NSObject, ObservableObject {
     @Published private(set) var voices: [SpeechVoiceOption] = []
     @Published private(set) var isSpeaking = false
+    var onSpeakingFinished: (() -> Void)? = nil
     @Published var selectedVoiceIdentifier: String {
         didSet {
             guard selectedVoiceIdentifier != oldValue else { return }
@@ -160,7 +161,12 @@ final class SpeechOutputController: NSObject, ObservableObject {
     func stop() {
         queuedUtterances.removeAll()
         synthesizer.stopSpeaking(at: .immediate)
-        settleIdleState()
+        isSpeaking = false
+        if ownsAudioSession {
+            deactivateAudioSession()
+        }
+        ownsAudioSession = false
+        // Note: Do NOT trigger onSpeakingFinished on manual cancellation/stop
     }
 
     func preferredVoice(languageCode: String?) -> SpeechVoiceOption? {
@@ -242,6 +248,7 @@ final class SpeechOutputController: NSObject, ObservableObject {
             deactivateAudioSession()
         }
         ownsAudioSession = false
+        onSpeakingFinished?()
     }
 
     private static func option(_ voice: AVSpeechSynthesisVoice) -> SpeechVoiceOption {
