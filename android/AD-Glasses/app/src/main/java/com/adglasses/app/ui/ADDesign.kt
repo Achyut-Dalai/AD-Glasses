@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -80,8 +81,6 @@ internal fun ADAmbientBackground(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            // Only this decorative layer is a Haze source. Product content is always rendered
-            // above it and is never captured into the blur source.
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -195,8 +194,6 @@ internal fun ADGlassSurface(
     }
 
     Box(modifier = outerModifier) {
-        // Haze owns only this empty background layer. If Haze fails or is unavailable, foreground
-        // content remains completely independent and the fallback surface still provides contrast.
         if (hazeState != null) {
             Box(
                 Modifier
@@ -207,8 +204,6 @@ internal fun ADGlassSurface(
             Box(Modifier.matchParentSize().background(fallbackColor))
         }
 
-        // A stable scrim keeps text/icon contrast deterministic in both themes and also provides
-        // a visual fallback while the first blurred frame is being prepared.
         Box(
             Modifier
                 .matchParentSize()
@@ -222,8 +217,9 @@ internal fun ADGlassSurface(
                 .background(foregroundSheen),
         )
 
-        // Foreground content is the measurement/content owner and is never attached to hazeEffect.
-        Box { content() }
+        CompositionLocalProvider(LocalContentColor provides scheme.onSurface) {
+            Box { content() }
+        }
     }
 }
 
