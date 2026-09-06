@@ -64,10 +64,6 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Stable v1 backdrop blur. Android 13+ uses Haze's optimal hardware path; older Android
-    // gracefully falls back rather than requiring AD-owned screens to fake glass with opaque cards.
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
-
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.google.mlkit:translate:17.0.3")
 
