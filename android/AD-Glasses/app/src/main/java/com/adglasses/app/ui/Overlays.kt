@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.adglasses.app.core.bluetooth.ClassicBluetoothState
 import com.google.mlkit.nl.translate.TranslateLanguage
 import java.util.Locale
 
@@ -39,20 +41,57 @@ import java.util.Locale
 fun DeviceCenterDialog(vm: ADViewModel, dismiss: () -> Unit) {
     val state by vm.glasses.collectAsStateWithLifecycle()
     val scanned by vm.scanned.collectAsStateWithLifecycle()
+    val classic by vm.classicBluetooth.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.isReady) {
+        if (state.isReady) vm.refreshClassicBluetooth()
+    }
+
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text("AD Glasses") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(state.detail ?: state.phase.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Control · ${state.detail ?: state.phase.name}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (state.isReady) {
                     Text(
                         "${state.deviceName ?: "Glasses"}${state.batteryPercent?.let { " · $it%" }.orEmpty()}",
                         fontWeight = FontWeight.SemiBold,
                     )
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text("Calls & audio", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                classicBluetoothLabel(classic),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (classic is ClassicBluetoothState.Failed) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                            if (classic !is ClassicBluetoothState.Connected) {
+                                TextButton(onClick = vm::ensureClassicBluetooth) {
+                                    Text(if (classic is ClassicBluetoothState.Failed) "Retry pairing" else "Pair / connect audio")
+                                }
+                            }
+                        }
+                    }
+
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = vm::disconnect) { Text("Disconnect") }
-                        TextButton(onClick = vm::forget) { Text("Forget") }
+                        OutlinedButton(onClick = vm::disconnect) { Text("Disconnect control") }
+                        TextButton(onClick = vm::forget) { Text("Forget control") }
                     }
                 } else {
                     Button(onClick = vm::scan, modifier = Modifier.fillMaxWidth()) { Text("Scan for glasses") }
@@ -76,6 +115,23 @@ fun DeviceCenterDialog(vm: ADViewModel, dismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = dismiss) { Text("Done") } },
     )
+}
+
+private fun classicBluetoothLabel(state: ClassicBluetoothState): String = when (state) {
+    ClassicBluetoothState.Idle -> "Not checked yet"
+    ClassicBluetoothState.Searching -> "Finding the JS-01 calls/audio radio"
+    is ClassicBluetoothState.Pairing -> "Pairing ${state.name} · confirm Android's pairing dialog"
+    is ClassicBluetoothState.Paired -> "Paired with ${state.name} · waiting for audio profiles"
+    is ClassicBluetoothState.Connecting -> "Connecting ${state.name} audio profiles"
+    is ClassicBluetoothState.Connected -> buildString {
+        append("Connected to ${state.name}")
+        val profiles = buildList {
+            if (state.calls) add("calls")
+            if (state.media) add("media")
+        }
+        if (profiles.isNotEmpty()) append(" · ").append(profiles.joinToString(" + "))
+    }
+    is ClassicBluetoothState.Failed -> state.reason
 }
 
 @Composable
