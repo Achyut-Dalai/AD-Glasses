@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Automations</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Hardware companion scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4daea;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #717785;
+        }
+
+        /* Toggle switch base styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #000000;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #000000;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface antialiased min-h-screen flex flex-col md:flex-row pb-24 md:pb-0">
+<!-- Desktop Sidebar (Hidden on mobile) -->
+<aside class="hidden md:flex flex-col w-64 bg-surface border-r border-outline-variant h-screen sticky top-0 shrink-0 z-40">
+<div class="px-6 py-6 font-headline-md text-on-surface font-bold tracking-tighter">
+            AD Glasses
+        </div>
+<nav class="flex-1 px-4 py-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">home</span>
+<span class="font-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">smart_toy</span>
+<span class="font-label-lg">Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">auto_stories</span>
+<span class="font-label-lg">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container text-on-primary-container font-medium" href="#">
+<span class="material-symbols-outlined filled">settings_input_component</span>
+<span class="font-label-lg">Automations</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
+<span class="font-label-lg">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col max-w-[1200px] w-full mx-auto relative">
+<!-- TopAppBar (Mobile & Desktop) -->
+<header class="docked full-width top-0 bg-surface/80 backdrop-blur-md flex justify-between items-center px-6 py-4 w-full sticky z-30 transition-all duration-300" id="top-app-bar">
+<!-- Left: Leading Icon / Context -->
+<button class="w-12 h-12 flex items-center justify-start text-primary opacity-70 hover:opacity-100 transition-opacity md:hidden">
+<span class="material-symbols-outlined text-2xl">eyeglasses</span>
+</button>
+<div class="hidden md:flex flex-col">
+<h1 class="font-headline-lg text-on-surface tracking-tight">Active Automations</h1>
+<p class="font-body-sm text-cool-gray">Manage hardware triggers and AI routines</p>
+</div>
+<!-- Center: Brand (Mobile Only) -->
+<div class="md:hidden text-xl font-headline-md font-bold tracking-tighter text-on-surface absolute left-1/2 -translate-x-1/2">
+                AD Glasses
+            </div>
+<!-- Right: Trailing Icon -->
+<button class="w-12 h-12 flex items-center justify-end text-primary opacity-70 hover:opacity-100 transition-opacity md:hidden">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</header>
+<!-- Canvas Content -->
+<div class="px-4 md:px-8 py-6 space-y-8 flex-1">
+<!-- Mobile Header Context -->
+<div class="md:hidden space-y-1 mb-8">
+<h2 class="font-headline-lg text-on-surface tracking-tight">Active Automations</h2>
+<p class="font-body-md text-cool-gray">Manage hardware triggers and AI routines</p>
+</div>
+<!-- Bento Grid of Automations -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+<!-- Card 1: Meeting Spark -->
+<div class="bg-surface-control rounded-xl p-5 border border-outline-variant hover:border-cool-gray transition-colors flex flex-col h-full shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined filled">bolt</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant top-0 z-10 transition-all duration-300" id="toggle1" name="toggle1" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer transition-colors duration-300" for="toggle1"></label>
+</div>
+</div>
+<h3 class="font-headline-md text-on-surface mb-1">Meeting Spark</h3>
+<p class="font-body-md text-cool-gray flex-1 mb-4 line-clamp-2">Automatically generates action items and a brief summary when it detects a structured conversation.</p>
+<div class="flex items-center gap-2 mt-auto pt-4 border-t border-surface-container-high">
+<span class="w-2 h-2 rounded-full bg-electric-blue"></span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Active • On-device</span>
+</div>
+</div>
+<!-- Card 2: Live Caption -->
+<div class="bg-surface-control rounded-xl p-5 border border-outline-variant hover:border-cool-gray transition-colors flex flex-col h-full shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">closed_caption</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant top-0 z-10 transition-all duration-300 left-0" id="toggle2" name="toggle2" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer transition-colors duration-300" for="toggle2"></label>
+</div>
+</div>
+<h3 class="font-headline-md text-on-surface mb-1">Live Caption</h3>
+<p class="font-body-md text-cool-gray flex-1 mb-4 line-clamp-2">Projects real-time subtitles onto the HUD for external audio sources. High battery drain.</p>
+<div class="flex items-center gap-2 mt-auto pt-4 border-t border-surface-container-high">
+<span class="w-2 h-2 rounded-full bg-surface-container-high"></span>
+<span class="font-label-sm text-cool-gray uppercase tracking-widest">Inactive • On-device</span>
+</div>
+</div>
+<!-- Card 3: Translator -->
+<div class="bg-surface-control rounded-xl p-5 border border-outline-variant hover:border-cool-gray transition-colors flex flex-col h-full shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">translate</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant top-0 z-10 transition-all duration-300 left-0" id="toggle3" name="toggle3" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer transition-colors duration-300" for="toggle3"></label>
+</div>
+</div>
+<h3 class="font-headline-md text-on-surface mb-1">Translator</h3>
+<p class="font-body-md text-cool-gray flex-1 mb-4 line-clamp-2">Detects foreign languages and provides translated transcripts in the HUD view.</p>
+<div class="flex items-center gap-2 mt-auto pt-4 border-t border-surface-container-high">
+<span class="w-2 h-2 rounded-full bg-surface-container-high"></span>
+<span class="font-label-sm text-cool-gray uppercase tracking-widest">Inactive • Cloud required</span>
+</div>
+</div>
+<div class="bg-surface-control rounded-xl p-5 border border-outline-variant hover:border-cool-gray transition-colors flex flex-col h-full shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined filled">menu_book</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant top-0 z-10 transition-all duration-300" id="toggle4" name="toggle4" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer transition-colors duration-300" for="toggle4"></label>
+</div>
+</div>
+<p class="font-body-md text-cool-gray flex-1 mb-4 line-clamp-2">Periodically captures point-of-view images and logs location to create a daily private timeline.</p>
+<div class="flex items-center gap-2 mt-auto pt-4 border-t border-surface-container-high">
+<span class="w-2 h-2 rounded-full bg-electric-blue"></span>
+<span class="font-label-sm text-on-surface-variant uppercase tracking-widest">Active • End-to-end Encrypted</span>
+</div>
+</div>
+</div>
+<!-- Discover More Banner -->
+<div class="mt-12 bg-surface-container-low rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-outline-variant/50 relative overflow-hidden">
+<!-- Subtle graphic element -->
+<div class="absolute right-0 top-0 w-64 h-full opacity-10 pointer-events-none mix-blend-multiply" style="background: radial-gradient(circle at right, #1978E5 0%, transparent 70%);"></div>
+<div class="relative z-10 text-center md:text-left space-y-2">
+<h4 class="font-headline-md text-on-surface">Community Catalog</h4>
+<p class="font-body-md text-cool-gray max-w-md">Explore hundreds of verified automations built by other AD Glasses users for specialized workflows.</p>
+</div>
+<button class="relative z-10 bg-graphite-black text-white px-6 py-3 rounded-lg font-label-lg hover:bg-inverse-surface active:scale-95 transition-all duration-200 whitespace-nowrap min-h-[48px] flex items-center justify-center shadow-md">
+                    Discover more
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface/95 backdrop-blur-lg border-t border-outline-variant shadow-sm md:hidden rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">home</span>
+<span class="font-label-sm text-[10px] uppercase tracking-widest">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">smart_toy</span>
+<span class="font-label-sm text-[10px] uppercase tracking-widest">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">auto_stories</span>
+<span class="font-label-sm text-[10px] uppercase tracking-widest">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-2 scale-95 active:scale-90 w-20 shadow-sm" href="#">
+<span class="material-symbols-outlined text-2xl mb-1 filled">settings_input_component</span>
+<span class="font-label-sm text-[10px] uppercase tracking-widest text-center leading-tight">Automations</span>
+</a>
+</nav>
+<script>
+        // Handle TopAppBar background opacity on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('top-app-bar');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-sm');
+                header.classList.replace('bg-surface/80', 'bg-surface/95');
+            } else {
+                header.classList.remove('shadow-sm');
+                header.classList.replace('bg-surface/95', 'bg-surface/80');
+            }
+        });
+
+        // Basic toggle interaction visual updates
+        document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const card = this.closest('.bg-surface-control');
+                const statusIcon = card.querySelector('.material-symbols-outlined');
+                const statusDot = card.querySelector('.w-2.h-2.rounded-full');
+                const statusText = card.querySelector('.font-label-sm');
+
+                if (this.checked) {
+                    statusIcon.classList.add('filled', 'text-electric-blue');
+                    statusIcon.classList.remove('text-primary');
+                    statusIcon.closest('.bg-surface-container').classList.add('text-electric-blue');
+                    statusIcon.closest('.bg-surface-container').classList.remove('text-primary');
+                    
+                    if(statusDot) {
+                        statusDot.classList.remove('bg-surface-container-high');
+                        statusDot.classList.add('bg-electric-blue');
+                    }
+                    if(statusText) {
+                        statusText.textContent = statusText.textContent.replace('Inactive', 'Active');
+                        statusText.classList.remove('text-cool-gray');
+                        statusText.classList.add('text-on-surface-variant');
+                    }
+                } else {
+                    statusIcon.classList.remove('filled', 'text-electric-blue');
+                    statusIcon.classList.add('text-primary');
+                    statusIcon.closest('.bg-surface-container').classList.remove('text-electric-blue');
+                    statusIcon.closest('.bg-surface-container').classList.add('text-primary');
+
+                    if(statusDot) {
+                        statusDot.classList.add('bg-surface-container-high');
+                        statusDot.classList.remove('bg-electric-blue');
+                    }
+                    if(statusText) {
+                        statusText.textContent = statusText.textContent.replace('Active', 'Inactive');
+                        statusText.classList.add('text-cool-gray');
+                        statusText.classList.remove('text-on-surface-variant');
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

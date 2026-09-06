@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Auto Audio Detail - HeyCyan</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#4090fe",
+                        "on-surface": "#161c27",
+                        "canvas": "#F6F7F9",
+                        "surface-container-high": "#e2e8f8",
+                        "on-secondary-fixed": "#001b3e",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2a313d",
+                        "surface-control": "#FFFFFF",
+                        "cool-gray": "#717785",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-primary-fixed": "#1b1b1b",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#191c1e",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "electric-blue": "#1978E5",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "surface-variant": "#dde2f2",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-surface-variant": "#4c4546",
+                        "outline-variant": "#cfc4c5",
+                        "on-background": "#161c27",
+                        "on-error-container": "#93000a",
+                        "graphite-black": "#000000",
+                        "inverse-primary": "#c6c6c6",
+                        "tertiary-container": "#191c1e",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "inverse-on-surface": "#ecf0ff",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-dim": "#d4daea",
+                        "surface-container": "#e8eefe",
+                        "on-primary-fixed-variant": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-container": "#828486",
+                        "tertiary": "#000000",
+                        "surface": "#f9f9ff",
+                        "on-secondary-container": "#002958",
+                        "surface-container-low": "#f0f3ff",
+                        "outline": "#7e7576",
+                        "on-primary-container": "#848484",
+                        "success-teal": "#008080",
+                        "surface-tint": "#5e5e5e",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "warning-amber": "#FFBF00",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "secondary": "#005db8",
+                        "error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "base": "4px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px",
+                        "gap-sm": "8px",
+                        "touch-target": "48px",
+                        "margin-page": "16px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-surface');
+            -webkit-font-smoothing: antialiased;
+        }
+        .hardware-hairline {
+            border: 1px solid theme('colors.surface-variant');
+        }
+        .hardware-border-b {
+            border-bottom: 1px solid theme('colors.surface-variant');
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: theme('colors.electric-blue');
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: theme('colors.electric-blue');
+        }
+        .segment-active {
+            background-color: theme('colors.graphite-black');
+            color: theme('colors.surface-control');
+        }
+        .segment-inactive {
+            background-color: transparent;
+            color: theme('colors.on-surface-variant');
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-24 font-body-lg text-body-lg flex flex-col items-center">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim font-headline-md text-headline-md w-full sticky top-0 z-50">
+<div class="flex items-center justify-between px-margin-page h-16 w-full max-w-5xl mx-auto">
+<button aria-label="Go back" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-primary font-headline-md text-headline-md tracking-tight">Automation Detail</h1>
+<button aria-label="Settings" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-2xl mx-auto px-margin-page pt-6 flex flex-col gap-6">
+<!-- Header Section -->
+<section class="flex items-start gap-4 pb-6 hardware-border-b">
+<div class="w-16 h-16 rounded-xl bg-surface-control hardware-hairline flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[32px] text-electric-blue" data-icon="mic" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Auto Audio</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Periodic environmental audio capture and analysis.</p>
+<div class="flex items-center gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-variant rounded-md font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Background Task</span>
+<div class="flex items-center gap-1 text-success-teal bg-success-teal/10 px-2 py-1 rounded-md">
+<div class="w-2 h-2 rounded-full bg-success-teal animate-pulse"></div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider">Active</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Compatibility Restricted Card -->
+<section class="bg-surface-control rounded-xl hardware-hairline p-5 shadow-sm">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-warning-amber" data-icon="lock">lock</span>
+<h3 class="font-label-lg text-label-lg text-on-surface">Hardware Compatibility Restricted</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant ml-9">
+                This automation requires specific hardware capabilities. It is currently locked to <strong class="text-on-surface">HeyCyan</strong> devices equipped with a high-fidelity ambient microphone array.
+            </p>
+</section>
+<!-- Configuration -->
+<section class="flex flex-col gap-6">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider">Configuration</h3>
+<!-- Schedule -->
+<div class="bg-surface-control rounded-xl hardware-hairline p-5 shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-cool-gray" data-icon="schedule">schedule</span>
+<h4 class="font-label-lg text-label-lg text-on-surface">Capture Schedule</h4>
+</div>
+<span class="font-label-md text-label-md text-electric-blue bg-electric-blue/10 px-2 py-1 rounded">Every 15 mins</span>
+</div>
+<div class="relative pt-4 pb-2">
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-electric-blue" max="60" min="1" type="range" value="15"/>
+<div class="flex justify-between text-on-surface-variant font-label-sm text-label-sm mt-3">
+<span>1 min</span>
+<span>15 mins</span>
+<span>30 mins</span>
+<span>60 mins</span>
+</div>
+</div>
+</div>
+<!-- Clip Duration -->
+<div class="bg-surface-control rounded-xl hardware-hairline p-5 shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-cool-gray" data-icon="timer">timer</span>
+<h4 class="font-label-lg text-label-lg text-on-surface">Clip Duration</h4>
+</div>
+<div class="flex bg-surface-variant p-1 rounded-lg gap-1">
+<button class="flex-1 py-2 rounded-md font-label-md text-label-md text-center transition-colors segment-inactive hover:bg-surface-container-highest">10s</button>
+<button class="flex-1 py-2 rounded-md font-label-md text-label-md text-center transition-colors segment-active shadow-sm">30s</button>
+<button class="flex-1 py-2 rounded-md font-label-md text-label-md text-center transition-colors segment-inactive hover:bg-surface-container-highest">60s</button>
+<button class="flex-1 py-2 rounded-md font-label-md text-label-md text-center transition-colors segment-inactive hover:bg-surface-container-highest">5m</button>
+</div>
+</div>
+<!-- Post-Processing -->
+<div class="bg-surface-control rounded-xl hardware-hairline p-5 shadow-sm flex flex-col gap-4">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-cool-gray" data-icon="memory">memory</span>
+<h4 class="font-label-lg text-label-lg text-on-surface">Post-Processing</h4>
+</div>
+<div class="flex items-center justify-between py-2 hardware-border-b border-surface-variant">
+<div>
+<div class="font-body-md text-body-md text-on-surface">Auto Sync</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-1">Upload raw audio to cloud storage securely.</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-h-[48px]">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[14px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-electric-blue"></div>
+</label>
+</div>
+<div class="flex items-center justify-between py-2">
+<div>
+<div class="font-body-md text-body-md text-on-surface">Auto Transcribe</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant mt-1">Generate text transcripts on-device.</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-h-[48px]">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[14px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-electric-blue"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Guardrails -->
+<section class="flex flex-col gap-6 mt-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider">Guardrails</h3>
+<div class="bg-surface-control rounded-xl hardware-hairline shadow-sm overflow-hidden">
+<div class="flex items-center justify-between p-4 hardware-border-b border-surface-variant hover:bg-canvas transition-colors cursor-pointer min-h-[64px]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-cool-gray" data-icon="battery_saver">battery_saver</span>
+</div>
+<div>
+<div class="font-label-lg text-label-lg text-on-surface">Power Threshold</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Pause if battery &lt; 20%</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-canvas transition-colors cursor-pointer min-h-[64px]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-cool-gray" data-icon="storage">storage</span>
+</div>
+<div>
+<div class="font-label-lg text-label-lg text-on-surface">Storage Limit</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Max 500MB local cache</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</section>
+<div class="py-6 flex justify-center">
+<button class="bg-graphite-black text-surface-control font-label-lg text-label-lg px-8 h-touch-target rounded-full hover:scale-[0.98] transition-transform shadow-sm w-full max-w-[240px]">
+                Save Configuration
+            </button>
+</div>
+</main>
+</body></html>

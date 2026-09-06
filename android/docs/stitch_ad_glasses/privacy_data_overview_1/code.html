@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>AD Glasses - Privacy &amp; Data</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9ff",
+                        "secondary-container": "#b6d0ff",
+                        "surface-dim": "#d7dae3",
+                        "surface-container": "#ebedf7",
+                        "on-tertiary-container": "#ffc9ac",
+                        "background": "#f9f9ff",
+                        "surface-container-low": "#f1f3fc",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container-highest": "#e0e2eb",
+                        "tertiary-container": "#964400",
+                        "surface-container-high": "#e6e8f1",
+                        "secondary-fixed": "#d6e3ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2d3037",
+                        "primary-fixed": "#d6e3ff",
+                        "primary": "#004389",
+                        "surface-tint": "#095db7",
+                        "on-surface-variant": "#414753",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001b3e",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-primary-fixed-variant": "#00458d",
+                        "primary-container": "#005ab4",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#723200",
+                        "secondary": "#465f88",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-background": "#181c22",
+                        "surface": "#f9f9ff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "outline-variant": "#c1c6d5",
+                        "outline": "#727783",
+                        "inverse-primary": "#aac7ff",
+                        "on-primary-container": "#c0d5ff",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-variant": "#e0e2eb",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface": "#181c22",
+                        "tertiary-fixed-dim": "#ffb68c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "1.5rem",
+                        "element-gap": "0.75rem",
+                        "container-padding": "1rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(193, 198, 213, 0.3); }
+        .toggle-checkbox:checked { right: 0; border-color: #004389; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #004389; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-surface flat no shadows transition-colors duration-200">
+<div class="flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 focus:outline-none focus:ring-2 focus:ring-primary">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary flex-1 text-center truncate px-4">Privacy &amp; Data</h1>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 focus:outline-none focus:ring-2 focus:ring-primary">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-5xl mx-auto px-container-padding py-section-gap space-y-section-gap pb-32">
+<!-- Top Summary Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Memory Mode & Path -->
+<div class="glass-panel rounded-xl p-6 shadow-sm flex flex-col justify-between space-y-4 relative overflow-hidden group">
+<div class="absolute -right-12 -top-12 w-32 h-32 bg-secondary-container/30 rounded-full blur-2xl group-hover:bg-secondary-container/50 transition-colors duration-500"></div>
+<div class="flex items-start justify-between relative z-10">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary fill text-[20px]">shield</span>
+                            Current Status
+                        </h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Local processing active</p>
+</div>
+<div class="bg-surface-container px-3 py-1 rounded-full border border-outline-variant/30 flex items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-md text-label-md text-primary">Private Local</span>
+</div>
+</div>
+<div class="space-y-3 relative z-10">
+<div class="flex items-center justify-between py-2 border-b border-outline-variant/20">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">database</span> Data Path
+                        </span>
+<span class="font-label-lg text-label-lg text-on-surface">On-device only</span>
+</div>
+<div class="flex items-center justify-between py-2 border-b border-outline-variant/20">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">lock</span> Vault
+                        </span>
+<span class="font-label-lg text-label-lg text-on-surface flex items-center gap-1">
+                            Locked <span class="material-symbols-outlined text-[14px] text-primary fill">lock_clock</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Global Controls -->
+<div class="glass-panel rounded-xl p-6 shadow-sm flex flex-col space-y-4">
+<h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">tune</span>
+                    Global Controls
+                </h2>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg border border-outline-variant/20">
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Pause passive automations</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Temporarily halt all background scanning</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out z-10 border-outline-variant text-transparent focus:ring-0 focus:ring-offset-0" id="toggle-pause" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-200 ease-in-out" for="toggle-pause"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Data Inventory Bento Grid -->
+<section class="space-y-4">
+<h2 class="font-headline-sm text-headline-sm text-on-surface px-1">Data Inventory</h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-grid-gutter">
+<!-- Large Stats Widget -->
+<div class="col-span-2 row-span-2 glass-panel rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container">hard_drive</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded">LOCAL STORAGE</span>
+</div>
+<div class="mt-auto">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-display-sm text-display-sm text-on-surface text-3xl">3.6</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant">GB</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Total on-device data used</p>
+</div>
+<div class="mt-6 space-y-2">
+<div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 66%"></div>
+<div class="h-full bg-secondary" style="width: 34%"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-primary"></div> Model files (2.4GB)</span>
+<span class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-secondary"></div> Synced media (1.2GB)</span>
+</div>
+</div>
+</div>
+<!-- Small Stat Cards -->
+<div class="glass-panel rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col justify-between hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">videocam</span>
+<div class="mt-3">
+<p class="font-label-lg text-label-lg text-on-surface">45</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mt-0.5">Recordings</p>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col justify-between hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">description</span>
+<div class="mt-3">
+<p class="font-label-lg text-label-lg text-on-surface">112</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mt-0.5">Transcripts</p>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col justify-between hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">notes</span>
+<div class="mt-3">
+<p class="font-label-lg text-label-lg text-on-surface">88</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mt-0.5">Notes &amp; Sums</p>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-4 shadow-sm border border-outline-variant/20 flex flex-col justify-between hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">psychology</span>
+<div class="mt-3">
+<p class="font-label-lg text-label-lg text-on-surface">340</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase mt-0.5">Memories</p>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-2">
+<button class="font-label-lg text-label-lg text-primary hover:text-primary-container flex items-center gap-1 transition-colors">
+                    View Saved AI Answers (12) <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Source & Retention Policies -->
+<section class="glass-panel rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden">
+<div class="p-4 border-b border-outline-variant/20 bg-surface-container-lowest">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Source &amp; Retention Rules</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Configure what data is captured and how long it's kept.</p>
+</div>
+<div class="divide-y divide-outline-variant/20">
+<!-- Toggles -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">fact_check</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Explicit facts</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Keep manually confirmed details</p>
+</div>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-primary appearance-none cursor-pointer transition-transform duration-200 ease-in-out z-10 checked:translate-x-6 text-transparent focus:ring-0 focus:ring-offset-0" id="toggle-explicit" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-200 ease-in-out" for="toggle-explicit"></label>
+</div>
+</div>
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">calendar_today</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Daily facts</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Auto-extract context daily</p>
+</div>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-primary appearance-none cursor-pointer transition-transform duration-200 ease-in-out z-10 checked:translate-x-6 text-transparent focus:ring-0 focus:ring-offset-0" id="toggle-daily" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-200 ease-in-out" for="toggle-daily"></label>
+</div>
+</div>
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">document_scanner</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Screen OCR</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Read text from visible screens</p>
+</div>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-primary appearance-none cursor-pointer transition-transform duration-200 ease-in-out z-10 checked:translate-x-6 text-transparent focus:ring-0 focus:ring-offset-0" id="toggle-ocr" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-200 ease-in-out" for="toggle-ocr"></label>
+</div>
+</div>
+<!-- Settings Rows -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] group-hover:text-primary transition-colors">history</span>
+<p class="font-label-lg text-label-lg text-on-surface">OCR retention</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">30 days</span>
+<span class="material-symbols-outlined text-outline text-[18px]">chevron_right</span>
+</div>
+</div>
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] group-hover:text-primary transition-colors">person_off</span>
+<p class="font-label-lg text-label-lg text-on-surface">Name redaction</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">On</span>
+<span class="material-symbols-outlined text-outline text-[18px]">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions & Danger Zone -->
+<section class="space-y-4">
+<h2 class="font-headline-sm text-headline-sm text-on-surface px-1">Actions</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 p-4 rounded-xl bg-surface-container-highest hover:bg-surface-container-high border border-outline-variant/30 transition-colors font-label-lg text-label-lg text-on-surface w-full active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">lock</span>
+                    Lock Vault
+                </button>
+<button class="flex items-center justify-center gap-2 p-4 rounded-xl bg-surface-container-lowest hover:bg-surface-container border border-outline-variant/30 transition-colors font-label-lg text-label-lg text-on-surface w-full active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                    Export Local Data
+                </button>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/20">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-4 px-1">Danger Zone</h3>
+<div class="space-y-3">
+<button class="w-full flex items-center justify-between p-4 rounded-xl border border-error/20 hover:bg-error-container/30 transition-colors group">
+<div class="flex flex-col items-start text-left">
+<span class="font-label-lg text-label-lg text-error">Delete passive captures</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Removes all background OCR and audio</span>
+</div>
+<span class="material-symbols-outlined text-error group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 rounded-xl border border-error/30 bg-error-container/10 hover:bg-error-container transition-colors group">
+<div class="flex flex-col items-start text-left">
+<span class="font-label-lg text-label-lg text-error font-semibold">Clear all local data</span>
+<span class="font-body-sm text-body-sm text-error/80 mt-0.5">Irreversible device wipe</span>
+</div>
+<span class="material-symbols-outlined text-error group-hover:translate-x-1 transition-transform">warning</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Semantic Shell: Visible only on mobile for non-transactional top-level pages) -->
+<!-- Assuming this is a top-level settings/profile destination for the device -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-surface-container shadow-sm border-t-0">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">smart_toy</span>
+<span class="font-label-md text-label-md">Devices</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">bolt</span>
+<span class="font-label-md text-label-md">Automate</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 fill">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</div>
+</nav>
+<script>
+        // Simple toggle interaction logic for the custom UI toggles
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const label = this.nextElementSibling;
+                if(this.checked) {
+                    this.classList.add('translate-x-6');
+                } else {
+                    this.classList.remove('translate-x-6');
+                }
+            });
+            // Initialize state
+            if(checkbox.checked) checkbox.classList.add('translate-x-6');
+        });
+    </script>
+</body></html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Library - Content Provenance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-container": "#b6d0ff",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-container-low": "#f1f3fc",
+                        "tertiary": "#964400",
+                        "primary": "#005ab4",
+                        "on-surface": "#181c22",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e0e2eb",
+                        "surface-variant": "#e0e2eb",
+                        "on-surface-variant": "#414753",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "secondary-fixed": "#d6e3ff",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#321200",
+                        "outline": "#717785",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "tertiary-container": "#bd5700",
+                        "outline-variant": "#c1c6d5",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#001b3d",
+                        "secondary": "#465f88",
+                        "primary-container": "#0a73e0",
+                        "surface-dim": "#d7dae3",
+                        "surface-container-high": "#e6e8f1",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#005db8",
+                        "surface-container": "#ebedf7",
+                        "primary-fixed": "#d6e3ff",
+                        "on-primary-container": "#fefcff",
+                        "inverse-surface": "#2d3037",
+                        "secondary-fixed-dim": "#aec7f7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "display": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen pb-24 md:pb-0 md:pt-20">
+<!-- TopAppBar -->
+<header class="w-full top-0 bg-background dark:bg-background z-40 sticky"><div class="flex justify-between items-center px-6 py-4 w-full"><button class="p-2 -ml-2 rounded-full hover:bg-surface-variant/10 transition-colors duration-300 focus:outline-none"><img alt="AD Glasses Logo" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"></button><button class="p-2 -mr-2 rounded-full hover:bg-surface-variant/10 transition-colors duration-300 focus:outline-none"><span class="material-symbols-outlined" data-icon="settings">settings</span></button></div></header>
+<!-- Main Content -->
+<main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="mb-8 space-y-4">
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Library</h2>
+<p class="text-on-surface-variant">Manage and track the origin of your synced media.</p>
+<!-- Filter Bar -->
+<div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="bg-primary text-on-primary px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">all_inclusive</span> All Media
+                </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span> Photos
+                </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]">videocam</span> Videos
+                </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]">mic</span> Audio
+                </button>
+</div>
+</div>
+<!-- Bento Grid for Media Items -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Item 1: Captured via Glasses -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col group hover:shadow-md transition-shadow duration-300">
+<div class="relative h-48 w-full bg-surface-variant overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A high-quality, bright, and airy photograph of a modern city park path taken from a first-person perspective, implying it was captured with smart glasses. The lighting is sunny and clear, emphasizing a clean, professional, and optimistic corporate blue aesthetic with sharp details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8Ljs29_m90ySF5q5Rckd6WDQcw557XSd5tFmM9qmB17w2S-jRyTNt9X87IKfl4m8EJKp_U8GjpfL4_a5-V9exvxPkcZFi3rx_4tecVKl0z3gYtgyPhTSNFV1uqVGBf-LU2LwU7oRywvOB9M7c484mGIZR1ntyv1bFu9TjvywBrrl2iTG3w3j34mTPUhkHHzIOQzIyqAoVqomJ9M8LlVd-IpXLEcRDGf2siC3r1gdCVoa0Rb1e9_6y">
+<div class="absolute top-2 left-2 bg-surface-container-lowest/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 border border-outline-variant/50">
+<span class="material-symbols-outlined text-primary text-[14px]">eyeglasses</span>
+<span class="text-xs font-semibold text-on-surface">Captured via Glasses</span>
+</div>
+<div class="absolute bottom-2 right-2 bg-surface-container-lowest/80 backdrop-blur-sm px-2 py-1 rounded-md">
+<span class="text-xs font-medium text-on-surface">Photo</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col justify-between">
+<div>
+<h3 class="font-semibold text-on-surface text-base truncate">Morning Commute View</h3>
+<p class="text-xs text-on-surface-variant mt-1">Oct 24, 2023 • 08:15 AM</p>
+</div>
+<div class="mt-4 flex justify-between items-center">
+<span class="text-xs bg-secondary-container text-on-secondary-container px-2 py-1 rounded-md font-medium">Auto-synced</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Item 2: Sync from Phone -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col group hover:shadow-md transition-shadow duration-300">
+<div class="relative h-48 w-full bg-surface-variant overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A crisp, professional photo of an architectural blueprint spread out on a clean white desk, with a smartphone partially visible near the edge, implying the image was synced from a phone. The lighting is bright and even, matching a modern, structured, reliable corporate design language with subtle blue undertones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKBnUR-rM7najA9Y-CeS85HX2I5WQPw9NndtIHxj6wah1ZMisIJoX4Ep1pH5dkBXenVx6gIVOcc9JwBUnCYyRN1fhzcddcU0k3_sR0EfA2BkR2lmMLeXNvdaWTX5ygvRxYlvTvOMmlHO9MIcgtRB5RXzArQ6EW_RDMDM0glghLc_xLDWjQETBl26kyXhEJrIXyVzC_HI-Q3Z3u_ZhCJVRWZ4BNrzllyDkENa5i4lfKDVFeOuyv_RaL">
+<div class="absolute top-2 left-2 bg-surface-container-lowest/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 border border-outline-variant/50">
+<span class="material-symbols-outlined text-secondary text-[14px]">smartphone</span>
+<span class="text-xs font-semibold text-on-surface">Sync from Phone</span>
+</div>
+<div class="absolute bottom-2 right-2 bg-surface-container-lowest/80 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
+<span class="text-xs font-medium text-on-surface">Video</span>
+<span class="text-[10px] text-on-surface-variant">0:45</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col justify-between">
+<div>
+<h3 class="font-semibold text-on-surface text-base truncate">Project Alpha Walkthrough</h3>
+<p class="text-xs text-on-surface-variant mt-1">Oct 23, 2023 • 14:30 PM</p>
+</div>
+<div class="mt-4 flex justify-between items-center">
+<span class="text-xs bg-surface-container-high text-on-surface-variant px-2 py-1 rounded-md font-medium">Manual import</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Item 3: Meeting Recording (Audio) -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col group hover:shadow-md transition-shadow duration-300">
+<div class="relative h-48 w-full bg-surface-container-low flex flex-col items-center justify-center p-4">
+<!-- Audio Waveform Visualization Placeholder -->
+<div class="w-full flex items-center justify-center space-x-1 h-16 mb-4 opacity-70">
+<div class="w-1 h-4 bg-primary rounded-full"></div>
+<div class="w-1 h-8 bg-primary rounded-full"></div>
+<div class="w-1 h-12 bg-primary rounded-full"></div>
+<div class="w-1 h-6 bg-primary rounded-full"></div>
+<div class="w-1 h-10 bg-primary rounded-full"></div>
+<div class="w-1 h-14 bg-primary rounded-full"></div>
+<div class="w-1 h-5 bg-primary rounded-full"></div>
+<div class="w-1 h-9 bg-primary rounded-full"></div>
+</div>
+<div class="absolute top-2 left-2 bg-surface-container-lowest/90 px-2 py-1 rounded-md flex items-center gap-1 border border-outline-variant/50">
+<span class="material-symbols-outlined text-tertiary text-[14px]">record_voice_over</span>
+<span class="text-xs font-semibold text-on-surface">Meeting Recording</span>
+</div>
+<div class="absolute bottom-2 right-2 bg-surface-container-lowest/80 px-2 py-1 rounded-md flex items-center gap-1">
+<span class="text-xs font-medium text-on-surface">Audio</span>
+<span class="text-[10px] text-on-surface-variant">45:12</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col justify-between border-t border-outline-variant/30">
+<div>
+<h3 class="font-semibold text-on-surface text-base truncate">Q3 Strategy Alignment</h3>
+<p class="text-xs text-on-surface-variant mt-1">Oct 22, 2023 • 10:00 AM</p>
+</div>
+<div class="mt-4 flex justify-between items-center">
+<span class="text-xs bg-surface-container-high text-on-surface-variant px-2 py-1 rounded-md font-medium">Transcribed</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Item 4: Captured via Glasses -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex flex-col group hover:shadow-md transition-shadow duration-300">
+<div class="relative h-48 w-full bg-surface-variant overflow-hidden">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A clear, professional photograph of an industrial control panel or dashboard, taken from a slightly elevated first-person perspective as if looking down through smart glasses. The lighting is cool, artificial, and clean, fitting a modern corporate and technological aesthetic with blue accents and sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8REtyRKh3bTXvFMCeypdPii8fb9kHIcz7ZQ2j8jeIS1G4hFmpwINoY6PzT3fBwtip1TodAvo9FxR4rJKEktuVSueoOX21iDyNIltnMpXZXkrDqnekkvXC4W-w1gCQbn3lq_gWStDezND9h1BCH25D7J93MNQDuchS-OOVcicWGtmssbXF5FWspcfT_r0Zotz5ll8akM2vfKWhK1id0XCiuvlpXkJH0Rh1EPIWDKj6xWz5-p_IdBbI">
+<div class="absolute top-2 left-2 bg-surface-container-lowest/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 border border-outline-variant/50">
+<span class="material-symbols-outlined text-primary text-[14px]">eyeglasses</span>
+<span class="text-xs font-semibold text-on-surface">Captured via Glasses</span>
+</div>
+<div class="absolute bottom-2 right-2 bg-surface-container-lowest/80 backdrop-blur-sm px-2 py-1 rounded-md">
+<span class="text-xs font-medium text-on-surface">Photo</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col justify-between">
+<div>
+<h3 class="font-semibold text-on-surface text-base truncate">Equipment Inspection Panel</h3>
+<p class="text-xs text-on-surface-variant mt-1">Oct 21, 2023 • 11:45 AM</p>
+</div>
+<div class="mt-4 flex justify-between items-center">
+<span class="text-xs bg-secondary-container text-on-secondary-container px-2 py-1 rounded-md font-medium">Auto-synced</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe shadow-lg dark:shadow-none md:hidden border-t border-surface-variant">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label text-label-medium text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+<span class="font-label text-label-medium text-[10px]">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-container text-on-secondary-container dark:text-on-secondary-container rounded-xl px-4 py-1 hover:opacity-80 transition-transform active:scale-95 duration-150">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">photo_library</span>
+<span class="font-label text-label-medium text-[10px] font-semibold">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined mb-1">auto_awesome</span>
+<span class="font-label text-label-medium text-[10px]">Automations</span>
+</button>
+</nav>
+
+
+</body></html>

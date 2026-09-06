@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Errand Brain Automation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                    "surface": "#f8f9ff",
+                    "on-secondary-container": "#3f5881",
+                    "primary-container": "#005ab4",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-primary-container": "#c0d5ff",
+                    "status-connected": "#1275e2",
+                    "surface-dim": "#d7dae2",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#c2c6d4",
+                    "error": "#ba1a1a",
+                    "secondary-fixed": "#d6e3ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#dfe2eb",
+                    "inverse-on-surface": "#eef1f9",
+                    "primary": "#004389",
+                    "surface-glass": "rgba(249, 249, 255, 0.8)",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "background": "#f8f9ff",
+                    "tertiary-fixed": "#ffdbc9",
+                    "background-alt": "#F6F7F9",
+                    "on-primary-fixed-variant": "#00458d",
+                    "secondary": "#465f88",
+                    "on-surface": "#181c22",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#aac7ff",
+                    "surface-variant": "#dfe2eb",
+                    "on-primary-fixed": "#001b3e",
+                    "secondary-container": "#b6d0ff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#964400",
+                    "on-tertiary-fixed": "#321200",
+                    "outline": "#727783",
+                    "on-error": "#ffffff",
+                    "surface-container-high": "#e5e8f1",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "surface-container": "#ebeef6",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary": "#723200",
+                    "on-secondary-fixed": "#001b3d",
+                    "on-surface-variant": "#424752",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#095db7",
+                    "inverse-primary": "#aac7ff",
+                    "on-background": "#181c22",
+                    "inverse-surface": "#2d3137",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#f1f3fc",
+                    "primary-fixed": "#d6e3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "element-gap": "0.75rem",
+                    "section-gap": "2rem",
+                    "container-margin": "1rem",
+                    "touch-target-min": "40px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "label-xs": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-xs": ["10px", {"lineHeight": "12px", "fontWeight": "600"}],
+                    "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom Toggle Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #1275e2; /* Using status-connected */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #1275e2;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt text-on-surface min-h-screen pb-24 font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top App Bar (Shared Component Execution) -->
+<header class="fixed top-0 w-full z-50 backdrop-blur-xl bg-surface-glass/80 shadow-sm transition-colors duration-200">
+<div class="flex justify-between items-center h-16 px-container-margin w-full">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200 rounded-full active:scale-95">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary truncate flex-1 text-center font-bold tracking-tight">Automations</h1>
+<button aria-label="Settings" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200 rounded-full active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-20 px-container-margin max-w-2xl mx-auto space-y-section-gap">
+<!-- Header Area -->
+<section class="flex flex-col items-center text-center pt-4 pb-2">
+<div class="w-20 h-20 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-center mb-4 relative overflow-hidden group">
+<div class="absolute inset-0 bg-stage-halo-start opacity-50 mix-blend-multiply"></div>
+<span class="material-symbols-outlined text-4xl text-primary z-10" data-icon="psychology">psychology</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Errand Brain</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs">Turn spoken errands into tasks you can review.</p>
+</section>
+<!-- Status Card -->
+<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-status-connected shadow-[0_0_8px_rgba(18,117,226,0.5)]"></div>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Status</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Ready (Active)</p>
+</div>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/30 my-4"></div>
+<div class="flex items-center justify-between">
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Voice Commands</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Listen for "Remind me to..."</p>
+</div>
+<!-- Custom Toggle -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300 border-outline-variant" id="voiceToggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant cursor-pointer transition-colors duration-300" for="voiceToggle"></label>
+</div>
+</div>
+</section>
+<!-- Behavior Settings -->
+<section>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 px-2">Behavior</h3>
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<label class="flex items-start p-4 border-b border-outline-variant/30 cursor-pointer hover:bg-surface-container-low/50 transition-colors">
+<div class="flex-1">
+<span class="block font-body-md text-body-md font-semibold text-on-surface mb-1">Review before creating</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Glasses will ask for confirmation before saving tasks.</span>
+</div>
+<div class="ml-4 pt-1">
+<input checked="" class="w-5 h-5 text-status-connected border-outline-variant focus:ring-primary focus:ring-offset-surface-container-lowest" name="behavior" type="radio" value="review"/>
+</div>
+</label>
+<label class="flex items-start p-4 cursor-pointer hover:bg-surface-container-low/50 transition-colors">
+<div class="flex-1">
+<span class="block font-body-md text-body-md font-semibold text-on-surface mb-1">Auto-create</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Automatically add tasks. You must review them later in the app.</span>
+</div>
+<div class="ml-4 pt-1">
+<input class="w-5 h-5 text-status-connected border-outline-variant focus:ring-primary focus:ring-offset-surface-container-lowest" name="behavior" type="radio" value="auto"/>
+</div>
+</label>
+</div>
+</section>
+<!-- Notifications & Timing -->
+<section class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Phone Reminders</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Push notifications on phone</p>
+</div>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300 border-outline-variant" id="notifToggle" name="notifToggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-outline-variant cursor-pointer transition-colors duration-300" for="notifToggle"></label>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/30 mb-5"></div>
+<label class="block">
+<span class="block font-body-sm text-body-sm text-on-surface-variant mb-2">Default Timing</span>
+<select class="block w-full rounded-lg border-outline-variant/50 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50 text-body-md font-body-md py-3 shadow-sm">
+<option>Smart (Based on context)</option>
+<option>End of day (6:00 PM)</option>
+<option>Next morning (8:00 AM)</option>
+<option>Location-based only</option>
+</select>
+</label>
+</section>
+<!-- Defaults -->
+<section>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 px-2">Task Defaults</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+<label class="block">
+<span class="block font-body-sm text-body-sm text-on-surface-variant mb-2">Priority</span>
+<div class="relative">
+<select class="block w-full rounded-lg border-outline-variant/50 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring focus:ring-primary/20 text-body-md font-body-md py-2.5 shadow-sm appearance-none pr-10">
+<option>Low</option>
+<option selected="">Medium</option>
+<option>High</option>
+<option>Urgent</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</label>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
+<label class="block">
+<span class="block font-body-sm text-body-sm text-on-surface-variant mb-2">Category</span>
+<div class="relative">
+<select class="block w-full rounded-lg border-outline-variant/50 bg-surface-container-lowest text-on-surface focus:border-primary focus:ring focus:ring-primary/20 text-body-md font-body-md py-2.5 shadow-sm appearance-none pr-10">
+<option>Personal</option>
+<option>Work</option>
+<option>Shopping</option>
+<option>Health</option>
+<option>Finance</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</label>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="space-y-3">
+<button class="w-full bg-on-surface text-on-primary rounded-xl py-4 px-6 font-body-md text-body-md font-semibold flex items-center justify-center gap-2 hover:bg-inverse-surface transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+                Test Phrase Preview
+            </button>
+<a class="w-full bg-surface-container-lowest text-on-surface border border-outline-variant/30 rounded-xl py-4 px-6 font-body-md text-body-md font-semibold flex items-center justify-between hover:bg-surface-container-low transition-colors shadow-sm active:scale-[0.98]" href="#">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="history">history</span>
+                    Recent Tasks
+                </div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</a>
+</section>
+<!-- Advanced -->
+<section class="text-center pb-8 pt-4">
+<a class="inline-flex items-center gap-1 font-body-sm text-body-sm text-status-connected hover:underline" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="info">info</span>
+                How does task parsing work?
+            </a>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Shared Component Execution) -->
+<nav class="fixed bottom-0 w-full rounded-t-xl bg-surface dark:bg-surface-dim shadow-[0_-1px_3px_0_rgba(0,0,0,0.05)] shadow-lg z-50 flex justify-around items-center h-20 px-2 pb-safe md:hidden">
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 p-2 rounded-xl group w-16" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform" data-icon="home">home</span>
+<span class="font-label-xs text-label-xs">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 p-2 rounded-xl group w-16" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-xs text-label-xs">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 p-2 rounded-xl group w-16" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:scale-110 transition-transform" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-xs text-label-xs">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-100 w-20" href="#">
+<span class="material-symbols-outlined mb-1 fill" data-icon="settings_input_component" data-weight="fill">settings_input_component</span>
+<span class="font-label-xs text-label-xs font-bold">Automations</span>
+</a>
+</nav>
+<script>
+        // Simple script to handle toggle visuals if needed beyond pure CSS
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggles = document.querySelectorAll('.toggle-checkbox');
+            toggles.forEach(toggle => {
+                toggle.addEventListener('change', (e) => {
+                    // Logic to handle state changes could go here
+                });
+            });
+        });
+    </script>
+</body></html>

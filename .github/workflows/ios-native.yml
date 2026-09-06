@@ -1,0 +1,44 @@
+name: Native iOS
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-native.yml"
+  push:
+    branches:
+      - main
+      - feature/ios-design-polish-v2
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-native.yml"
+
+concurrency:
+  group: native-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v5
+      - name: Report Xcode toolchain
+        run: xcodebuild -version
+      - name: Build native SwiftUI app
+        run: |
+          xcodebuild \
+            -project ios/ADGlasses.xcodeproj \
+            -scheme ADGlasses \
+            -sdk iphonesimulator \
+            -configuration "Debug Personal" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Run native unit tests
+        run: |
+          xcodebuild \
+            -project ios/ADGlasses.xcodeproj \
+            -scheme ADGlasses \
+            -configuration "Debug Personal" \
+            -destination "platform=iOS Simulator,name=iPhone 17,OS=27.0" \
+            CODE_SIGNING_ALLOWED=NO \
+            test

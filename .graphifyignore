@@ -1,0 +1,54 @@
+# Build artifacts and dependency dirs
+build/
+release/
+node_modules/
+.gradle/
+__pycache__/
+*.egg-info
+dist/
+out/
+target/
+
+# Binary/media files
+*.aar
+*.apk
+*.swu
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.mp3
+*.wav
+*.ogg
+*.pdf
+*.bin
+*.zip
+
+# Runtime app data
+*/com.glasssutdio.wear/*
+
+# Third-party dependency source is not first-party app code
+third_party/
+
+# HeyCyanOfficialApp is retained as a protocol reference. Its decompiled
+# dependency sources and resources are not first-party implementation code.
+android/HeyCyanOfficialApp/app/src/main/java/*
+android/HeyCyanOfficialApp/app/src/main/kotlin/*
+android/HeyCyanOfficialApp/app/src/main/com/*
+android/HeyCyanOfficialApp/app/src/main/META-INF/*
+android/HeyCyanOfficialApp/app/src/main/res/*
+android/HeyCyanOfficialApp/app/src/main/assets/*
+android/HeyCyanOfficialApp/app/src/main/*.properties
+android/HeyCyanOfficialApp/app/src/main/*.tflite
+android/HeyCyanOfficialApp/app/src/main/*.version
+android/HeyCyanOfficialApp/app/src/main/*.bin
+android/HeyCyanOfficialApp/app/src/main/*.kotlin_builtins
+android/HeyCyanOfficialApp/app/src/main/*.glsl
+android/HeyCyanOfficialApp/app/src/main/*.module
+android/HeyCyanOfficialApp/app/src/main/*.factory
+android/HeyCyanOfficialApp/app/src/main/*.textproto
+android/HeyCyanOfficialApp/app/src/main/*.json

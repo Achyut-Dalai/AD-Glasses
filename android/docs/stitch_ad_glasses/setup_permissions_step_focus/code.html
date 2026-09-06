@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AD Glasses - Setup &amp; Permissions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-background');
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Subtly hide scrollbar for cleaner UI */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col items-center">
+<!-- Top App Bar (Suppress Nav Since this is a Setup/Transactional Screen) -->
+<header class="w-full flex justify-between items-center px-6 py-4 bg-surface/80 backdrop-blur-md sticky top-0 z-50">
+<button aria-label="Back" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-primary">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Setup</h1>
+<div class="w-12 h-12"></div> <!-- Spacer for centering -->
+</header>
+<main class="w-full max-w-md px-margin-page pb-24 flex-grow flex flex-col">
+<!-- Progress Indicator -->
+<div class="w-full py-6 flex flex-col items-center gap-gap-sm">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Step 2 of 3</p>
+<div class="flex items-center gap-2 w-full max-w-[200px]">
+<div class="h-1 flex-1 bg-primary rounded-full"></div>
+<div class="h-1 flex-1 bg-primary rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+<!-- Hero Section -->
+<div class="flex flex-col items-center text-center mt-4 mb-8">
+<div class="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center mb-6 shadow-sm border border-outline-variant/30">
+<span class="material-symbols-outlined text-3xl text-secondary">admin_panel_settings</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Device Permissions</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px]">
+                To function properly, AD Glasses requires access to the following system features.
+            </p>
+</div>
+<!-- Permissions List -->
+<div class="flex flex-col gap-4 w-full">
+<!-- Nearby Devices - Required / Attention -->
+<div class="bg-surface rounded-xl p-4 flex gap-4 items-start border border-outline-variant/50 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-warning-amber"></div>
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-warning-amber">bluetooth_searching</span>
+</div>
+<div class="flex-grow flex flex-col justify-center min-h-[48px]">
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-headline-md text-[16px] text-on-surface leading-tight">Nearby devices</h3>
+<span class="font-label-sm text-label-sm text-warning-amber uppercase bg-warning-amber/10 px-2 py-0.5 rounded-full">Required</span>
+</div>
+<p class="font-body-md text-label-md text-cool-gray mb-3">Needed to pair and maintain connection with your glasses.</p>
+<button class="self-start h-8 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all">
+                        Allow Access
+                    </button>
+</div>
+</div>
+<!-- Notifications - Optional / Allowed -->
+<div class="bg-surface rounded-xl p-4 flex gap-4 items-center border border-outline-variant/30 shadow-sm">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-success-teal filled">notifications</span>
+</div>
+<div class="flex-grow flex flex-col justify-center">
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-headline-md text-[16px] text-on-surface leading-tight">Notifications</h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Optional</span>
+</div>
+<p class="font-body-md text-label-md text-cool-gray">Receive alerts and updates directly on device.</p>
+</div>
+<div class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-success-teal/10">
+<span class="material-symbols-outlined text-success-teal text-lg">check</span>
+</div>
+</div>
+<!-- Microphone - Required / Allowed -->
+<div class="bg-surface rounded-xl p-4 flex gap-4 items-center border border-outline-variant/30 shadow-sm">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-success-teal filled">mic</span>
+</div>
+<div class="flex-grow flex flex-col justify-center">
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-headline-md text-[16px] text-on-surface leading-tight">Microphone</h3>
+<span class="font-label-sm text-label-sm text-cool-gray uppercase">Required</span>
+</div>
+<p class="font-body-md text-label-md text-cool-gray">Enables voice commands and intelligent assistant features.</p>
+</div>
+<div class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-success-teal/10">
+<span class="material-symbols-outlined text-success-teal text-lg">check</span>
+</div>
+</div>
+<!-- Media/Storage - Optional / Needs Action -->
+<div class="bg-surface rounded-xl p-4 flex gap-4 items-start border border-outline-variant/50 shadow-sm">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-primary">perm_media</span>
+</div>
+<div class="flex-grow flex flex-col justify-center min-h-[48px]">
+<div class="flex justify-between items-center mb-1">
+<h3 class="font-headline-md text-[16px] text-on-surface leading-tight">Media access</h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase bg-surface-variant px-2 py-0.5 rounded-full">Optional</span>
+</div>
+<p class="font-body-md text-label-md text-cool-gray mb-3">Save captured photos and recordings to your local library.</p>
+<button class="self-start h-8 px-4 rounded-full border border-primary text-primary font-label-md text-label-md hover:bg-surface-container-low active:scale-95 transition-all">
+                        Allow Access
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-lg border-t border-outline-variant/30 p-4 pb-6 flex justify-center z-50">
+<div class="w-full max-w-md flex gap-4">
+<button class="flex-1 h-[48px] rounded-xl border border-outline-variant text-on-surface font-label-lg text-label-lg hover:bg-surface-container-low transition-colors">
+                Skip for now
+            </button>
+<button class="flex-1 h-[48px] rounded-xl bg-primary text-on-primary font-label-lg text-label-lg opacity-50 cursor-not-allowed flex items-center justify-center gap-2 transition-colors">
+                Continue
+                <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

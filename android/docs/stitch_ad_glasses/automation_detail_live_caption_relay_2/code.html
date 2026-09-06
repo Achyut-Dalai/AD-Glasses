@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Caption Relay Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "status-connected": "#1275e2",
+                "on-tertiary-fixed": "#321200",
+                "primary-container": "#005ab4",
+                "on-primary-container": "#c0d5ff",
+                "on-secondary-container": "#3f5881",
+                "secondary": "#465f88",
+                "background-alt": "#F6F7F9",
+                "on-background": "#181c22",
+                "tertiary-container": "#964400",
+                "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                "surface-bright": "#f8f9ff",
+                "surface-container-highest": "#dfe2eb",
+                "outline": "#727783",
+                "surface-container-lowest": "#ffffff",
+                "surface-dim": "#d7dae2",
+                "error": "#ba1a1a",
+                "secondary-fixed": "#d6e3ff",
+                "error-container": "#ffdad6",
+                "surface-container-low": "#f1f3fc",
+                "surface": "#f8f9ff",
+                "inverse-surface": "#2d3137",
+                "surface-glass": "rgba(249, 249, 255, 0.8)",
+                "tertiary-fixed": "#ffdbc9",
+                "on-surface-variant": "#424752",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed": "#001b3e",
+                "background": "#f8f9ff",
+                "on-error-container": "#93000a",
+                "on-primary-fixed-variant": "#00458d",
+                "on-secondary": "#ffffff",
+                "on-secondary-fixed": "#001b3d",
+                "secondary-fixed-dim": "#aec7f6",
+                "primary-fixed-dim": "#aac7ff",
+                "on-error": "#ffffff",
+                "surface-container": "#ebeef6",
+                "inverse-primary": "#aac7ff",
+                "on-surface": "#181c22",
+                "tertiary": "#723200",
+                "outline-variant": "#c2c6d4",
+                "on-secondary-fixed-variant": "#2e476f",
+                "on-primary": "#ffffff",
+                "on-tertiary-fixed-variant": "#753400",
+                "surface-container-high": "#e5e8f1",
+                "surface-tint": "#095db7",
+                "inverse-on-surface": "#eef1f9",
+                "secondary-container": "#b6d0ff",
+                "primary": "#004389",
+                "on-tertiary-container": "#ffc9ac",
+                "tertiary-fixed-dim": "#ffb68c",
+                "surface-variant": "#dfe2eb",
+                "primary-fixed": "#d6e3ff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "touch-target-min": "40px",
+                "element-gap": "0.75rem",
+                "section-gap": "2rem",
+                "container-margin": "1rem"
+        },
+        "fontFamily": {
+                "body-md": [
+                        "Inter"
+                ],
+                "label-xs": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-xs": [
+                        "10px",
+                        {
+                                "lineHeight": "12px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "display-lg": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "letterSpacing": "-0.025em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-md": [
+                        "18px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "700"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+    body {
+        font-family: Inter, "Noto Sans", sans-serif;
+    }
+    .toggle-checkbox:checked {
+        right: 0;
+        border-color: #005ab4;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+        background-color: #005ab4;
+    }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt text-on-background min-h-screen flex flex-col pb-24 overflow-x-hidden">
+<!-- Modified Header from Shared Component -->
+<div class="flex items-center bg-surface-container-lowest p-4 pb-2 justify-between sticky top-0 z-10 shadow-sm">
+<div class="flex size-12 shrink-0 items-center justify-center rounded-full bg-surface-container-low text-primary mr-3">
+<span class="material-symbols-outlined text-[24px]">closed_caption</span>
+</div>
+<h2 class="text-on-background text-headline-md font-headline-md flex-1">Live Caption Relay</h2>
+<div class="flex items-center justify-end">
+<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-sm font-medium bg-status-connected/10 text-status-connected">
+<span class="w-1.5 h-1.5 rounded-full bg-status-connected"></span>
+            Ready
+        </span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Outcome Section -->
+<div class="p-container-margin">
+<div class="flex flex-col md:flex-row items-stretch justify-between gap-element-gap rounded-xl bg-surface-container-lowest p-4 shadow-sm border border-outline-variant/30">
+<p class="text-on-background text-body-md font-body-md flex-[2_2_0px] self-center">See speech as readable live captions</p>
+<div class="w-full bg-surface-container aspect-video rounded-lg flex-1 overflow-hidden relative border border-outline-variant/50">
+<img class="object-cover w-full h-full" data-alt="A clean, modern smartphone screen displaying a sleek live captioning interface. The screen shows clear, legible white text on a dark translucent background overlaying a minimal camera view. The phone is placed on a minimalist graphite desk with soft, high-key studio lighting reflecting gently off the screen. Electric blue accents subtly highlight the active listening status. The overall mood is focused and technologically sophisticated." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFVBn0c1CFYnHfCRCq84pDIPlz93FGfgGOkOsQeW4h3491WgNRcyXzvEJaq7HjechEoCViLbUH2SGvQKDK3-o-cHxY9vFPRRHZ15lj_ZhlM9zF-kDOrzv9NMexjp_PqjO_qdxijr3k558mnX5rrTiQSDJTjXQ1Fcy1PZHfcKa_O_9Km-YJGxn0TodmstMJGG303BnxOzMB9VeIGA5lGxawrKHKDJeaqNL8zAQDPFiX9Rc9Saw3JpR5"/>
+</div>
+</div>
+</div>
+<!-- Section 1: Input Source -->
+<h3 class="text-on-surface-variant text-label-sm font-label-sm uppercase tracking-wider px-container-margin pb-2 pt-section-gap">Input Source</h3>
+<div class="flex flex-col gap-0 px-container-margin bg-surface-container-lowest mx-container-margin rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+<label class="flex items-center gap-4 p-4 border-b border-outline-variant/30 cursor-pointer hover:bg-surface-container-low/50 transition-colors">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+<span class="material-symbols-outlined">smartphone</span>
+</div>
+<div class="flex grow flex-col">
+<p class="text-on-background text-body-md font-body-md">Phone Microphone</p>
+</div>
+<div class="relative flex items-center">
+<input checked="" class="peer h-6 w-6 rounded-full border-2 border-outline-variant bg-transparent text-primary focus:ring-primary focus:ring-offset-2" name="input_source" type="radio"/>
+</div>
+</label>
+<label class="flex items-center gap-4 p-4 cursor-pointer hover:bg-surface-container-low/50 transition-colors">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+<span class="material-symbols-outlined">headphones</span>
+</div>
+<div class="flex grow flex-col">
+<p class="text-on-background text-body-md font-body-md">Bluetooth Headset</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Not connected</p>
+</div>
+<div class="relative flex items-center">
+<input class="peer h-6 w-6 rounded-full border-2 border-outline-variant bg-transparent text-primary focus:ring-primary focus:ring-offset-2" name="input_source" type="radio"/>
+</div>
+</label>
+</div>
+<!-- Section 2: Languages -->
+<h3 class="text-on-surface-variant text-label-sm font-label-sm uppercase tracking-wider px-container-margin pb-2 pt-section-gap">Languages</h3>
+<div class="flex flex-col gap-0 px-container-margin bg-surface-container-lowest mx-container-margin rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/30">
+<div class="flex flex-col">
+<p class="text-on-background text-body-md font-body-md">Source Language</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">English (US)</p>
+</div>
+<button class="text-primary hover:bg-primary-fixed rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/30 bg-surface-container-low/30">
+<div class="flex flex-col">
+<p class="text-on-background text-body-md font-body-md">Live Translation</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Translate captions to another language</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-4 border-surface-variant appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0" id="translate_toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="translate_toggle"></label>
+</div>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col">
+<p class="text-on-background text-body-md font-body-md">Target Language</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Spanish (ES)</p>
+</div>
+<button class="text-primary hover:bg-primary-fixed rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+<!-- Section 3: Output -->
+<h3 class="text-on-surface-variant text-label-sm font-label-sm uppercase tracking-wider px-container-margin pb-2 pt-section-gap">Output Display</h3>
+<div class="flex flex-col gap-0 px-container-margin bg-surface-container-lowest mx-container-margin rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">phone_iphone</span>
+<p class="text-on-background text-body-md font-body-md">Phone Screen</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-4 border-surface-variant appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0" id="phone_display_toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="phone_display_toggle"></label>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low/20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">qr_code_2</span>
+<div class="flex flex-col">
+<p class="text-on-surface-variant text-body-md font-body-md">Smart Glasses</p>
+<p class="text-outline text-body-sm font-body-sm">Adapter not detected</p>
+</div>
+</div>
+<button class="text-outline-variant p-2 cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined">info</span>
+</button>
+</div>
+</div>
+<!-- Section 4: Display Settings -->
+<h3 class="text-on-surface-variant text-label-sm font-label-sm uppercase tracking-wider px-container-margin pb-2 pt-section-gap">Display Settings</h3>
+<div class="flex flex-col gap-0 px-container-margin bg-surface-container-lowest mx-container-margin rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+<div class="flex flex-col p-4 border-b border-outline-variant/30 gap-3">
+<div class="flex justify-between items-center">
+<p class="text-on-background text-body-md font-body-md">Text Size</p>
+<p class="text-primary text-body-sm font-body-sm font-semibold">Medium</p>
+</div>
+<div class="flex items-center gap-4 mt-2">
+<span class="text-on-surface-variant text-sm">A</span>
+<input class="w-full h-1 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" max="5" min="1" type="range" value="3"/>
+<span class="text-on-surface-variant text-xl">A</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col">
+<p class="text-on-background text-body-md font-body-md">Short-line formatting</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Optimize for narrow displays</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-4 border-surface-variant appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0" id="short_line_toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="short_line_toggle"></label>
+</div>
+</div>
+</div>
+<!-- Section 5: Data -->
+<h3 class="text-on-surface-variant text-label-sm font-label-sm uppercase tracking-wider px-container-margin pb-2 pt-section-gap">Data &amp; Privacy</h3>
+<div class="flex flex-col gap-0 px-container-margin bg-surface-container-lowest mx-container-margin rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden mb-section-gap">
+<div class="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-container-low/50 transition-colors">
+<div class="flex flex-col">
+<p class="text-on-background text-body-md font-body-md">Transcript Retention</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Delete after 24 hours</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Bottom Actions Sticky Footer -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-4 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+<div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
+<button class="flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors flex-1 font-body-sm font-semibold">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+            Test Mic
+        </button>
+<button class="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm flex-[2_2_0px] font-body-sm font-semibold">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+            Start Captions
+        </button>
+</div>
+</div>
+</body></html>

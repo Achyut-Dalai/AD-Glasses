@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-container": "#ebedf7",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "on-background": "#181c22",
+                        "secondary-container": "#b6d0ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c1c6d5",
+                        "surface-bright": "#f9f9ff",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#c0d5ff",
+                        "on-surface-variant": "#424752",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container-low": "#f1f3fc",
+                        "on-surface": "#181c22",
+                        "primary": "#004389",
+                        "background": "#f9f9ff",
+                        "surface-container-high": "#e6e8f1",
+                        "on-primary-fixed": "#001b3e",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface-variant": "#e0e2eb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-error-container": "#93000a",
+                        "outline": "#727783",
+                        "tertiary": "#723200",
+                        "tertiary-container": "#964400",
+                        "on-tertiary-container": "#ffc9ac",
+                        "secondary": "#465f88",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-tint": "#095db7",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-dim": "#d7dae3",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-secondary-container": "#3f5881",
+                        "inverse-surface": "#2d3037",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#aac7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "grid-gutter": "1rem",
+                        "container-padding": "1rem",
+                        "section-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }],
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md selection:bg-primary/20 selection:text-primary">
+<!-- TopAppBar from JSON -->
+<!-- active nav logic: This is a detail page, so no nav items map to active here directly. -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim w-full sticky top-0 z-50 flat no shadows bg-surface dark:bg-surface-dim">
+<div class="flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary dark:text-primary-fixed-dim text-center flex-1 mx-4 truncate">Automation Detail</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-5xl mx-auto px-container-padding pb-safe pt-4 space-y-section-gap pb-24">
+<!-- Hero Section: Identity & Status -->
+<section class="flex flex-col items-center justify-center text-center space-y-4 py-8">
+<div class="w-24 h-24 rounded-full bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center shadow-sm relative overflow-hidden group">
+<span class="material-symbols-outlined text-4xl text-primary transition-transform duration-500 group-hover:scale-110" style="font-variation-settings: 'FILL' 0;">closed_caption</span>
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent pointer-events-none"></div>
+</div>
+<div class="space-y-1">
+<h2 class="font-display-sm text-display-sm text-on-surface">Live Caption Relay</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mx-auto">Real-time subtitles projected onto your view.</p>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low border border-outline-variant/20 mt-2">
+<div class="w-2 h-2 rounded-full bg-outline"></div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status: Off</span>
+</div>
+</section>
+<!-- Bento Grid Layout for Details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Compatibility Card -->
+<article class="bg-surface-container rounded-xl p-5 border border-outline-variant/20 shadow-sm flex flex-col space-y-4">
+<div class="flex items-center gap-3 border-b border-outline-variant/20 pb-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">devices</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Compatibility</h3>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant bg-surface-container-highest p-3 rounded-lg border border-outline-variant/10 flex items-start gap-2">
+<span class="material-symbols-outlined text-[16px] mt-0.5" style="font-variation-settings: 'FILL' 0;">info</span>
+                         Display required for glasses view. Ensure your wearable device supports optical projection.
+                    </p>
+</div>
+</article>
+<!-- Manifest / Permissions Card -->
+<article class="bg-surface-container rounded-xl p-5 border border-outline-variant/20 shadow-sm flex flex-col space-y-4">
+<div class="flex items-center gap-3 border-b border-outline-variant/20 pb-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">list_alt</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Hardware Manifest</h3>
+</div>
+<ul class="space-y-3 flex-1">
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">mic</span>
+<span class="font-body-sm text-body-sm">Microphone</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-error bg-error/90 px-2 py-0.5 rounded-full uppercase tracking-wide">Required</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">visibility</span>
+<span class="font-body-sm text-body-sm">Display Output</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded-full uppercase tracking-wide">Optional</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">smartphone</span>
+<span class="font-body-sm text-body-sm">Phone Screen</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-primary-container bg-primary-container/20 px-2 py-0.5 rounded-full uppercase tracking-wide">Always Available</span>
+</li>
+</ul>
+</article>
+<!-- Configuration Card (Spans full width on mobile, half on md) -->
+<article class="bg-surface-container rounded-xl p-5 border border-outline-variant/20 shadow-sm flex flex-col space-y-4 md:col-span-2">
+<div class="flex items-center gap-3 border-b border-outline-variant/20 pb-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">tune</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Configuration</h3>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-element-gap">
+<!-- Mic Input -->
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/10">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Mic Input</label>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-sm text-body-sm text-on-surface cursor-pointer outline-none">
+<option>Glasses Array (Default)</option>
+<option>Phone Mic</option>
+<option>External Bluetooth</option>
+</select>
+</div>
+<!-- Spoken Language -->
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/10">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Spoken Language</label>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-sm text-body-sm text-on-surface cursor-pointer outline-none">
+<option>Auto-Detect</option>
+<option>English (US)</option>
+<option>Spanish (ES)</option>
+<option>Japanese (JP)</option>
+</select>
+</div>
+<!-- Text Size -->
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/10">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Text Size</label>
+<div class="flex items-center justify-between pt-1">
+<span class="font-body-sm text-body-sm text-on-surface">Medium (14pt)</span>
+<input class="w-20 accent-primary" max="24" min="10" type="range" value="14"/>
+</div>
+</div>
+<!-- Short-line behavior -->
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/10">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Short-line Behavior</label>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-sm text-body-sm text-on-surface cursor-pointer outline-none">
+<option>Wrap normally</option>
+<option>Force single line</option>
+<option>Truncate</option>
+</select>
+</div>
+<!-- Transcript Retention -->
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/10 sm:col-span-2 lg:col-span-1">
+<label class="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Transcript Retention</label>
+<select class="w-full bg-transparent border-none p-0 focus:ring-0 font-body-sm text-body-sm text-on-surface cursor-pointer outline-none">
+<option>Do not save (Ephemeral)</option>
+<option>Save for 24 hours</option>
+<option>Save until manually deleted</option>
+</select>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- Bottom Action Bar (Contextual FAB equivalent for details page) -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container/90 backdrop-blur-md border-t border-outline-variant/20 px-container-padding py-4 pb-safe z-40">
+<div class="max-w-5xl mx-auto flex flex-col sm:flex-row gap-3 justify-end items-center">
+<button class="w-full sm:w-auto px-6 py-3 rounded-full border border-outline-variant/30 text-primary font-headline-sm text-headline-sm hover:bg-surface-container-highest transition-colors active:scale-95 flex items-center justify-center gap-2 bg-surface">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">bug_report</span>
+                Test Mic &amp; Display
+            </button>
+<button class="w-full sm:w-auto px-6 py-3 rounded-full bg-primary text-on-primary font-headline-sm text-headline-sm hover:bg-primary/90 transition-colors active:scale-95 shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">power_settings_new</span>
+                Review &amp; Enable
+            </button>
+</div>
+</div>
+<!-- BottomNavBar JSON: Suppressed based on semantic shell mandate (linear/task-focused detail view) -->
+</body></html>

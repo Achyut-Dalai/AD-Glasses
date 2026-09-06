@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Automations - Lumina Graphite</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f8f9ff",
+                        "primary-container": "#005ab4",
+                        "surface-container-low": "#f1f3fc",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "on-secondary-container": "#3f5881",
+                        "background": "#f8f9ff",
+                        "on-background": "#181c22",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "secondary-fixed": "#d6e3ff",
+                        "inverse-surface": "#2d3137",
+                        "surface-bright": "#f8f9ff",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-dim": "#d7dae2",
+                        "secondary": "#465f88",
+                        "tertiary": "#723200",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#727783",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#964400",
+                        "inverse-primary": "#aac7ff",
+                        "inverse-on-surface": "#eef1f9",
+                        "status-connected": "#1275e2",
+                        "surface-variant": "#dfe2eb",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-container-high": "#e5e8f1",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-surface": "#181c22",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-container": "#b6d0ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "outline-variant": "#c2c6d4",
+                        "on-surface-variant": "#424752",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container": "#ebeef6",
+                        "on-primary-container": "#c0d5ff",
+                        "on-tertiary-fixed": "#321200",
+                        "primary": "#004389",
+                        "surface-tint": "#095db7",
+                        "on-error": "#ffffff",
+                        "background-alt": "#F6F7F9",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "on-error-container": "#93000a",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "section-gap": "2rem",
+                        "touch-target-min": "40px",
+                        "container-margin": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-xs": ["10px", { "lineHeight": "12px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F6F7F9; /* background-alt */
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #dfe2eb; /* surface-variant */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c2c6d4; /* outline-variant */
+        }
+        
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #004389; /* primary */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #004389; /* primary */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background min-h-screen flex flex-col pt-16 pb-24 md:pb-0 md:pt-20">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-glass dark:bg-surface-glass backdrop-blur-xl bg-surface-glass/80 shadow-sm transition-colors duration-200 h-16 flex justify-between items-center px-container-margin md:h-20">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors duration-200 text-on-surface dark:text-on-surface">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-display-lg text-display-lg text-on-surface dark:text-on-surface">Automations</h1>
+<button aria-label="Settings" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-colors duration-200 text-on-surface dark:text-on-surface">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+<!-- Desktop Nav Items (hidden on mobile) -->
+<nav class="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">home</span>
+                Home
+            </a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+                Assistant
+            </a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]">auto_stories</span>
+                Library
+            </a>
+<a class="font-label-sm text-label-sm text-primary dark:text-primary-fixed flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">settings_input_component</span>
+                Automations
+            </a>
+</nav>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto px-container-margin md:px-0 flex flex-col gap-section-gap pb-8">
+<!-- Stage Halo Effect -->
+<div class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[80px] opacity-30" style="background: radial-gradient(circle, rgba(10, 115, 224, 0.15) 0%, rgba(246, 247, 249, 0) 70%);"></div>
+</div>
+<!-- Global Control Card -->
+<section class="mt-4">
+<div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm border border-surface-variant flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Pause passive automations</h2>
+<span class="font-label-sm text-label-sm text-primary flex items-center gap-1 mt-1">
+<span class="w-2 h-2 rounded-full bg-status-connected"></span>
+                            Active
+                        </span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-surface-variant z-10 transition-all duration-200 right-0 checked:right-0 checked:border-primary" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-200" for="toggle"></label>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Temporarily stop all background recording and context collection.</p>
+</div>
+</section>
+<!-- Active Now Section -->
+<section class="flex items-center gap-2 px-1 opacity-70">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">motion_sensor_idle</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Nothing running</span>
+</section>
+<!-- Categorized Built-in Automations -->
+<div class="flex flex-col gap-6">
+<!-- Category: PERSONAL AI -->
+<section class="flex flex-col gap-3">
+<h3 class="font-label-xs text-label-xs text-outline uppercase tracking-wider pl-1">PERSONAL AI</h3>
+<div class="flex flex-col gap-2">
+<!-- Item -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">psychology</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Local Agent</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Safely observes and controls supported phone UI with approval.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ready
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-on-background text-on-secondary px-4 py-1.5 rounded-full hover:bg-inverse-surface transition-colors active:scale-95 touch-target-min flex items-center justify-center">Manage</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Category: MEETINGS AND COMMUNICATION -->
+<section class="flex flex-col gap-3">
+<h3 class="font-label-xs text-label-xs text-outline uppercase tracking-wider pl-1">MEETINGS AND COMMUNICATION</h3>
+<div class="flex flex-col gap-2">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">assignment</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Meeting Spark Notes</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Turns a recording the owner starts into transcript, summary, and action items.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ready
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-on-background text-on-secondary px-4 py-1.5 rounded-full hover:bg-inverse-surface transition-colors active:scale-95 touch-target-min flex items-center justify-center">Manage</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group opacity-70">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-outline">closed_caption</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Live Caption Relay</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Shows live speech captions on the phone and compatible glasses displays.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">block</span> Unavailable for this device (HeyCyan X1)
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full hover:bg-surface-variant transition-colors active:scale-95 touch-target-min flex items-center justify-center">Setup</button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">g_translate</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Hands-Free Translator</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Listens and translates between languages with spoken output.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">pending_actions</span> Needs setup
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full hover:bg-surface-variant transition-colors active:scale-95 touch-target-min flex items-center justify-center">Setup</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Category: CAPTURE AND MEMORY -->
+<section class="flex flex-col gap-3">
+<h3 class="font-label-xs text-label-xs text-outline uppercase tracking-wider pl-1">CAPTURE AND MEMORY</h3>
+<div class="flex flex-col gap-2">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">book</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Builds private daily memory from selected phone screen context.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ready
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-on-background text-on-secondary px-4 py-1.5 rounded-full hover:bg-inverse-surface transition-colors active:scale-95 touch-target-min flex items-center justify-center">Manage</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">graphic_eq</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Auto Audio</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Records HeyCyan onboard audio loops, syncs, and transcribes.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ready
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-on-background text-on-secondary px-4 py-1.5 rounded-full hover:bg-inverse-surface transition-colors active:scale-95 touch-target-min flex items-center justify-center">Manage</button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">camera</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Periodically captures scenes from a compatible glasses camera.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">pending_actions</span> Needs setup
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full hover:bg-surface-variant transition-colors active:scale-95 touch-target-min flex items-center justify-center">Setup</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Category: PRODUCTIVITY -->
+<section class="flex flex-col gap-3">
+<h3 class="font-label-xs text-label-xs text-outline uppercase tracking-wider pl-1">PRODUCTIVITY</h3>
+<div class="flex flex-col gap-2">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant flex flex-col gap-3 hover:border-outline-variant transition-colors group">
+<div class="flex justify-between items-start gap-4">
+<div class="flex items-start gap-3 flex-1">
+<div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 border border-surface-variant group-hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary">checklist</span>
+</div>
+<div class="flex flex-col gap-1">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold">Errand Brain</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Turns spoken errands into reviewable tasks and reminders.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-surface-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ready
+                            </span>
+<button class="font-label-sm text-label-sm font-semibold bg-on-background text-on-secondary px-4 py-1.5 rounded-full hover:bg-inverse-surface transition-colors active:scale-95 touch-target-min flex items-center justify-center">Manage</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Community Section -->
+<section class="flex justify-center items-center gap-6 mt-4 pb-4">
+<a class="font-label-sm text-label-sm text-primary hover:text-surface-tint transition-colors" href="#">Browse integrations</a>
+<span class="w-1 h-1 rounded-full bg-surface-variant"></span>
+<a class="font-label-sm text-label-sm text-primary hover:text-surface-tint transition-colors" href="#">Publish integration</a>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full rounded-t-xl bg-surface dark:bg-surface-dim shadow-[0_-1px_3px_0_rgba(0,0,0,0.05)] z-50 flex justify-around items-center h-20 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 touch-target-min min-w-[64px] rounded-xl h-14" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-xs text-label-xs">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 touch-target-min min-w-[64px] rounded-xl h-14" href="#">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+<span class="font-label-xs text-label-xs">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-high transition-all active:scale-95 duration-100 touch-target-min min-w-[64px] rounded-xl h-14" href="#">
+<span class="material-symbols-outlined mb-1">auto_stories</span>
+<span class="font-label-xs text-label-xs">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-xl px-4 py-1 transition-all active:scale-95 duration-100 touch-target-min min-w-[64px] h-14" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">settings_input_component</span>
+<span class="font-label-xs text-label-xs">Automations</span>
+</a>
+</nav>
+</body></html>

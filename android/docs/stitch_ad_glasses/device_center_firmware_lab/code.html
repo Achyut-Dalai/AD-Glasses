@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Firmware Update</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#000000",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "on-secondary-container": "#002958",
+                        "graphite-black": "#000000",
+                        "primary": "#000000",
+                        "success-teal": "#008080",
+                        "error": "#ba1a1a",
+                        "warning-amber": "#FFBF00",
+                        "on-tertiary-container": "#828486",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-primary-container": "#848484",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "surface": "#f9f9ff",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary": "#005db8",
+                        "tertiary-container": "#191c1e",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-control": "#FFFFFF",
+                        "surface-variant": "#dde2f2",
+                        "on-secondary-fixed": "#001b3e",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#161c27",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed": "#1b1b1b",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#5e5e5e",
+                        "cool-gray": "#717785",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#4c4546",
+                        "inverse-primary": "#c6c6c6",
+                        "electric-blue": "#1978E5",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "surface-dim": "#d4daea",
+                        "on-background": "#161c27",
+                        "outline-variant": "#cfc4c5",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-container": "#e8eefe",
+                        "background": "#f9f9ff",
+                        "canvas": "#F6F7F9",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gap-sm": "8px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; background-color: #F6F7F9; }
+        .hold-progress { transition: width 2s linear; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface antialiased min-h-screen flex flex-col items-center">
+<!-- Top App Bar - Simplified for sub-page -->
+<header class="w-full top-0 sticky bg-background dark:bg-background flex justify-between items-center px-margin-page h-touch-target z-50">
+<button class="w-touch-target h-touch-target flex items-center justify-start text-primary dark:text-on-primary-fixed scale-98 transition-transform duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-on-primary-fixed">Firmware Update</h1>
+<div class="w-touch-target h-touch-target flex items-center justify-end text-primary dark:text-on-primary-fixed scale-98 transition-transform duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help_outline</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="w-full max-w-md mx-auto px-margin-page pb-24 pt-4 flex-grow flex flex-col gap-6">
+<!-- Device Stage / Hero -->
+<section class="h-hero-stage flex flex-col items-center justify-center relative bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-sm overflow-hidden">
+<div class="absolute inset-0 bg-surface-container-low opacity-50 z-0"></div>
+<!-- Mock Parallax Image -->
+<img class="relative z-10 w-48 h-auto object-contain drop-shadow-xl" data-alt="A sleek, minimalist pair of smart glasses rendered in high fidelity. The frames are a dark matte graphite color with subtle metallic accents. They are floating elegantly in a pure white studio environment with extremely soft, diffused lighting. The image embodies a modern, architectural hardware aesthetic, completely clean and free of unnecessary details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2vU5o1VPB9wWS8EtrNx_TwZrv51gQ0VFKuCya_t91Ouq7FCm6kxgRgBMIQAdTpRj8YEeQ1atUW5cnaVE9LJaigGULNd7J38vkik78b7MOApJ5HSY6ydyuFqF4rwtEjAahhKBcIhfMIJGMZncKA6zWCjwlgFRnvPspvHqNhrtLz79zextcveyKB3Nf0FVAxknQBMdP2kL3lHdiRj-kkMoJQh4-fJnkDnF0iI0PqOF3YKhw77Nmw0wX"/>
+<div class="absolute bottom-4 left-0 right-0 flex justify-center z-20">
+<span class="bg-success-teal/10 text-success-teal font-label-sm text-label-sm px-3 py-1 rounded-full flex items-center gap-1 border border-success-teal/20">
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+                    Connected
+                </span>
+</div>
+</section>
+<!-- Current Versions Info -->
+<section class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-label-lg text-label-lg text-on-surface font-semibold">System Status</h2>
+<button class="text-electric-blue font-label-md text-label-md hover:underline">Check compatibility</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/50">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-cool-gray text-[16px]">router</span>
+<span class="font-label-md text-label-md text-cool-gray">Wi-Fi Base</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface">v2.4.1-rc3</div>
+</div>
+<div class="bg-surface p-3 rounded-lg border border-outline-variant/50">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-cool-gray text-[16px]">bluetooth</span>
+<span class="font-label-md text-label-md text-cool-gray">BLE Core</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface">v1.8.0-stable</div>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface">Target Firmware</span>
+<span class="font-label-md text-label-md bg-electric-blue/10 text-electric-blue px-2 py-0.5 rounded">v3.0.0-final</span>
+</div>
+</div>
+</section>
+<!-- Preflight Checklist -->
+<section class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant">
+<h2 class="font-label-lg text-label-lg text-on-surface font-semibold mb-4">Preflight Checklist</h2>
+<ul class="space-y-3">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-success-teal" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface flex-grow">Correct device architecture</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-success-teal" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface flex-grow">Stable BLE connection</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-success-teal" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface flex-grow">Artifacts verified locally</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-success-teal" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface flex-grow">Device power &gt; 80%</span>
+<span class="font-label-sm text-label-sm text-cool-gray">92%</span>
+</li>
+</ul>
+</section>
+<!-- Warning -->
+<div class="bg-warning-amber/10 border border-warning-amber/20 rounded-lg p-3 flex gap-3 items-start">
+<span class="material-symbols-outlined text-warning-amber mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">
+                Do not move glasses away from phone during update. Keep app open.
+            </p>
+</div>
+</main>
+<!-- Fixed Bottom Action Area -->
+<div class="fixed bottom-0 left-0 right-0 p-margin-page bg-surface-container-lowest border-t border-outline-variant/30 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+<div class="max-w-md mx-auto">
+<button class="w-full h-14 bg-graphite-black text-white font-headline-md text-headline-md rounded-lg relative overflow-hidden flex items-center justify-center scale-98 transition-transform duration-200 active:scale-95 group" id="updateBtn">
+<span class="relative z-10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">system_update_alt</span>
+                    Hold to Update
+                </span>
+<!-- Progress bar overlay for 'Hold to confirm' interaction -->
+<div class="absolute left-0 top-0 bottom-0 w-0 bg-electric-blue/40 hold-progress" id="updateProgress"></div>
+</button>
+</div>
+</div>
+<script>
+        // Simple script to demonstrate the "Hold to confirm" interaction
+        const btn = document.getElementById('updateBtn');
+        const progress = document.getElementById('updateProgress');
+        let holdTimer;
+
+        const startHold = () => {
+            progress.style.transition = 'width 1.5s linear';
+            progress.style.width = '100%';
+            
+            holdTimer = setTimeout(() => {
+                btn.innerHTML = `<span class="relative z-10 flex items-center gap-2 text-success-teal"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span> Updating...</span>`;
+                progress.style.backgroundColor = '#00808020'; // success-teal with opacity
+            }, 1500);
+        };
+
+        const endHold = () => {
+            clearTimeout(holdTimer);
+            progress.style.transition = 'width 0.2s ease-out';
+            progress.style.width = '0%';
+        };
+
+        btn.addEventListener('mousedown', startHold);
+        btn.addEventListener('touchstart', startHold);
+        btn.addEventListener('mouseup', endHold);
+        btn.addEventListener('mouseleave', endHold);
+        btn.addEventListener('touchend', endHold);
+    </script>
+</body></html>

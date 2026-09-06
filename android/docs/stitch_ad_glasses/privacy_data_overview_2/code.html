@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Privacy &amp; Data</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#181c22",
+                        "outline": "#717785",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-tint": "#005db8",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-fixed-dim": "#aec7f7",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#d7dae3",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-primary-fixed-variant": "#00458d",
+                        "error-container": "#ffdad6",
+                        "inverse-surface": "#2d3037",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary-fixed": "#001b3e",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-variant": "#e0e2eb",
+                        "tertiary": "#964400",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "inverse-primary": "#aac7ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-container-low": "#f1f3fc",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#d6e3ff",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eef0fa",
+                        "primary-container": "#0a73e0",
+                        "surface-container-high": "#e6e8f1",
+                        "on-surface-variant": "#414753",
+                        "outline-variant": "#c1c6d5",
+                        "tertiary-container": "#bd5700",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "background": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#005ab4",
+                        "surface-container": "#ebedf7",
+                        "secondary-container": "#b6d0ff",
+                        "on-background": "#181c22",
+                        "secondary": "#465f88",
+                        "surface": "#f9f9ff",
+                        "graphite-bg": "#F6F7F9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "display": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    "fontSize": {}
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-[#F6F7F9] min-h-screen text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-[#F6F7F9] w-full top-0 sticky border-b border-outline-variant/30 flex items-center px-4 h-16 z-50">
+<button class="text-on-surface-variant hover:bg-black/5 transition-colors active:opacity-70 rounded-full p-2 mr-3 flex items-center justify-center">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-body text-lg font-semibold text-on-surface flex-grow tracking-tight">Privacy &amp; Data</h1>
+</header>
+<!-- Main Canvas -->
+<main class="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-8 pb-24">
+<!-- Data Boundaries -->
+<section class="fade-in-up bg-white rounded-2xl border border-outline-variant/40 p-5 shadow-sm">
+<div class="flex items-center space-x-2 mb-6">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+<h2 class="font-headline text-lg font-semibold text-on-surface">Data Boundaries</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+<!-- Connectors for Desktop -->
+<div class="hidden md:block absolute top-6 left-[16%] right-[16%] h-px bg-outline-variant/30 z-0"></div>
+<div class="flex flex-row md:flex-col items-start md:items-center text-left md:text-center space-x-4 md:space-x-0 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 border border-outline-variant/30 md:mb-3">
+<span class="material-symbols-outlined text-outline">qr_code_2</span>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-on-surface mb-1">AD Glasses</h3>
+<p class="text-xs text-on-surface-variant leading-relaxed">Hold unsynced source media temporarily.</p>
+</div>
+</div>
+<div class="flex flex-row md:flex-col items-start md:items-center text-left md:text-center space-x-4 md:space-x-0 relative z-10">
+<div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center shrink-0 md:mb-3 shadow-md shadow-primary/20">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">smartphone</span>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-on-surface mb-1">Primary Device</h3>
+<p class="text-xs text-on-surface-variant leading-relaxed">Media and App data stored securely on your phone.</p>
+</div>
+</div>
+<div class="flex flex-row md:flex-col items-start md:items-center text-left md:text-center space-x-4 md:space-x-0 relative z-10">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 border border-outline-variant/30 md:mb-3">
+<span class="material-symbols-outlined text-outline">cloud</span>
+</div>
+<div>
+<h3 class="text-sm font-semibold text-on-surface mb-1">Cloud Actions</h3>
+<p class="text-xs text-on-surface-variant leading-relaxed">AI data leaves phone only for specific cloud tasks.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Data Inventory -->
+<section class="fade-in-up delay-100 space-y-4">
+<h2 class="font-headline text-xs font-semibold text-on-surface-variant uppercase tracking-widest px-1">Data Inventory</h2>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-primary">perm_media</span>
+<span class="text-sm font-bold text-on-surface">1.2GB</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Media</span>
+</div>
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-secondary">description</span>
+<span class="text-sm font-bold text-on-surface">45</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Transcripts</span>
+</div>
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-secondary">edit_note</span>
+<span class="text-sm font-bold text-on-surface">12</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Notes</span>
+</div>
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-secondary">memory</span>
+<span class="text-sm font-bold text-on-surface">5</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Memories</span>
+</div>
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-secondary">model_training</span>
+<span class="text-sm font-bold text-on-surface">150MB</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Model Files</span>
+</div>
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex flex-col hover:border-outline transition-colors cursor-default shadow-sm">
+<div class="flex items-start justify-between mb-4">
+<span class="material-symbols-outlined text-outline">receipt_long</span>
+<span class="text-sm font-bold text-on-surface">12MB</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">Logs</span>
+</div>
+</div>
+</section>
+<!-- Memory Modes -->
+<section class="fade-in-up delay-200 space-y-4">
+<h2 class="font-headline text-xs font-semibold text-on-surface-variant uppercase tracking-widest px-1">Memory Modes</h2>
+<div class="space-y-3">
+<!-- Active Mode -->
+<div class="bg-white rounded-xl border-2 border-primary p-4 flex items-center justify-between cursor-pointer relative shadow-sm">
+<div class="relative z-10">
+<div class="flex items-center space-x-2 mb-1">
+<h3 class="font-semibold text-on-surface">Private Local</h3>
+<span class="bg-primary text-white text-[10px] uppercase px-2 py-0.5 rounded-full font-bold tracking-wide">Active</span>
+</div>
+<p class="text-xs text-on-surface-variant">All processing and storage occurs on your device.</p>
+</div>
+<span class="material-symbols-outlined text-primary relative z-10" style="font-variation-settings: 'FILL' 1;">radio_button_checked</span>
+</div>
+<!-- Disabled Mode 1 -->
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex items-center justify-between opacity-60">
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<h3 class="font-semibold text-on-surface">Encrypted Sync</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">lock</span>
+</div>
+<p class="text-xs text-outline">Backend not configured</p>
+</div>
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+</div>
+<!-- Disabled Mode 2 -->
+<div class="bg-white rounded-xl border border-outline-variant/40 p-4 flex items-center justify-between opacity-60">
+<div>
+<div class="flex items-center space-x-2 mb-1">
+<h3 class="font-semibold text-on-surface">Confidential Cloud</h3>
+<span class="material-symbols-outlined text-outline text-[16px]">cloud_off</span>
+</div>
+<p class="text-xs text-outline">Backend not configured</p>
+</div>
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+</div>
+</div>
+</section>
+<!-- Controls -->
+<section class="fade-in-up delay-300 space-y-4">
+<h2 class="font-headline text-xs font-semibold text-on-surface-variant uppercase tracking-widest px-1">Controls</h2>
+<div class="bg-white rounded-xl border border-outline-variant/40 overflow-hidden shadow-sm">
+<div class="p-4 flex items-center justify-between border-b border-outline-variant/20">
+<div>
+<h3 class="font-semibold text-on-surface">Pause passive collection</h3>
+<p class="text-xs text-on-surface-variant mt-0.5">Temporarily halt background data gathering.</p>
+</div>
+<!-- Toggle Switch (Off state) -->
+<button class="w-11 h-6 bg-surface-container-high rounded-full relative transition-colors focus:outline-none flex-shrink-0">
+<div class="w-5 h-5 bg-white rounded-full absolute left-[2px] top-[2px] shadow-sm transition-transform"></div>
+</button>
+</div>
+<a class="p-4 flex items-center justify-between hover:bg-black/5 transition-colors group block" href="#">
+<div>
+<h3 class="font-semibold text-on-surface">Source eligibility</h3>
+<p class="text-xs text-on-surface-variant mt-0.5">Manage which apps provide data.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span>
+</a>
+</div>
+</section>
+<!-- Data Actions -->
+<section class="fade-in-up delay-400 space-y-4 pt-2">
+<h2 class="font-headline text-xs font-semibold text-on-surface-variant uppercase tracking-widest px-1">Data Actions</h2>
+<div class="grid grid-cols-2 gap-3">
+<button class="bg-white border border-outline-variant/40 text-on-surface font-medium py-3 px-4 rounded-xl hover:bg-black/5 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 shadow-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">download</span>
+<span class="text-sm">Export</span>
+</button>
+<button class="bg-white border border-outline-variant/40 text-on-surface font-medium py-3 px-4 rounded-xl hover:bg-black/5 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 shadow-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">upload</span>
+<span class="text-sm">Import</span>
+</button>
+</div>
+<button class="w-full bg-white border border-error/20 text-error font-medium py-3 px-4 rounded-xl hover:bg-error/5 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 mt-3 shadow-sm">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+<span class="text-sm">Clear local data</span>
+</button>
+</section>
+</main>
+</body></html>

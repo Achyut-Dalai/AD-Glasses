@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chat Timeline - Minimalist</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#c6c6c6",
+                        "success-teal": "#008080",
+                        "on-secondary-fixed": "#001b3e",
+                        "surface-control": "#FFFFFF",
+                        "primary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed": "#e2e2e2",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#1b1b1b",
+                        "outline": "#7e7576",
+                        "surface-variant": "#dde2f2",
+                        "surface-container-highest": "#dde2f2",
+                        "graphite-black": "#000000",
+                        "warning-amber": "#FFBF00",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "surface-container-high": "#e2e8f8",
+                        "cool-gray": "#717785",
+                        "electric-blue": "#1978E5",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "on-surface": "#161c27",
+                        "on-tertiary-container": "#828486",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-secondary-container": "#002958",
+                        "inverse-on-surface": "#ecf0ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary-container": "#1b1b1b",
+                        "secondary-container": "#4090fe",
+                        "background": "#f9f9ff",
+                        "on-primary-container": "#848484",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "surface-dim": "#d4daea",
+                        "surface-bright": "#f9f9ff",
+                        "on-error-container": "#93000a",
+                        "on-background": "#161c27",
+                        "surface-container": "#e8eefe",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#cfc4c5",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "secondary": "#005db8",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#c6c6c6",
+                        "canvas": "#F6F7F9",
+                        "surface-tint": "#5e5e5e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "gap-sm": "8px",
+                        "touch-target": "48px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface h-screen flex flex-col antialiased overflow-hidden">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-background flex justify-between items-center px-margin-page h-touch-target w-full max-w-screen-xl mx-auto flat no shadows z-50">
+<div class="flex items-center hover:opacity-80 transition-opacity active:scale-95 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed mr-4" style="font-variation-settings: 'FILL' 0;">menu</span>
+</div>
+<div class="flex items-center space-x-2">
+<img alt="Brand Logo" class="h-6 w-6 object-contain mix-blend-multiply" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"/>
+<span class="font-headline-md text-headline-md font-bold text-graphite-black">Assistant</span>
+</div>
+<div class="flex items-center hover:opacity-80 transition-opacity active:scale-95 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed" style="font-variation-settings: 'FILL' 0;">settings</span>
+</div>
+</header>
+<!-- Chat Timeline Canvas -->
+<main class="flex-1 overflow-y-auto px-margin-page pt-6 pb-32 max-w-3xl mx-auto w-full flex flex-col space-y-12">
+<!-- Day Divider -->
+<div class="flex items-center justify-center space-x-4 mb-4">
+<div class="h-px bg-outline-variant flex-1"></div>
+<span class="font-label-sm text-label-sm text-cool-gray uppercase tracking-widest">Today</span>
+<div class="h-px bg-outline-variant flex-1"></div>
+</div>
+<!-- Exchange 1 -->
+<div class="flex flex-col space-y-6">
+<!-- User Message -->
+<div class="flex flex-col items-end w-full">
+<div class="flex items-center mb-1 space-x-2 text-cool-gray">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">smartphone</span>
+<span class="font-label-sm text-label-sm uppercase">Phone • 10:42 AM</span>
+</div>
+<div class="bg-surface-control border border-outline-variant rounded-xl rounded-tr-none px-5 py-4 max-w-[85%] shadow-sm">
+<p class="font-body-lg text-body-lg text-graphite-black">What was the name of that architecture book I was looking at yesterday?</p>
+</div>
+</div>
+<!-- Assistant Response -->
+<div class="flex flex-col items-start w-full">
+<div class="flex items-center mb-1 space-x-2 text-electric-blue">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+<span class="font-label-sm text-label-sm uppercase">Glasses • 10:42 AM</span>
+</div>
+<div class="bg-transparent pl-4 border-l-2 border-electric-blue max-w-[90%]">
+<p class="font-body-lg text-body-lg text-graphite-black leading-relaxed mb-4">Based on your visual history from yesterday afternoon, you were looking at "The Architecture of Happiness" by Alain de Botton at the bookstore.</p>
+<div class="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+<img class="w-24 h-24 object-cover rounded-lg border border-outline-variant shadow-sm flex-shrink-0" data-alt="A minimalist, high-key photograph of an elegant bookstore interior. Soft, natural white light illuminates clean architectural lines. On a stark white display table, a sophisticated architecture book rests. The color palette is predominantly pure white and deep black, creating a highly professional, modern light-mode aesthetic. Calm and precise mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVGD4H79ye0WgLgv0oUFbNWvei-CadTxU2r_jwn2cP47JAfsLLJD9SbWdgbG8GXRhpFaznDuUaITIE90BELAm4EhmpMB9s7B9i0C1fixGnwyB45w0vR4babmGPJ3AKzTycF0znvwqaQuLDv4U9piIVl_mczFVVjFGslEvo5wNqEu4kIm5JOuhsh9EmcE8ZSEZ55ZAJOtgAR4_m5Y5ldPYQklyqht4lBliPC7J3jXo95DuKaCaUoJMg"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Exchange 2 -->
+<div class="flex flex-col space-y-6">
+<!-- User Message -->
+<div class="flex flex-col items-end w-full">
+<div class="flex items-center mb-1 space-x-2 text-cool-gray">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">mic</span>
+<span class="font-label-sm text-label-sm uppercase">Voice • 11:15 AM</span>
+</div>
+<div class="bg-surface-control border border-outline-variant rounded-xl rounded-tr-none px-5 py-4 max-w-[85%] shadow-sm">
+<p class="font-body-lg text-body-lg text-graphite-black">Translate this sign for me.</p>
+</div>
+</div>
+<!-- Assistant Response -->
+<div class="flex flex-col items-start w-full">
+<div class="flex items-center mb-1 space-x-2 text-electric-blue">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+<span class="font-label-sm text-label-sm uppercase">Glasses • 11:15 AM</span>
+</div>
+<div class="bg-transparent pl-4 border-l-2 border-electric-blue max-w-[90%]">
+<p class="font-body-lg text-body-lg text-graphite-black leading-relaxed mb-2">The sign you are looking at reads: "Quiet Zone - No loud talking or phone calls please."</p>
+<div class="inline-flex items-center space-x-2 bg-surface-control border border-outline-variant rounded-full px-3 py-1 mt-2 shadow-sm">
+<span class="material-symbols-outlined text-success-teal text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm text-cool-gray">On device translation</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Composer Bar (Floating above nav) -->
+<div class="fixed bottom-[80px] left-0 w-full px-margin-page z-40 max-w-3xl mx-auto left-1/2 -translate-x-1/2">
+<div class="bg-surface-control border border-outline-variant rounded-full shadow-sm flex items-center px-4 py-2 transition-all focus-within:border-electric-blue focus-within:ring-1 focus-within:ring-electric-blue">
+<button class="p-2 text-cool-gray hover:text-primary transition-colors flex-shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">add_photo_alternate</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 font-body-md text-body-md text-graphite-black placeholder-cool-gray px-3" placeholder="Ask anything..." type="text"/>
+<button class="p-2 text-cool-gray hover:text-electric-blue transition-colors flex-shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">mic</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-margin-page py-2 bg-surface-container-lowest border-t border-outline-variant flat no shadows z-50 h-[64px] md:hidden">
+<div class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 cursor-pointer w-full h-full">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 0;">visibility</span>
+<span class="font-label-sm text-label-sm">Vision</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary-container dark:text-secondary-container hover:text-primary transition-colors active:scale-98 transition-transform duration-200 cursor-pointer w-full h-full">
+<div class="bg-secondary-fixed/20 px-4 py-1 rounded-full mb-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-electric-blue">Chat</span>
+</div>
+<div class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 cursor-pointer w-full h-full">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 0;">history</span>
+<span class="font-label-sm text-label-sm">History</span>
+</div>
+<div class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 cursor-pointer w-full h-full">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 0;">qr_code_2</span>
+<span class="font-label-sm text-label-sm">Glasses</span>
+</div>
+</nav>
+<!-- Desktop Navigation Fallback (Hidden on Mobile) -->
+<nav class="hidden md:flex fixed top-0 right-0 h-touch-target items-center px-margin-page space-x-8 z-50">
+<div class="text-cool-gray font-label-lg text-label-lg hover:text-primary cursor-pointer transition-colors">Vision</div>
+<div class="text-electric-blue font-label-lg text-label-lg font-bold cursor-pointer transition-colors border-b-2 border-electric-blue pb-1 h-full flex items-center mt-1">Chat</div>
+<div class="text-cool-gray font-label-lg text-label-lg hover:text-primary cursor-pointer transition-colors">History</div>
+<div class="text-cool-gray font-label-lg text-label-lg hover:text-primary cursor-pointer transition-colors">Glasses</div>
+</nav>
+</body></html>

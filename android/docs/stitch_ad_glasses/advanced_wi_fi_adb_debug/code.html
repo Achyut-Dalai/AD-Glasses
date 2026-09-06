@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wi-Fi ADB - Advanced Diagnostics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#c0d5ff",
+                        "surface-dim": "#d7dae3",
+                        "secondary-container": "#b6d0ff",
+                        "secondary": "#465f88",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#723200",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e6e8f1",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#3f5881",
+                        "surface-bright": "#f9f9ff",
+                        "primary": "#004389",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#181c22",
+                        "tertiary-container": "#964400",
+                        "surface-container-low": "#f1f3fc",
+                        "on-primary-fixed": "#001b3e",
+                        "inverse-surface": "#2d3037",
+                        "inverse-on-surface": "#eef0fa",
+                        "primary-fixed-dim": "#aac7ff",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-tertiary-container": "#ffc9ac",
+                        "surface-container-highest": "#e0e2eb",
+                        "on-tertiary-fixed": "#321200",
+                        "on-surface": "#181c22",
+                        "primary-container": "#005ab4",
+                        "outline-variant": "#c2c6d4",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#aac7ff",
+                        "surface-variant": "#e0e2eb",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container": "#ebedf7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-secondary-fixed": "#001b3d",
+                        "surface-tint": "#095db7",
+                        "outline": "#727783",
+                        "tertiary-fixed": "#ffdbc9",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#d6e3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "1rem",
+                        "element-gap": "0.75rem",
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+                        "body-sm": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+                        "headline-sm": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "600" }],
+                        "display-sm": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700" }],
+                        "label-lg": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "600" }],
+                        "label-md": ["11px", { "lineHeight": "1rem", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #005ab4;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #005ab4;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface text-primary font-headline-sm flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto sticky top-0 z-50 transition-colors duration-100">
+<div class="flex items-center gap-element-gap">
+<button class="p-2 rounded-full hover:bg-surface-container-high active:scale-95 duration-100 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm tracking-tight text-primary">Advanced &amp; Diagnostics</h1>
+</div>
+<button class="p-2 rounded-full hover:bg-surface-container-high active:scale-95 duration-100 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+</header>
+<main class="flex-grow w-full max-w-5xl mx-auto p-container-padding space-y-section-gap pb-24">
+<!-- Header Section -->
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-background mb-1">Wi-Fi ADB Debug</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Configure remote debugging over local network.</p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Control Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-container-padding shadow-sm flex flex-col space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-label-lg text-label-lg text-on-background mb-1">Status</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant" id="adb-status-text">Currently disabled</p>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-surface-container-high top-0 bottom-0 m-auto z-10 transition-transform duration-200" id="adb-toggle" name="toggle" onclick="document.getElementById('confirmation-modal').classList.remove('hidden')" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer" for="adb-toggle"></label>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-3 space-y-2">
+<div class="flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">IP Address</span>
+<span class="font-body-sm text-body-sm text-on-surface opacity-50" id="ip-display">---.---.---.---</span>
+</div>
+<div class="flex justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Port</span>
+<span class="font-body-sm text-body-sm text-on-surface opacity-50" id="port-display">----</span>
+</div>
+</div>
+</div>
+<!-- Security Warning Card -->
+<div class="bg-error-container/20 border border-error/20 rounded-xl p-container-padding shadow-sm flex flex-col space-y-3">
+<div class="flex items-center gap-2 text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+<h3 class="font-label-lg text-label-lg">Security Warning</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Enabling Wi-Fi ADB exposes this device to potential unauthorized access by any device on the same local network. 
+                    Ensure you are connected to a trusted network before enabling.
+                </p>
+</div>
+<!-- Session Log Card -->
+<div class="md:col-span-2 bg-inverse-surface text-inverse-on-surface rounded-xl p-container-padding shadow-sm font-mono text-[11px] leading-relaxed overflow-x-auto h-48">
+<div class="flex justify-between mb-2 border-b border-outline/30 pb-2">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Session Log (Redacted)</span>
+<button class="font-label-sm text-label-sm text-primary-fixed-dim hover:text-primary-fixed transition-colors">Clear</button>
+</div>
+<div class="space-y-1 opacity-70">
+<div><span class="text-primary-fixed-dim">[14:32:01]</span> Daemon initialized.</div>
+<div><span class="text-primary-fixed-dim">[14:32:05]</span> Auth protocol version: 1.</div>
+<div><span class="text-primary-fixed-dim">[14:35:12]</span> Connection attempt from 192.168.1.***</div>
+<div><span class="text-error-container">[14:35:12]</span> Connection rejected: unauthorized.</div>
+<div><span class="text-primary-fixed-dim">[14:40:00]</span> ADB server stopped.</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container text-primary font-label-md fixed bottom-0 w-full z-50 pb-safe shadow-sm flex justify-around items-center h-20 px-4 md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1">home</span>
+<span>Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1 active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span>Devices</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1">bolt</span>
+<span>Automate</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined mb-1">person</span>
+<span>Profile</span>
+</button>
+</nav>
+<!-- Confirmation Modal Overlay -->
+<div class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4" id="confirmation-modal">
+<div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="cancelToggle()"></div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 max-w-sm w-full relative z-10 shadow-lg space-y-4 transform transition-all">
+<h3 class="font-display-sm text-display-sm text-on-background">Enable Wi-Fi ADB?</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                This will restart the ADB daemon and expose debugging ports on your local network. Are you sure you want to proceed?
+            </p>
+<div class="flex justify-end gap-3 pt-2">
+<button class="font-label-lg text-label-lg text-on-surface-variant px-4 py-2 rounded-lg hover:bg-surface-container transition-colors" onclick="cancelToggle()">Cancel</button>
+<button class="font-label-lg text-label-lg text-on-primary bg-primary px-4 py-2 rounded-lg hover:bg-primary-container transition-colors shadow-sm" onclick="confirmToggle()">Enable</button>
+</div>
+</div>
+</div>
+<script>
+        const toggle = document.getElementById('adb-toggle');
+        const modal = document.getElementById('confirmation-modal');
+        const statusText = document.getElementById('adb-status-text');
+        const ipDisplay = document.getElementById('ip-display');
+        const portDisplay = document.getElementById('port-display');
+        let previousState = toggle.checked;
+
+        function cancelToggle() {
+            modal.classList.add('hidden');
+            toggle.checked = previousState;
+        }
+
+        function confirmToggle() {
+            modal.classList.add('hidden');
+            previousState = toggle.checked;
+            
+            if(toggle.checked) {
+                statusText.textContent = "Active on Local Network";
+                statusText.classList.add('text-primary');
+                ipDisplay.textContent = "192.168.1.105";
+                ipDisplay.classList.remove('opacity-50');
+                portDisplay.textContent = "5555";
+                portDisplay.classList.remove('opacity-50');
+            } else {
+                statusText.textContent = "Currently disabled";
+                statusText.classList.remove('text-primary');
+                ipDisplay.textContent = "---.---.---.---";
+                ipDisplay.classList.add('opacity-50');
+                portDisplay.textContent = "----";
+                portDisplay.classList.add('opacity-50');
+            }
+        }
+        
+        // Prevent toggle from actually switching until confirmed
+        toggle.addEventListener('click', function(e) {
+            if(!previousState) {
+                e.preventDefault();
+                modal.classList.remove('hidden');
+            } else {
+                 // Disabling doesn't need confirmation in this flow
+                 previousState = false;
+                 confirmToggle(); // reuse function to reset UI
+                 toggle.checked = false;
+            }
+        });
+    </script>
+</body></html>

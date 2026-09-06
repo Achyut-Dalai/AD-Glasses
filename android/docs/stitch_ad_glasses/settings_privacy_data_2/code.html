@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Privacy &amp; Data - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#000000",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "on-secondary-container": "#002958",
+                        "graphite-black": "#000000",
+                        "primary": "#000000",
+                        "success-teal": "#008080",
+                        "error": "#ba1a1a",
+                        "warning-amber": "#FFBF00",
+                        "on-tertiary-container": "#828486",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-primary-container": "#848484",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "surface": "#f9f9ff",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary": "#005db8",
+                        "tertiary-container": "#191c1e",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-control": "#FFFFFF",
+                        "surface-variant": "#dde2f2",
+                        "on-secondary-fixed": "#001b3e",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#161c27",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed": "#1b1b1b",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#5e5e5e",
+                        "cool-gray": "#717785",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#4c4546",
+                        "inverse-primary": "#c6c6c6",
+                        "electric-blue": "#1978E5",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "surface-dim": "#d4daea",
+                        "on-background": "#161c27",
+                        "outline-variant": "#cfc4c5",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-container": "#e8eefe",
+                        "background": "#f9f9ff",
+                        "canvas": "#F6F7F9",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gap-sm": "8px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background text-primary dark:text-on-primary-fixed font-headline-md text-headline-md w-full top-0 sticky flat no shadows flex justify-between items-center px-margin-page h-touch-target z-40">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="lens_blur">lens_blur</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight">Privacy &amp; Data</h1>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="max-w-3xl mx-auto px-margin-page pt-8 space-y-12">
+<!-- Data Inventory -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-6">Data Inventory</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gap-sm">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between h-32">
+<div class="flex items-center space-x-2 text-cool-gray">
+<span class="material-symbols-outlined" data-icon="image">image</span>
+<span class="font-label-md text-label-md">Media</span>
+</div>
+<div class="font-headline-lg text-headline-lg">4.2<span class="font-body-md text-body-md text-cool-gray ml-1">GB</span></div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between h-32">
+<div class="flex items-center space-x-2 text-cool-gray">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-md text-label-md">Transcripts</span>
+</div>
+<div class="font-headline-lg text-headline-lg">12<span class="font-body-md text-body-md text-cool-gray ml-1">MB</span></div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col justify-between h-32">
+<div class="flex items-center space-x-2 text-cool-gray">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+<span class="font-label-md text-label-md">Memory</span>
+</div>
+<div class="font-headline-lg text-headline-lg">200<span class="font-body-md text-body-md text-cool-gray ml-1">KB</span></div>
+</div>
+</div>
+</section>
+<!-- Storage Boundary -->
+<section>
+<h2 class="font-headline-md text-headline-md mb-6">Storage Location</h2>
+<div class="flex flex-col md:flex-row gap-6 relative">
+<!-- Line separator for desktop -->
+<div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-outline-variant -translate-x-1/2"></div>
+<!-- On Device -->
+<div class="flex-1 bg-surface-container-lowest p-6 rounded-xl border border-outline-variant relative overflow-hidden">
+<div class="absolute top-4 right-4 bg-primary text-on-primary font-label-sm text-label-sm px-2 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="lock">lock</span>
+<span>On device</span>
+</div>
+<h3 class="font-label-lg text-label-lg font-semibold mb-2 mt-4">Local Hardware</h3>
+<p class="font-body-md text-body-md text-cool-gray mb-6">Data is processed and stored exclusively on your AD Glasses. It never leaves the physical hardware.</p>
+<ul class="space-y-3 font-body-md text-body-md">
+<li class="flex items-center space-x-3"><span class="material-symbols-outlined text-success-teal" data-icon="check_circle">check_circle</span> <span>Raw media captures</span></li>
+<li class="flex items-center space-x-3"><span class="material-symbols-outlined text-success-teal" data-icon="check_circle">check_circle</span> <span>Real-time memory logs</span></li>
+<li class="flex items-center space-x-3"><span class="material-symbols-outlined text-success-teal" data-icon="check_circle">check_circle</span> <span>Biometric signatures</span></li>
+</ul>
+</div>
+<!-- Cloud -->
+<div class="flex-1 bg-surface-container-low p-6 rounded-xl border border-outline-variant relative">
+<div class="absolute top-4 right-4 bg-outline-variant text-on-surface-variant font-label-sm text-label-sm px-2 py-1 rounded-full flex items-center space-x-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="cloud">cloud</span>
+<span>Your cloud</span>
+</div>
+<h3 class="font-label-lg text-label-lg font-semibold mb-2 mt-4">Encrypted Backup</h3>
+<p class="font-body-md text-body-md text-cool-gray mb-6">Optional off-device storage for long-term retention. End-to-end encrypted before transfer.</p>
+<ul class="space-y-3 font-body-md text-body-md">
+<li class="flex items-center space-x-3"><span class="material-symbols-outlined text-electric-blue" data-icon="sync">sync</span> <span>Processed transcripts</span></li>
+<li class="flex items-center space-x-3"><span class="material-symbols-outlined text-electric-blue" data-icon="sync">sync</span> <span>Aggregated insights</span></li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Privacy Controls -->
+<section class="mb-12">
+<h2 class="font-headline-md text-headline-md mb-6">Privacy Controls</h2>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl divide-y divide-outline-variant">
+<!-- Memory Mode -->
+<div class="p-6 flex items-center justify-between">
+<div>
+<div class="font-label-lg text-label-lg font-semibold flex items-center space-x-2">
+<span>Memory Mode</span>
+<span class="bg-success-teal text-white font-label-sm text-label-sm px-2 py-0.5 rounded-full">Private Local</span>
+</div>
+<div class="font-body-md text-body-md text-cool-gray mt-1">Restrict all contextual processing to the local NPU.</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-graphite-black"></div>
+</label>
+</div>
+<!-- Redaction -->
+<div class="p-6 flex items-center justify-between">
+<div>
+<div class="font-label-lg text-label-lg font-semibold">Auto-Redaction</div>
+<div class="font-body-md text-body-md text-cool-gray mt-1">Automatically blur faces and redact PII in captured media.</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-graphite-black"></div>
+</label>
+</div>
+<!-- Vault Lock -->
+<div class="p-6 flex items-center justify-between">
+<div>
+<div class="font-label-lg text-label-lg font-semibold">Vault Lock</div>
+<div class="font-body-md text-body-md text-cool-gray mt-1">Require biometric authentication to view past 24 hours of data.</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-graphite-black"></div>
+</label>
+</div>
+</div>
+<div class="mt-8 flex justify-end">
+<button class="bg-error text-on-error font-label-lg text-label-lg px-6 py-3 rounded-lg flex items-center space-x-2 scale-98 transition-transform duration-200 hover:opacity-90">
+<span class="material-symbols-outlined" data-icon="delete_forever">delete_forever</span>
+<span>Clear all local data</span>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Hidden on md and up, as per rules, though JSON doesn't specify md:hidden, applying rule responsive pivot) -->
+<nav class="md:hidden bg-surface-container-lowest dark:bg-surface-container-lowest fixed bottom-0 w-full z-50 border-t border-outline-variant border-t border-outline-variant bg-surface-container-lowest flat no shadows flex justify-around items-center h-16 w-full px-4 pb-safe scale-95 transition-all duration-200">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low w-16 h-14 rounded-xl">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low w-16 h-14 rounded-xl">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-md text-label-md mt-1">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low w-16 h-14 rounded-xl">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-md text-label-md mt-1">Library</span>
+</button>
+<!-- Assuming this Settings-like page maps closest to Automations or we leave inactive since it's a sub-page, but rule says pick closest. Settings often groups with Automations/Profile. -->
+<button class="flex flex-col items-center justify-center text-secondary dark:text-electric-blue bg-surface-container-high rounded-xl px-3 py-1 hover:bg-surface-container-low w-16 h-14 rounded-xl">
+<span class="material-symbols-outlined" data-icon="settings_suggest" data-weight="fill">settings_suggest</span>
+<span class="font-label-md text-label-md mt-1">Automations</span>
+</button>
+</nav>
+</body></html>

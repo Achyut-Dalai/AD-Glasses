@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Action Approval Sheet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e5e8f1",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-surface-variant": "#424752",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "outline-variant": "#c2c6d4",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ebeef6",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-variant": "#dfe2eb",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-background": "#181c22",
+                        "on-error-container": "#93000a",
+                        "outline": "#727783",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "background-alt": "#F6F7F9",
+                        "tertiary-container": "#964400",
+                        "secondary": "#465f88",
+                        "on-surface": "#181c22",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-primary-container": "#c0d5ff",
+                        "surface-dim": "#d7dae2",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-bright": "#f8f9ff",
+                        "surface": "#f8f9ff",
+                        "background": "#f8f9ff",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-tint": "#095db7",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-secondary-container": "#3f5881",
+                        "primary": "#181c22", /* Studio Graphite override: Dark primary */
+                        "secondary-container": "#b6d0ff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary-container": "#ffc9ac",
+                        "status-connected": "#1275e2",
+                        "on-tertiary-fixed": "#321200",
+                        "inverse-on-surface": "#eef1f9",
+                        "on-error": "#ffffff",
+                        "tertiary": "#723200",
+                        "inverse-surface": "#2d3137",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbc9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "40px",
+                        "element-gap": "0.75rem",
+                        "section-gap": "2rem",
+                        "container-margin": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .studio-hairline {
+            border: 0.5px solid #e2e8f0;
+        }
+        .glass-sheet {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-[#121417] min-h-screen flex items-center justify-center p-0 sm:p-4">
+<!-- Mock Background App Content (Focused View logic: Shared nav excluded) -->
+<div class="fixed inset-0 z-0 overflow-hidden opacity-40 blur-sm pointer-events-none">
+<div class="w-full h-full flex flex-col p-6 bg-surface">
+<div class="h-12 w-full bg-surface-container rounded-lg mb-4"></div>
+<div class="space-y-4">
+<div class="h-24 w-full bg-surface-container rounded-lg"></div>
+<div class="h-24 w-full bg-surface-container rounded-lg"></div>
+<div class="h-24 w-full bg-surface-container rounded-lg"></div>
+<div class="h-24 w-full bg-surface-container rounded-lg"></div>
+</div>
+</div>
+</div>
+<!-- Bottom Sheet Container (Agent Action Approval) -->
+<div class="relative w-full max-w-md h-screen sm:h-auto sm:max-h-[795px] flex flex-col justify-end">
+<!-- Bottom Sheet Wrapper -->
+<div class="flex flex-col w-full bg-slate-50 rounded-t-[2.5rem] shadow-2xl studio-hairline overflow-hidden animate-in slide-in-from-bottom duration-500">
+<!-- Handle -->
+<button class="flex h-6 w-full items-center justify-center pt-2">
+<div class="h-1.5 w-12 rounded-full bg-slate-300"></div>
+</button>
+<!-- Sheet Header -->
+<div class="px-6 pt-4 pb-2 text-center">
+<h4 class="text-primary font-bold text-sm tracking-widest uppercase opacity-60">Local Agent Action Approval</h4>
+</div>
+<!-- Content Body -->
+<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+<!-- Requested Goal -->
+<div class="flex items-start gap-4 p-4 bg-white rounded-2xl studio-hairline">
+<div class="text-primary flex items-center justify-center rounded-xl bg-slate-100 shrink-0 size-12" data-icon="Target" data-size="24px" data-weight="regular" style="color: #1275e2;">
+<span class="material-symbols-outlined">track_changes</span>
+</div>
+<div class="flex flex-col">
+<p class="text-on-surface text-sm font-normal uppercase tracking-wider opacity-50 mb-0.5">Requested Goal</p>
+<p class="text-on-surface text-base font-semibold leading-tight">Send a message to John saying I will be late</p>
+</div>
+</div>
+<!-- App/Target -->
+<div class="flex items-start gap-4 p-4 bg-white rounded-2xl studio-hairline">
+<div class="text-primary flex items-center justify-center rounded-xl bg-slate-100 shrink-0 size-12" data-icon="PaperPlaneTilt" data-size="24px" data-weight="regular" style="color: #1275e2;">
+<span class="material-symbols-outlined">send</span>
+</div>
+<div class="flex flex-col">
+<p class="text-on-surface text-sm font-normal uppercase tracking-wider opacity-50 mb-0.5">App / Target</p>
+<p class="text-on-surface text-base font-semibold leading-tight">Telegram · John Smith</p>
+</div>
+</div>
+<!-- Proposed Action & Data -->
+<div class="flex flex-col gap-4 p-4 bg-white rounded-2xl studio-hairline">
+<div class="flex items-start gap-4">
+<div class="text-primary flex items-center justify-center rounded-xl bg-slate-100 shrink-0 size-12" data-icon="CursorClick" data-size="24px" data-weight="regular" style="color: #1275e2;">
+<span class="material-symbols-outlined">ads_click</span>
+</div>
+<div class="flex flex-col flex-1">
+<p class="text-on-surface text-sm font-normal uppercase tracking-wider opacity-50 mb-0.5">Proposed Action</p>
+<p class="text-on-surface text-base font-semibold leading-tight mb-2">Telegram</p>
+<div class="flex items-center gap-2 py-1 px-2 bg-slate-50 rounded-lg w-fit">
+<span class="material-symbols-outlined text-[16px] text-primary opacity-60">database</span>
+<p class="text-primary text-xs font-medium">Data: Contact list and active chat window</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Risk Explanation (The "Warning" Section) -->
+<div class="p-4 bg-error-container rounded-2xl border border-error/10 flex gap-3">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div class="flex flex-col">
+<p class="text-error font-bold text-xs uppercase tracking-tight mb-1">Risk Assessment</p>
+<p class="text-on-error-container text-sm leading-relaxed">
+                            Local Agent will take control of the keyboard and send a message. This action cannot be undone by the agent.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="px-6 py-6 space-y-3 bg-white border-t border-slate-100">
+<button class="w-full py-4 bg-primary text-white rounded-xl font-bold text-base shadow-lg shadow-black/20 hover:opacity-90 active:scale-[0.98] transition-all">
+                    Confirm once
+                </button>
+<button class="w-full py-4 border-2 border-slate-200 text-on-surface rounded-xl font-bold text-base hover:bg-slate-50 active:scale-[0.98] transition-all">
+                    Edit request
+                </button>
+<button class="w-full py-2 text-primary font-semibold text-sm hover:underline">
+                    Cancel
+                </button>
+</div>
+<!-- Bottom safe area padding -->
+<div class="h-8 bg-white"></div>
+</div>
+</div>
+<!-- Background Illustration (Abstract Graphite Aesthetics) -->
+<div class="fixed top-0 right-0 -z-10 w-1/2 h-full opacity-10 pointer-events-none overflow-hidden">
+<div class="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-primary to-transparent rounded-full -translate-y-1/2 translate-x-1/2 blur-[120px]"></div>
+</div>
+<script>
+        // Simple micro-interaction for button presses
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.97)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

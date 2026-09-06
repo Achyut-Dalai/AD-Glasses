@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Assistant Live Session - Technical Monitor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f9f9ff",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-tertiary-fixed": "#321200",
+                    "surface-container": "#ebedf7",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#964400",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "primary-container": "#0a73e0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "surface-container-low": "#f1f3fc",
+                    "secondary": "#465f88",
+                    "surface-container-high": "#e6e8f1",
+                    "on-primary-fixed": "#001b3e",
+                    "surface-container-highest": "#e0e2eb",
+                    "inverse-surface": "#2d3037",
+                    "primary-fixed": "#d6e3ff",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#3f5881",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#d6e3ff",
+                    "surface-tint": "#095db7",
+                    "on-secondary": "#ffffff",
+                    "on-primary-container": "#c0d5ff",
+                    "secondary-container": "#b6d0ff",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-background": "#181c22",
+                    "outline-variant": "#c2c6d4",
+                    "surface-dim": "#d7dae3",
+                    "tertiary-fixed": "#ffdbc9",
+                    "primary": "#004389",
+                    "on-surface-variant": "#414753",
+                    "surface-variant": "#e0e2eb",
+                    "background": "#f9f9ff",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "tertiary": "#723200",
+                    "on-primary-fixed-variant": "#00458d",
+                    "on-surface": "#181c22",
+                    "error-container": "#ffdad6",
+                    "surface": "#f9f9ff",
+                    "outline": "#727783",
+                    "inverse-on-surface": "#eef0fa",
+                    "on-secondary-fixed": "#001b3d",
+                    "on-tertiary-container": "#ffc9ac",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#aac7ff",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "element-gap": "0.75rem",
+                    "section-gap": "1.5rem",
+                    "container-padding": "1rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "display-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Multi-band Frequency Analyzer Animation */
+        .analyzer-band {
+            transform-origin: bottom;
+            animation: bounce-band 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes bounce-band {
+            0% { transform: scaleY(0.1); }
+            100% { transform: scaleY(1); }
+        }
+
+        /* Status Indicator Pulse */
+        @keyframes pulse-status {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse-dot {
+            animation: pulse-status 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Timeline Connection Line */
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            left: 11px; /* Align with center of 24px dot (12px radius minus 1px line width) */
+            top: 24px;
+            bottom: -16px; /* Extend to next item */
+            width: 2px;
+            background-color: var(--color-surface-dim, #d7dae3);
+            z-index: 0;
+        }
+        .timeline-item:last-child .timeline-line::before {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md h-screen w-screen overflow-hidden flex flex-col pt-safe-top pb-safe-bottom">
+<!-- TopAppBar -->
+<header class="flex items-center justify-between px-4 py-3 w-full bg-surface shrink-0">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-150 text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary tracking-tight">Live Session</h1>
+<button class="p-2 -mr-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-150 text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto flex flex-col">
+<!-- Visualization Section -->
+<section class="w-full h-48 px-4 flex flex-col justify-center items-center relative bg-surface-container-lowest border-b border-outline-variant/20 shrink-0">
+<!-- Multi-band Frequency Analyzer -->
+<div class="flex items-end justify-center h-24 w-full gap-1 mb-6" id="frequency-analyzer">
+<!-- Javascript will populate bands here -->
+</div>
+<!-- Status Indicators below viz -->
+<div class="flex gap-4 items-center w-full justify-center">
+<!-- Status 1 -->
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-low border border-outline-variant/30">
+<div class="w-2 h-2 rounded-full bg-primary pulse-dot"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">On-device processing active</span>
+</div>
+<!-- Status 2 -->
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-low border border-outline-variant/30">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 0;">mic</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Mic: High Quality</span>
+</div>
+</div>
+</section>
+<!-- Content Section: Key Moments Captured -->
+<section class="flex-1 px-4 py-6 w-full max-w-3xl mx-auto flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Key Moments Captured</h2>
+<span class="font-label-md text-label-md text-primary bg-primary-container/20 px-2 py-0.5 rounded">Live</span>
+</div>
+<!-- Timeline -->
+<div class="flex flex-col mt-2">
+<!-- Timeline Item 1 -->
+<div class="relative pl-8 pb-4 timeline-item">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div class="timeline-line"></div>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface-variant">10:42 AM</span>
+<p class="font-body-md text-body-md text-on-surface bg-surface-container-low p-3 rounded-lg border border-outline-variant/20 shadow-sm mt-1">Person detected in frame. Approaching device.</p>
+</div>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative pl-8 pb-4 timeline-item">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-primary-container border-2 border-surface flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-on-primary-container" style="font-variation-settings: 'FILL' 1;">assignment</span>
+</div>
+<div class="timeline-line"></div>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-primary font-semibold">10:43 AM</span>
+<p class="font-body-md text-body-md text-on-surface bg-surface-container p-3 rounded-lg border border-primary/20 shadow-sm mt-1"><strong class="font-semibold text-primary">Action item identified:</strong> Schedule meeting with team for tomorrow.</p>
+</div>
+</div>
+<!-- Timeline Item 3 (Ongoing) -->
+<div class="relative pl-8 pb-4 timeline-item">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center z-10">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant pulse-dot"></div>
+</div>
+<div class="timeline-line"></div>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface-variant">10:45 AM</span>
+<p class="font-body-md text-body-md text-on-surface-variant italic mt-1">Analyzing surrounding environment...</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Controls -->
+<section class="w-full bg-surface border-t border-outline-variant/20 px-4 py-4 pb-8 shrink-0 flex items-center justify-center gap-4">
+<!-- Save Transcript Action -->
+<button class="flex flex-col items-center gap-1 active:scale-95 transition-transform duration-200 group">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">download</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Save</span>
+</button>
+<!-- Mute Action -->
+<button class="flex flex-col items-center gap-1 active:scale-95 transition-transform duration-200 group">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">mic_off</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Mute</span>
+</button>
+<!-- End Action (Primary) -->
+<button class="flex flex-col items-center gap-1 active:scale-95 transition-transform duration-200 group mx-2">
+<div class="w-16 h-16 rounded-[1.25rem] bg-error flex items-center justify-center group-hover:bg-error/90 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-on-error" style="font-variation-settings: 'FILL' 1;">call_end</span>
+</div>
+<span class="font-label-sm text-label-sm text-error font-semibold mt-1">End</span>
+</button>
+<!-- Camera Action -->
+<button class="flex flex-col items-center gap-1 active:scale-95 transition-transform duration-200 group">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:bg-surface-container-high transition-colors relative">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">videocam</span>
+<!-- Disabled indicator line -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-6 h-0.5 bg-on-surface-variant rotate-45 transform origin-center"></div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Camera</span>
+</button>
+<!-- Pause Action -->
+<button class="flex flex-col items-center gap-1 active:scale-95 transition-transform duration-200 group">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">pause</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pause</span>
+</button>
+</section>
+<!-- Suppress TopAppBar bottom border, BottomNavBar (not top level destination) -->
+<script>
+        // Generate Frequency Analyzer Bands
+        document.addEventListener("DOMContentLoaded", () => {
+            const container = document.getElementById('frequency-analyzer');
+            const numBands = 40; // Number of thin graphite lines
+            
+            for (let i = 0; i < numBands; i++) {
+                const band = document.createElement('div');
+                // Use a thin width and outline-variant color for graphite look
+                band.className = 'w-[2px] bg-outline-variant/60 rounded-t-sm analyzer-band';
+                
+                // Randomize height and animation delay for organic feel
+                const heightPercent = Math.random() * 80 + 20; // 20% to 100% height
+                const delay = Math.random() * -1; // Negative delay to start immediately at random points
+                const duration = Math.random() * 0.5 + 0.5; // 0.5s to 1s duration
+                
+                band.style.height = `${heightPercent}%`;
+                band.style.animationDelay = `${delay}s`;
+                band.style.animationDuration = `${duration}s`;
+                
+                container.appendChild(band);
+            }
+        });
+    </script>
+</body></html>

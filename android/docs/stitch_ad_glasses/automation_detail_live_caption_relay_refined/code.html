@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Live Caption Relay</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#4090fe",
+                        "on-surface": "#161c27",
+                        "canvas": "#F6F7F9",
+                        "surface-container-high": "#e2e8f8",
+                        "on-secondary-fixed": "#001b3e",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2a313d",
+                        "surface-control": "#FFFFFF",
+                        "cool-gray": "#717785",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-primary-fixed": "#1b1b1b",
+                        "background": "#f9f9ff",
+                        "on-tertiary-fixed": "#191c1e",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "electric-blue": "#1978E5",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "surface-variant": "#dde2f2",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-surface-variant": "#4c4546",
+                        "outline-variant": "#cfc4c5",
+                        "on-background": "#161c27",
+                        "on-error-container": "#93000a",
+                        "graphite-black": "#000000",
+                        "inverse-primary": "#c6c6c6",
+                        "tertiary-container": "#191c1e",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "inverse-on-surface": "#ecf0ff",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-dim": "#d4daea",
+                        "surface-container": "#e8eefe",
+                        "on-primary-fixed-variant": "#474747",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-container": "#828486",
+                        "tertiary": "#000000",
+                        "surface": "#f9f9ff",
+                        "on-secondary-container": "#002958",
+                        "surface-container-low": "#f0f3ff",
+                        "outline": "#7e7576",
+                        "on-primary-container": "#848484",
+                        "success-teal": "#008080",
+                        "surface-tint": "#5e5e5e",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary": "#ffffff",
+                        "warning-amber": "#FFBF00",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "secondary": "#005db8",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px",
+                        "gap-sm": "8px",
+                        "touch-target": "48px",
+                        "margin-page": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Custom range slider styling */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #000000;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cfc4c5;
+            border-radius: 2px;
+        }
+        
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #1978E5;
+        }
+        
+        /* Toggle styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #1978E5;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #1978E5;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-surface antialiased min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full sticky top-0 z-50">
+<div class="flex items-center justify-between px-margin-page h-16 w-full max-w-5xl mx-auto">
+<button class="flex items-center justify-center w-touch-target h-touch-target hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-full text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary dark:text-primary-fixed-dim font-bold tracking-tight">Automation Detail</h1>
+<button class="flex items-center justify-center w-touch-target h-touch-target hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 rounded-full text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-5xl mx-auto px-margin-page pt-6">
+<!-- Hero Section / Header -->
+<section class="flex items-center gap-4 mb-8">
+<div class="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center flex-shrink-0 border border-outline-variant/30">
+<span class="material-symbols-outlined text-[32px] text-electric-blue" style="font-variation-settings: 'FILL' 1;">closed_caption</span>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-1">Live Caption Relay</h2>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-success-teal"></span>
+<p class="font-label-md text-label-md text-cool-gray">Active • On device processing</p>
+</div>
+</div>
+</section>
+<!-- Compatibility & Requirements -->
+<section class="mb-8">
+<div class="bg-surface-control rounded-xl p-5 border border-outline-variant/20 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue"></div>
+<h3 class="font-label-lg text-label-lg text-primary mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                    Compatibility
+                </h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Requires compatible AR display for overlay output. Processing handled entirely on-device for maximum privacy.
+                </p>
+</div>
+</section>
+<!-- Hardware Manifest -->
+<section class="mb-8">
+<h3 class="font-label-lg text-label-lg text-primary mb-4 px-1">Hardware Manifest</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-surface-control rounded-lg p-4 border border-outline-variant/30 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Microphone</p>
+<p class="font-label-sm text-label-sm text-cool-gray">Input source</p>
+</div>
+</div>
+<div class="bg-surface-control rounded-lg p-4 border border-outline-variant/30 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[20px]">qr_code_2</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Display Output</p>
+<p class="font-label-sm text-label-sm text-cool-gray">AR Overlay</p>
+</div>
+</div>
+<div class="bg-surface-control rounded-lg p-4 border border-outline-variant/30 flex items-center gap-4 opacity-70">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[20px]">smartphone</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Phone Screen</p>
+<p class="font-label-sm text-label-sm text-cool-gray">Fallback view</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Configuration -->
+<section class="mb-8">
+<h3 class="font-label-lg text-label-lg text-primary mb-4 px-1">Configuration</h3>
+<div class="bg-surface-control rounded-xl border border-outline-variant/30 overflow-hidden">
+<!-- Input Source -->
+<div class="p-5 border-b border-outline-variant/20 flex items-center justify-between">
+<div>
+<p class="font-label-lg text-label-lg text-primary">Mic Input</p>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Select primary audio source</p>
+</div>
+<select class="form-select border-outline-variant/30 rounded-md font-body-md text-body-md text-on-surface focus:border-electric-blue focus:ring-1 focus:ring-electric-blue bg-surface">
+<option>Glasses Array</option>
+<option>Phone Mic</option>
+<option>External Bluetooth</option>
+</select>
+</div>
+<!-- Language -->
+<div class="p-5 border-b border-outline-variant/20 flex items-center justify-between">
+<div>
+<p class="font-label-lg text-label-lg text-primary">Spoken Language</p>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Current detection mode</p>
+</div>
+<div class="px-3 py-1.5 bg-surface-container rounded-md font-label-md text-label-md text-primary flex items-center gap-1 border border-outline-variant/20">
+<span class="material-symbols-outlined text-[16px]">language</span>
+                        Auto-Detect
+                    </div>
+</div>
+<!-- Text Size Slider -->
+<div class="p-5 border-b border-outline-variant/20">
+<div class="flex items-center justify-between mb-4">
+<div>
+<p class="font-label-lg text-label-lg text-primary">Text Size</p>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Display overlay scale</p>
+</div>
+<span class="font-label-md text-label-md text-primary bg-surface-container px-2 py-1 rounded">Medium</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[16px] text-cool-gray">format_size</span>
+<input class="w-full h-1 bg-outline-variant rounded-lg appearance-none cursor-pointer" max="100" min="1" type="range" value="50"/>
+<span class="material-symbols-outlined text-[24px] text-cool-gray">format_size</span>
+</div>
+</div>
+<!-- Short-line behavior -->
+<div class="p-5 flex items-center justify-between">
+<div>
+<p class="font-label-lg text-label-lg text-primary">Short-line Behavior</p>
+<p class="font-body-md text-body-md text-cool-gray mt-1">Force wrap on display edge</p>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out border-outline-variant translate-x-6" id="wrap-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-electric-blue cursor-pointer transition-colors duration-200 ease-in-out" for="wrap-toggle"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col gap-3 mt-8">
+<button class="w-full h-touch-target bg-graphite-black text-white font-label-lg text-label-lg rounded-lg active:scale-95 transition-transform">
+                Save Configuration
+            </button>
+<button class="w-full h-touch-target bg-surface-control border border-error/50 text-error font-label-lg text-label-lg rounded-lg active:scale-95 transition-transform">
+                Disable Automation
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container-lowest fixed bottom-0 w-full z-50 pb-safe shadow-sm border-t border-outline-variant/10 md:hidden">
+<div class="flex justify-around items-center h-20 px-4 w-full max-w-5xl mx-auto">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200 w-touch-target h-touch-target group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:text-primary">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200 w-touch-target h-touch-target group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:text-primary">smart_toy</span>
+<span class="font-label-sm text-label-sm">Devices</span>
+</a>
+<!-- Active State -->
+<a class="flex flex-col items-center justify-center w-auto h-touch-target active:scale-90 duration-200" href="#">
+<div class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-fixed-variant text-on-secondary-container dark:text-secondary-fixed rounded-full px-5 py-1">
+<span class="material-symbols-outlined text-[24px] mb-1" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-label-sm text-label-sm">Automate</span>
+</div>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed transition-all active:scale-90 duration-200 w-touch-target h-touch-target group" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:text-primary">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</div>
+</nav>
+<script>
+        // Simple toggle logic for custom styling
+        const toggle = document.getElementById('wrap-toggle');
+        toggle.addEventListener('change', function() {
+            if(this.checked) {
+                this.classList.add('translate-x-6', 'border-electric-blue');
+                this.classList.remove('translate-x-0', 'border-outline-variant');
+                this.nextElementSibling.classList.add('bg-electric-blue');
+                this.nextElementSibling.classList.remove('bg-outline-variant');
+            } else {
+                this.classList.remove('translate-x-6', 'border-electric-blue');
+                this.classList.add('translate-x-0', 'border-outline-variant');
+                this.nextElementSibling.classList.remove('bg-electric-blue');
+                this.nextElementSibling.classList.add('bg-outline-variant');
+            }
+        });
+    </script>
+</body></html>

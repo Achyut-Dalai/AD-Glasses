@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>AD Glasses - Automation Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-surface": "#2d3037",
+                    "on-secondary-container": "#3f5881",
+                    "background": "#f9f9ff",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "primary-fixed": "#d6e3ff",
+                    "primary-container": "#005ab4",
+                    "surface-container": "#ebedf7",
+                    "on-tertiary-fixed": "#321200",
+                    "surface-container-highest": "#e0e2eb",
+                    "surface-tint": "#095db7",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-container-low": "#f1f3fc",
+                    "tertiary-container": "#964400",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#d7dae3",
+                    "primary-fixed-dim": "#aac7ff",
+                    "on-surface": "#181c22",
+                    "on-tertiary-container": "#ffc9ac",
+                    "surface-variant": "#e0e2eb",
+                    "surface-container-high": "#e6e8f1",
+                    "secondary": "#465f88",
+                    "outline": "#727783",
+                    "secondary-container": "#b6d0ff",
+                    "secondary-fixed": "#d6e3ff",
+                    "surface-bright": "#f9f9ff",
+                    "error": "#ba1a1a",
+                    "surface": "#f9f9ff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#414753",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#c2c6d4",
+                    "tertiary": "#723200",
+                    "on-secondary": "#ffffff",
+                    "primary": "#004389",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-background": "#181c22",
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "on-primary-container": "#c0d5ff",
+                    "on-primary-fixed": "#001b3e",
+                    "on-secondary-fixed": "#001b3d",
+                    "inverse-on-surface": "#eef0fa",
+                    "inverse-primary": "#aac7ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "1.5rem",
+                    "container-padding": "1rem",
+                    "element-gap": "0.75rem",
+                    "grid-gutter": "1rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "display-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                    "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}],
+                    "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                    "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                    "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                    "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Custom styles for specific interactions/animations */
+        .glass-overlay {
+            background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        /* Toggle Switch Styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #004389; /* primary */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #005ab4; /* primary-container */
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+            background-color: white; /* on-primary-container */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-container pb-safe">
+<!-- Top Navigation Area (Contextual Back/Close) -->
+<header class="w-full top-0 sticky z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/20 flex justify-between items-center px-container-padding h-14 max-w-5xl mx-auto transition-all duration-300">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant tap-highlight-none">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="font-headline-sm text-headline-sm text-on-surface flex-1 text-center truncate px-2">Automation Detail</div>
+<div class="w-10 h-10 flex items-center justify-center">
+<!-- Placeholder to balance flex layout -->
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-2xl mx-auto px-container-padding pt-6 pb-24 space-y-section-gap">
+<!-- Hero Section: Header & Identity -->
+<section class="flex flex-col items-center text-center space-y-4 pt-4">
+<div class="w-20 h-20 rounded-2xl bg-primary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-4xl text-on-primary-container" style="font-variation-settings: 'FILL' 1;">record_voice_over</span>
+</div>
+<div class="space-y-1 max-w-xs mx-auto">
+<h1 class="font-display-sm text-display-sm text-on-surface">Meeting Summarizer Pro</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Automatically records, transcribes, and generates action items for designated calendar events.</p>
+</div>
+<!-- Quick Enable Toggle -->
+<div class="mt-4 flex items-center bg-surface-container-low rounded-full px-4 py-2 border border-outline-variant/30 shadow-sm">
+<span class="font-label-lg text-label-lg text-on-surface mr-4">Enable Automation</span>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-surface-container-high appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out left-0" id="toggle-header" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-high cursor-pointer transition-colors duration-200 ease-in-out" for="toggle-header"></label>
+</div>
+</div>
+</section>
+<!-- Bento Grid: Details & Mechanics -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- How it works (Full Width on mobile, 1 col on md) -->
+<div class="bg-surface-container rounded-xl p-container-padding border border-outline-variant/20 shadow-sm md:col-span-2">
+<div class="flex items-center space-x-2 mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">How it works</h2>
+</div>
+<div class="space-y-4">
+<div class="flex items-start space-x-3">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="font-label-md text-label-md text-on-primary">1</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Trigger: Calendar Event</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Activates 5 minutes before scheduled meetings labeled 'Important'.</p>
+</div>
+</div>
+<div class="flex items-start space-x-3">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="font-label-md text-label-md text-on-primary">2</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Action: Record &amp; Transcribe</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Uses AD Glasses microphone to capture audio securely.</p>
+</div>
+</div>
+<div class="flex items-start space-x-3">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="font-label-md text-label-md text-on-primary">3</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Outcome: Summary Sync</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pushes generated notes and action items to your designated cloud notes app.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Data Manifest -->
+<div class="bg-surface-container rounded-xl p-container-padding border border-outline-variant/20 shadow-sm">
+<div class="flex items-center space-x-2 mb-4">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">data_check</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Data Manifest</h2>
+</div>
+<ul class="space-y-3">
+<li class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 0; font-size: 20px;">mic</span>
+<span class="font-body-sm text-body-sm text-on-surface">Microphone</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary bg-primary-container/20 px-2 py-1 rounded-full">Required</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 0; font-size: 20px;">notifications</span>
+<span class="font-body-sm text-body-sm text-on-surface">Notifications</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary bg-primary-container/20 px-2 py-1 rounded-full">Required</span>
+</li>
+<li class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 0; font-size: 20px;">cloud_sync</span>
+<span class="font-body-sm text-body-sm text-on-surface">Your Cloud App</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-dim px-2 py-1 rounded-full">Optional</span>
+</li>
+</ul>
+</div>
+<!-- Trust Status -->
+<div class="bg-surface-container rounded-xl p-container-padding border border-outline-variant/20 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center space-x-2 mb-2">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Trust Status</h2>
+</div>
+<div class="bg-error-container/30 border border-error-container p-3 rounded-lg flex items-start space-x-3 mb-4">
+<span class="material-symbols-outlined text-error mt-0.5" style="font-variation-settings: 'FILL' 0; font-size: 18px;">warning</span>
+<p class="font-body-sm text-body-sm text-on-surface"><strong>Not verified by AD Glasses.</strong> Review the data manifest carefully before enabling.</p>
+</div>
+</div>
+<div class="flex items-center space-x-3 pt-2 border-t border-outline-variant/20">
+<div class="w-8 h-8 rounded-full bg-surface-dim flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Author</p>
+<p class="font-label-lg text-label-lg text-on-surface">@tech_wizard_99</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Bottom Action Area (Sticky to bottom on mobile) -->
+<div class="fixed bottom-0 left-0 right-0 p-container-padding bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 safe-area-pb">
+<div class="max-w-2xl mx-auto flex gap-3">
+<button class="flex-1 py-3 px-4 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg shadow-sm hover:bg-primary-container hover:text-on-primary-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex justify-center items-center space-x-2 tap-highlight-none">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1; font-size: 20px;">power_settings_new</span>
+<span>Review &amp; Enable</span>
+</button>
+</div>
+</div>
+</body></html>

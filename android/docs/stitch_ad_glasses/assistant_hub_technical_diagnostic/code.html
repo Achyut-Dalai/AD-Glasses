@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assistant Hub - Technical Diagnostic</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed-variant": "#753400",
+                      "on-error": "#ffffff",
+                      "primary-fixed-dim": "#aac7ff",
+                      "secondary": "#465f88",
+                      "surface-container-highest": "#dfe2eb",
+                      "on-background": "#181c22",
+                      "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                      "on-tertiary-fixed": "#321200",
+                      "outline-variant": "#c2c6d4",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#001b3d",
+                      "surface-variant": "#dfe2eb",
+                      "surface-tint": "#095db7",
+                      "tertiary-container": "#964400",
+                      "inverse-surface": "#2d3137",
+                      "error-container": "#ffdad6",
+                      "inverse-primary": "#aac7ff",
+                      "on-secondary-container": "#3f5881",
+                      "primary-container": "#005ab4",
+                      "background": "#f8f9ff",
+                      "on-surface": "#181c22",
+                      "tertiary": "#723200",
+                      "on-tertiary-container": "#ffc9ac",
+                      "surface": "#f8f9ff",
+                      "background-alt": "#F6F7F9",
+                      "on-primary-fixed": "#001b3e",
+                      "on-primary": "#ffffff",
+                      "primary-fixed": "#d6e3ff",
+                      "on-error-container": "#93000a",
+                      "on-primary-container": "#c0d5ff",
+                      "status-connected": "#1275e2",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-bright": "#f8f9ff",
+                      "surface-glass": "rgba(249, 249, 255, 0.8)",
+                      "surface-container-low": "#f1f3fc",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "surface-dim": "#d7dae2",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "on-surface-variant": "#424752",
+                      "secondary-container": "#b6d0ff",
+                      "primary": "#004389",
+                      "inverse-on-surface": "#eef1f9",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "outline": "#727783",
+                      "secondary-fixed": "#d6e3ff",
+                      "on-primary-fixed-variant": "#00458d",
+                      "tertiary-fixed": "#ffdbc9",
+                      "surface-container": "#ebeef6",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#e5e8f1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "2rem",
+                      "touch-target-min": "40px",
+                      "element-gap": "0.75rem",
+                      "container-margin": "1rem"
+              },
+              "fontFamily": {
+                      "headline-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "label-xs": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "label-xs": ["10px", {"lineHeight": "12px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-alt text-on-background font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background w-full top-0 sticky flex justify-between items-center px-container-margin h-[64px] max-w-screen-xl mx-auto z-40 backdrop-blur-md bg-opacity-80 border-b border-surface-container">
+<button class="text-primary dark:text-primary-fixed hover:opacity-80 transition-opacity active:scale-95 transition-transform w-[40px] h-[40px] flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="AD Glasses Logo" class="h-6 w-auto" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"/>
+<h1 class="font-headline-md text-headline-md font-bold text-graphite-black text-electric-blue">Assistant</h1>
+</div>
+<button class="text-primary dark:text-primary-fixed hover:opacity-80 transition-opacity active:scale-95 transition-transform w-[40px] h-[40px] flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 px-container-margin py-6 max-w-md mx-auto w-full pb-[100px] flex flex-col gap-section-gap">
+<!-- Header / Diagnostic Title -->
+<div class="flex flex-col gap-1 items-center text-center mt-4">
+<div class="w-12 h-12 bg-surface-container rounded-full flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-outline" data-icon="build">build</span>
+</div>
+<h2 class="font-headline-md text-headline-md">Technical Diagnostic</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">System status and provider configuration</p>
+</div>
+<!-- Alert Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 flex gap-4 shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-outline"></div>
+<span class="material-symbols-outlined text-outline mt-0.5" data-icon="info">info</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface">Assistant capability limited. Visual search and web grounding are paused until a cloud provider is linked.</p>
+</div>
+</div>
+<!-- System Health List (Data Sheet Precision) -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-container overflow-hidden shadow-sm">
+<div class="bg-surface-container px-4 py-2 border-b border-surface-container">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Provider Status</h3>
+</div>
+<div class="flex flex-col">
+<!-- Row 1 -->
+<div class="px-4 py-4 flex justify-between items-center border-b border-surface-container bg-surface-container-lowest">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">On-Device (Moonshine/Gemma)</span>
+<span class="font-label-xs text-label-xs text-outline font-mono mt-1">LATENCY: &lt;10MS</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-status-connected shadow-[0_0_8px_rgba(18,117,226,0.5)]"></span>
+<span class="font-label-sm text-label-sm text-status-connected">Active</span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="px-4 py-4 flex justify-between items-center bg-surface-container-lowest">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Cloud Relay (Your Cloud)</span>
+<span class="font-label-xs text-label-xs text-outline font-mono mt-1">ENDPOINT: NULL</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span class="font-label-sm text-label-sm text-outline">Not Configured</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Available Local Actions -->
+<section class="flex flex-col gap-3">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide px-1">Available Local Actions</h3>
+<div class="grid grid-cols-1 gap-2">
+<div class="bg-surface-container-lowest border border-surface-container rounded-lg p-3 flex items-center gap-3 shadow-sm">
+<div class="bg-surface-container-low p-2 rounded-md">
+<span class="material-symbols-outlined text-on-surface" data-icon="mic">mic</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface flex-1">Voice Control</span>
+<span class="material-symbols-outlined text-outline-variant text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="bg-surface-container-lowest border border-surface-container rounded-lg p-3 flex items-center gap-3 shadow-sm">
+<div class="bg-surface-container-low p-2 rounded-md">
+<span class="material-symbols-outlined text-on-surface" data-icon="play_arrow">play_arrow</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface flex-1">Media Management</span>
+<span class="material-symbols-outlined text-outline-variant text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="bg-surface-container-lowest border border-surface-container rounded-lg p-3 flex items-center gap-3 shadow-sm">
+<div class="bg-surface-container-low p-2 rounded-md">
+<span class="material-symbols-outlined text-on-surface" data-icon="tune">tune</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface flex-1">Device Settings</span>
+<span class="material-symbols-outlined text-outline-variant text-sm" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+</section>
+<!-- Action Button -->
+<div class="pt-4 mt-auto">
+<button class="w-full bg-on-background text-background font-body-sm text-body-sm py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-inverse-surface transition-colors active:scale-98 shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="cloud_sync">cloud_sync</span>
+                Configure Cloud Provider
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin py-2 bg-surface-container-lowest border-t border-outline-variant z-50 md:hidden">
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 w-16 h-12">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<span class="font-label-xs text-label-xs mt-1">Vision</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 w-16 h-12">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-xs text-label-xs mt-1">Chat</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98 transition-transform duration-200 w-16 h-12">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-label-xs text-label-xs mt-1">History</span>
+</button>
+<!-- Active State (Glasses - represents the device hub) -->
+<button class="flex flex-col items-center justify-center text-secondary-container dark:text-secondary-container bg-surface-container px-4 py-1 rounded-xl active:scale-98 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface" data-icon="glasses" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+<span class="font-label-xs text-label-xs mt-1 text-on-surface">Glasses</span>
+</button>
+</nav>
+</body></html>

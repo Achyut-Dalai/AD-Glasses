@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Transcripts Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#181c22",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-secondary-container": "#3f5881",
+                        "tertiary-container": "#964400",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-primary-fixed-variant": "#00458d",
+                        "secondary-fixed": "#d6e3ff",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#aac7ff",
+                        "secondary-container": "#b6d0ff",
+                        "on-primary-container": "#c0d5ff",
+                        "surface-container-high": "#e5e8f1",
+                        "status-connected": "#1275e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#723200",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "inverse-surface": "#2d3137",
+                        "background-alt": "#F6F7F9",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#424752",
+                        "primary": "#004389",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-bright": "#f8f9ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-dim": "#d7dae2",
+                        "on-background": "#181c22",
+                        "surface-container": "#ebeef6",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f1f3fc",
+                        "surface-variant": "#dfe2eb",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "on-error-container": "#93000a",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "inverse-on-surface": "#eef1f9",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f8f9ff",
+                        "background": "#f8f9ff",
+                        "outline-variant": "#c2c6d4",
+                        "inverse-primary": "#aac7ff",
+                        "outline": "#727783",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#465f88",
+                        "surface-tint": "#095db7"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "touch-target-min": "40px",
+                        "container-margin": "1rem",
+                        "element-gap": "0.75rem",
+                        "section-gap": "2rem"
+                    },
+                    fontFamily: {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-xs": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "display-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.025em", fontWeight: "800" }],
+                        "headline-md": ["18px", { lineHeight: "24px", fontWeight: "700" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "label-xs": ["10px", { lineHeight: "12px", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col antialiased">
+<!-- Top App Bar (Custom for Focused View) -->
+<header class="flex items-center px-4 h-16 bg-surface shrink-0 border-b border-outline-variant/30 sticky top-0 z-10">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-headline-md flex-1 text-center pr-10">Transcripts</h1>
+</header>
+<main class="flex-1 overflow-y-auto p-4 flex flex-col gap-section-gap max-w-2xl mx-auto w-full">
+<!-- General Settings -->
+<section class="flex flex-col gap-2">
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md font-medium text-on-surface">Auto-transcribe recordings</span>
+<span class="text-body-sm text-on-surface-variant">Generate transcripts automatically</span>
+</div>
+</div>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-surface-variant p-1 has-[:checked]:bg-primary transition-colors">
+<input checked="" class="peer invisible absolute" type="checkbox"/>
+<div class="h-6 w-6 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6"></div>
+</label>
+</div>
+<div class="bg-surface-container-low rounded-xl p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md font-medium text-on-surface">Language</span>
+<span class="text-body-sm text-on-surface-variant">English (US)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</section>
+<!-- Storage Settings -->
+<section class="flex flex-col gap-2">
+<h2 class="text-body-sm font-bold text-on-surface-variant uppercase tracking-wide px-2">Storage Settings</h2>
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col">
+<div class="p-4 flex items-center justify-between gap-4 border-b border-outline-variant/20">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined" data-icon="smartphone">smartphone</span>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md font-medium text-on-surface">Store on device</span>
+<span class="text-body-sm text-on-surface-variant">Keep transcripts saved locally</span>
+</div>
+</div>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-surface-variant p-1 has-[:checked]:bg-primary transition-colors">
+<input checked="" class="peer invisible absolute" type="checkbox"/>
+<div class="h-6 w-6 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6"></div>
+</label>
+</div>
+<div class="p-4 flex items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined" data-icon="delete_sweep">delete_sweep</span>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md font-medium text-on-surface">Auto-delete after 30 days</span>
+<span class="text-body-sm text-on-surface-variant">Free up space automatically</span>
+</div>
+</div>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-surface-variant p-1 has-[:checked]:bg-primary transition-colors">
+<input class="peer invisible absolute" type="checkbox"/>
+<div class="h-6 w-6 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Export Options -->
+<section class="flex flex-col gap-2">
+<h2 class="text-body-sm font-bold text-on-surface-variant uppercase tracking-wide px-2">Export Format</h2>
+<div class="bg-surface-container-low rounded-xl p-2 flex gap-2">
+<button class="flex-1 py-2 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-medium transition-colors shadow-sm">
+                    TXT
+                </button>
+<button class="flex-1 py-2 px-4 rounded-lg hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-colors">
+                    PDF
+                </button>
+<button class="flex-1 py-2 px-4 rounded-lg hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-colors">
+                    JSON
+                </button>
+</div>
+</section>
+<!-- Recent Transcriptions -->
+<section class="flex flex-col gap-4 pb-8">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-body-sm font-bold text-on-surface-variant uppercase tracking-wide">Recent Transcriptions</h2>
+<button class="text-primary text-label-sm uppercase font-bold hover:underline">View All</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-xl flex items-start gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="description">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-body-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Client Meeting: Project Alpha</h3>
+<div class="flex items-center gap-2 mt-1 text-label-sm text-on-surface-variant">
+<span>Today, 10:00 AM</span>
+<span>•</span>
+<span>45 mins</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-2 line-clamp-2">Discussed the upcoming milestones for Q3. John agreed to finalize the design mockups by Thursday. We also need to review the budget constraints...</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2 shrink-0">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-4 rounded-xl flex items-start gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[20px]" data-icon="description">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-body-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Idea Brainstorming</h3>
+<div class="flex items-center gap-2 mt-1 text-label-sm text-on-surface-variant">
+<span>Yesterday, 2:30 PM</span>
+<span>•</span>
+<span>15 mins</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-2 line-clamp-2">Quick notes on the new feature set for the AD Glasses application. Focus on hands-free interaction and context-aware UI...</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary p-2 shrink-0">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

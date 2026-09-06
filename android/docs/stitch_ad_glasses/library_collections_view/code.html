@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Library - Collections</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#723200",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#001b3e",
+                        "background": "#f9f9ff",
+                        "inverse-primary": "#aac7ff",
+                        "on-primary-container": "#c0d5ff",
+                        "on-background": "#181c22",
+                        "surface-container": "#ebedf7",
+                        "on-tertiary-fixed": "#321200",
+                        "tertiary-container": "#964400",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-variant": "#e0e2eb",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface": "#f9f9ff",
+                        "outline-variant": "#c2c6d4",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "primary-fixed": "#d6e3ff",
+                        "primary": "#004389",
+                        "surface-container-highest": "#e0e2eb",
+                        "surface-container-low": "#f1f3fc",
+                        "secondary-container": "#b6d0ff",
+                        "on-secondary-container": "#3f5881",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-bright": "#f9f9ff",
+                        "on-surface-variant": "#414753",
+                        "on-primary": "#ffffff",
+                        "secondary": "#465f88",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0a73e0",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-tertiary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#181c22",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#095db7",
+                        "inverse-surface": "#2d3037",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-dim": "#d7dae3",
+                        "surface-container-high": "#e6e8f1",
+                        "outline": "#727783"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "1rem",
+                        "section-gap": "1.5rem",
+                        "grid-gutter": "1rem",
+                        "element-gap": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+<!-- Top App Bar equivalent logic -->
+<header class="flex items-center bg-surface p-container-padding pb-2 justify-between sticky top-0 z-10 border-b border-surface-container">
+<h2 class="text-on-surface font-headline-sm flex-1">Library</h2>
+<div class="flex w-12 items-center justify-end">
+<button aria-label="Search" class="flex items-center justify-center h-12 w-12 rounded-full hover:bg-surface-container-high text-on-surface transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto overflow-x-hidden">
+<!-- Toggle -->
+<div class="px-container-padding py-3">
+<div class="flex h-10 w-full items-center justify-center rounded-lg bg-surface-container p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm font-medium">
+<span class="truncate">All Items</span>
+<input class="sr-only" name="library_view" type="radio" value="All Items"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 bg-surface shadow-sm text-on-surface text-sm font-medium transition-colors">
+<span class="truncate">Collections</span>
+<input checked="" class="sr-only" name="library_view" type="radio" value="Collections"/>
+</label>
+</div>
+</div>
+<!-- Grid -->
+<div class="grid grid-cols-2 gap-grid-gutter p-container-padding pb-24">
+<!-- Card 1 -->
+<div class="flex flex-col gap-2 group cursor-pointer">
+<div class="w-full bg-surface-container-high bg-center bg-no-repeat aspect-square bg-cover rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" data-alt="A clean, minimalist composition showing audio waveforms or recording equipment. Soft, high-key lighting creates a pristine light-mode aesthetic. The palette focuses on deep blacks, crisp whites, and subtle greys, reflecting a professional studio graphite style. The image feels organized and technical." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDoKpC_FBQFULlplLS9bvx_BKe2Jd5XGjJvEpoBZ-1-IS0O1MY50aIO9dLhX1Ds1csaqHma2N-ixEum_zHWnDEicM-9OmxtAMclLm_lfbAZ-iJtZzG7Nazn2yxjNoU6LCX680LNx4QFu6dM8Bc9kVrYJv4CbG9_FNSFNmbeMSskRYGAH40As1P_7OvnV28YQtw4MApasxSKQwOkhWORTYc8VFNjElN7jTcgnfWgnsGP2kHcHqnmD4na')"></div>
+<div>
+<p class="text-on-surface font-label-lg leading-tight">Recordings</p>
+<p class="text-on-surface-variant font-body-sm mt-0.5">12 items</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="flex flex-col gap-2 group cursor-pointer">
+<div class="w-full bg-surface-container-high bg-center bg-no-repeat aspect-square bg-cover rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" data-alt="A macro shot of neatly written notes on premium textured paper, perhaps with a sleek graphite pen resting nearby. The scene is bathed in bright, diffused light, emphasizing a crisp, modern light-mode look. The color scheme is predominantly white, off-white, and dark grey, fitting the studio graphite theme. The atmosphere is productive and serene." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDMTyMZRpohkUJzVUbkbpaTWwOoWt2iRLRPTcbhk1M62c9jIbHs6loWy14Cc1cTvvUzO5QUumH_VHtzuuiXTVLiTZyYSHE6yosL6sutocuITtm8_xFLwl3qRr3g-Iomw9f0uDexbKyMq58XpdXzk_4VkrF3Pl8BLNf5vnQzavAE7V_XNCIG6Q_5fCr9rh56BPP94kkV--BNMgm3TPAXGxHJ10dkRWBwpxs7BUP25pEz-rNPdE_LAMPl')"></div>
+<div>
+<p class="text-on-surface font-label-lg leading-tight">Meeting notes</p>
+<p class="text-on-surface-variant font-body-sm mt-0.5">5 items</p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="flex flex-col gap-2 group cursor-pointer">
+<div class="w-full bg-surface-container-high bg-center bg-no-repeat aspect-square bg-cover rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" data-alt="An abstract representation of time or daily progress, perhaps featuring a minimalist clock face or a stylized calendar graphic. The lighting is soft and even, highlighting a pure white background with sharp, dark geometric elements. This aligns perfectly with a clean, light-mode studio graphite aesthetic. The visual is crisp and structured." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA1DmndOksdf4puyc9GDxslkJfDy4nD5gMefAGVLResG29yqi3OwxnpGaY-JcZeYGADGfzN_5s7Q_CzYnteqaCK-qCL5PCowhk49T4rsyTO0poCpN_bgkrkO7PYFL37O0-8lNlvjET6Oef77MTTDcyJsWMNL2VeLZiJd7wg9aPWtWl6XbkWN6FThaGEDqg3IFuMW5mP9GpymlIR1l078eqXyInIuJzCSnJR4tYLs0n0zAviSBPDLYFh')"></div>
+<div>
+<p class="text-on-surface font-label-lg leading-tight">Daily summaries</p>
+<p class="text-on-surface-variant font-body-sm mt-0.5">14 items</p>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="flex flex-col gap-2 group cursor-pointer">
+<div class="w-full bg-surface-container-high bg-center bg-no-repeat aspect-square bg-cover rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" data-alt="A collection of minimalist polaroid-style photos or sleek digital frames arranged neatly on a pristine white surface. The lighting is bright and airy, defining a strong light-mode style. The overall palette is muted, relying on stark contrasts between black and white, typical of a studio graphite design language. The mood is reflective and artistic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDQoxwAEar_5RXv0OjBp6GV8BBxw9cbpBYXy7d-jr_XTnf5AxwtMpFoUkARQxGfXVVPpj051CkghXjgYnkqTm0Emy117z6HxK_5EAoClTUPsqkGrD79_NefUDYeQf-0Qm0fbFJZco3gT0E5U-5tOJX_QeAd9B88CgWJOXt7MqRFQSlpt7xj5PUSOfn888-w_BJ0VVwTMuq-0RstBf0J1lSJNuGQrCJJ-LbQrVCtIK0csCXIXSpIBAJO')"></div>
+<div>
+<p class="text-on-surface-variant font-body-sm mt-0.5">8 items</p>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="flex flex-col gap-2 group cursor-pointer">
+<div class="w-full bg-surface-container-high bg-center bg-no-repeat aspect-square bg-cover rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" data-alt="A stylized, modern depiction of artificial intelligence, perhaps a minimalist digital node network or a glowing subtle interface element. The scene is incredibly clean, lit with soft, high-key white light to suit a light-mode environment. The colors are strictly monochromatic—blacks, whites, and varying shades of grey—embodying the studio graphite aesthetic. The feel is advanced yet approachable." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuALw8OY-yl9V2lGB7BQ45l1NHJNRBUQqaBpoqlR5GvwgIsLl4wx0h9jNUPwy2vptEvwsxnkebLigH6y1vISJJbCWMp6tTVHTpiJ7kwyGXy7qOlyp6wNUuEnwSz0a5-4jDlzDpFUF3CHvKnPwhWz_BTqnrRBmAJhwAoNVcso2bwxyyEJt5oORGHkvKwGguAUUMyKaUwYTOxC4IKEBom2eWS2EKf3CNdeUFmRqdOym2_AolD9EBuiEYI3')"></div>
+<div>
+<p class="text-on-surface font-label-lg leading-tight">Saved AI answers</p>
+<p class="text-on-surface-variant font-body-sm mt-0.5">20 items</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shared Component -->
+<div class="fixed bottom-0 w-full z-20">
+<div class="flex gap-2 border-t border-surface-container bg-surface px-4 pb-4 pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">home</span>
+</div>
+<p class="text-[10px] font-medium leading-normal tracking-wide">Home</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-primary" href="#">
+<div class="flex h-8 items-center justify-center bg-secondary-container rounded-full w-12">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">library_books</span>
+</div>
+<p class="text-[10px] font-bold leading-normal tracking-wide">Library</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</div>
+<p class="text-[10px] font-medium leading-normal tracking-wide">Search</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person</span>
+</div>
+<p class="text-[10px] font-medium leading-normal tracking-wide">Profile</p>
+</a>
+</div>
+</div>
+</body></html>

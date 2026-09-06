@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meeting Summary: Product Sync</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#ffffff",
+                        "primary": "#004389",
+                        "on-tertiary-container": "#ffc9ac",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary-fixed": "#321200",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-background": "#181c22",
+                        "on-secondary-fixed": "#001b3d",
+                        "background": "#f8f9ff",
+                        "primary-container": "#005ab4",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-surface": "#181c22",
+                        "on-primary-fixed": "#001b3e",
+                        "tertiary": "#723200",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#ebeef6",
+                        "surface-tint": "#095db7",
+                        "on-surface-variant": "#424752",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c2c6d4",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#b6d0ff",
+                        "surface-variant": "#dfe2eb",
+                        "on-primary-container": "#c0d5ff",
+                        "on-secondary-container": "#3f5881",
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "inverse-surface": "#2d3137",
+                        "inverse-primary": "#aac7ff",
+                        "outline": "#727783",
+                        "status-connected": "#1275e2",
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-bright": "#f8f9ff",
+                        "inverse-on-surface": "#eef1f9",
+                        "background-alt": "#F6F7F9",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-container-high": "#e5e8f1",
+                        "surface-container-low": "#f1f3fc",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#964400",
+                        "surface": "#f8f9ff",
+                        "secondary": "#465f88",
+                        "surface-dim": "#d7dae2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "container-margin": "1rem",
+                        "section-gap": "2rem",
+                        "touch-target-min": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.025em", "fontWeight": "800"}],
+                        "label-xs": ["10px", {"lineHeight": "12px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased selection:bg-primary/20 selection:text-primary">
+<!-- Top App Bar (Detail View Context) -->
+<header class="fixed top-0 w-full z-50 backdrop-blur-[12px] bg-surface-glass/80 shadow-sm flex justify-between items-center px-container-margin h-14 transition-all duration-300">
+<button aria-label="Navigate back" class="flex items-center justify-center min-w-[40px] h-10 rounded-full hover:bg-surface-container-high transition-colors text-on-surface -ml-2">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-1">
+<button aria-label="Ask Assistant" class="flex items-center justify-center min-w-[40px] h-10 rounded-full hover:bg-surface-container-high transition-colors text-on-surface group relative" title="Ask Assistant">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">auto_awesome</span>
+</button>
+<button aria-label="Export" class="flex items-center justify-center min-w-[40px] h-10 rounded-full hover:bg-surface-container-high transition-colors text-on-surface group" title="Export">
+<span class="material-symbols-outlined text-[20px]">ios_share</span>
+</button>
+<button aria-label="Delete" class="flex items-center justify-center min-w-[40px] h-10 rounded-full hover:bg-error-container hover:text-error transition-colors text-on-surface group" title="Delete">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-16 px-container-margin max-w-3xl mx-auto flex flex-col gap-section-gap">
+<!-- Header & Metadata -->
+<section class="flex flex-col gap-element-gap">
+<h1 class="font-display-lg text-display-lg text-on-background">Product Sync: Q3 Roadmap</h1>
+<div class="flex flex-wrap items-center gap-x-6 gap-y-2 font-body-sm text-body-sm text-on-surface-variant bg-surface-container-low/50 p-3 rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span>Oct 24, 2023</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span>45 min</span>
+</div>
+<div class="h-4 w-px bg-outline-variant/50 hidden sm:block"></div>
+<a class="flex items-center gap-1.5 text-primary hover:text-primary-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:-rotate-45 transition-transform duration-300">link</span>
+<span class="underline underline-offset-4 decoration-primary/30 group-hover:decoration-primary">Original recording</span>
+</a>
+</div>
+</section>
+<!-- Overview Panel -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">subject</span>
+                Overview
+            </h2>
+<div class="bg-surface-container-lowest shadow-sm rounded-xl p-5 border border-outline-variant/20 relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary-container rounded-l-xl opacity-80"></div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed text-pretty">
+                    The team reviewed the progress for the Q3 roadmap, focusing primarily on the upcoming release of the new dashboard interface and underlying data architecture. Key bottlenecks in the data pipeline were discussed, resulting in a revised timeline for internal beta testing to ensure stability before broader rollout.
+                </p>
+</div>
+</section>
+<!-- Decisions List -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-secondary">gavel</span>
+                Decisions
+            </h2>
+<div class="bg-surface-container-lowest shadow-sm rounded-xl p-5 border border-outline-variant/20">
+<ul class="space-y-4 font-body-md text-body-md text-on-surface">
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-[20px] text-primary mt-0.5 shrink-0 icon-fill">fiber_manual_record</span>
+<span>Beta release pushed back by one week to accommodate extended QA testing cycles.</span>
+</li>
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-[20px] text-primary mt-0.5 shrink-0 icon-fill">fiber_manual_record</span>
+<span>Design team directed to prioritize the 'Settings' module overhaul over secondary features.</span>
+</li>
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-[20px] text-primary mt-0.5 shrink-0 icon-fill">fiber_manual_record</span>
+<span>Hiring process for the senior backend engineering role will be accelerated.</span>
+</li>
+</ul>
+</div>
+</section>
+<!-- Participants Grids -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-surface-tint">group</span>
+                Participants
+            </h2>
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center gap-2 bg-surface-container shadow-sm px-3 py-1.5 rounded-full border border-surface-variant hover:bg-surface-container-high transition-colors cursor-default">
+<div class="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-sm text-label-sm font-bold">A</div>
+<span class="font-body-sm text-body-sm text-on-surface pr-1">Speaker A</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container shadow-sm px-3 py-1.5 rounded-full border border-surface-variant hover:bg-surface-container-high transition-colors cursor-default">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-sm text-label-sm font-bold">B</div>
+<span class="font-body-sm text-body-sm text-on-surface pr-1">Speaker B</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container shadow-sm px-3 py-1.5 rounded-full border border-surface-variant hover:bg-surface-container-high transition-colors cursor-default">
+<div class="w-7 h-7 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-label-sm text-label-sm font-bold">C</div>
+<span class="font-body-sm text-body-sm text-on-surface pr-1">Speaker C</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container shadow-sm px-3 py-1.5 rounded-full border border-surface-variant hover:bg-surface-container-high transition-colors cursor-default">
+<div class="w-7 h-7 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-label-sm text-label-sm font-bold">D</div>
+<span class="font-body-sm text-body-sm text-on-surface pr-1">Speaker D</span>
+</div>
+</div>
+</section>
+<!-- Action Items Interactive List -->
+<section class="flex flex-col gap-element-gap">
+<h2 class="font-headline-md text-headline-md text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-error">assignment_turned_in</span>
+                Action Items
+            </h2>
+<div class="bg-surface-container-lowest shadow-sm rounded-xl p-2 border border-outline-variant/20 flex flex-col">
+<label class="flex items-start gap-4 p-3 hover:bg-surface-container-low rounded-lg cursor-pointer transition-colors group">
+<div class="relative flex items-start mt-1">
+<input class="w-5 h-5 rounded border-2 border-outline text-primary focus:ring-primary focus:ring-offset-0 transition-all bg-surface-container-lowest checked:border-primary" type="checkbox"/>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-body-md text-body-md text-on-surface group-has-[:checked]:line-through group-has-[:checked]:text-on-surface-variant transition-all">Update design specs for Settings view</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Owner: Speaker A</span>
+</div>
+</div>
+</label>
+<div class="h-px w-[calc(100%-2rem)] bg-surface-variant mx-auto"></div>
+<label class="flex items-start gap-4 p-3 hover:bg-surface-container-low rounded-lg cursor-pointer transition-colors group">
+<div class="relative flex items-start mt-1">
+<input class="w-5 h-5 rounded border-2 border-outline text-primary focus:ring-primary focus:ring-offset-0 transition-all bg-surface-container-lowest checked:border-primary" type="checkbox"/>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-body-md text-body-md text-on-surface group-has-[:checked]:line-through group-has-[:checked]:text-on-surface-variant transition-all">Schedule follow-up sync with backend team</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Owner: Speaker B</span>
+</div>
+</div>
+</label>
+<div class="h-px w-[calc(100%-2rem)] bg-surface-variant mx-auto"></div>
+<label class="flex items-start gap-4 p-3 hover:bg-surface-container-low rounded-lg cursor-pointer transition-colors group">
+<div class="relative flex items-start mt-1">
+<input class="w-5 h-5 rounded border-2 border-outline text-primary focus:ring-primary focus:ring-offset-0 transition-all bg-surface-container-lowest checked:border-primary" type="checkbox"/>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-body-md text-body-md text-on-surface group-has-[:checked]:line-through group-has-[:checked]:text-on-surface-variant transition-all">Draft job description for Senior Backend role</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Owner: Speaker D</span>
+</div>
+</div>
+</label>
+</div>
+</section>
+</main>
+</body></html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Assistant Hub - Minimalist Rationale</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#aac7ff",
+                    "secondary": "#465f88",
+                    "surface-container-highest": "#dfe2eb",
+                    "on-background": "#181c22",
+                    "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                    "on-tertiary-fixed": "#321200",
+                    "outline-variant": "#c2c6d4",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed": "#001b3d",
+                    "surface-variant": "#dfe2eb",
+                    "surface-tint": "#095db7",
+                    "tertiary-container": "#964400",
+                    "inverse-surface": "#2d3137",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#aac7ff",
+                    "on-secondary-container": "#3f5881",
+                    "primary-container": "#005ab4",
+                    "background": "#f8f9ff",
+                    "on-surface": "#181c22",
+                    "tertiary": "#723200",
+                    "on-tertiary-container": "#ffc9ac",
+                    "surface": "#f8f9ff",
+                    "background-alt": "#F6F7F9",
+                    "on-primary-fixed": "#001b3e",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#d6e3ff",
+                    "on-error-container": "#93000a",
+                    "on-primary-container": "#c0d5ff",
+                    "status-connected": "#1275e2",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#f8f9ff",
+                    "surface-glass": "rgba(249, 249, 255, 0.8)",
+                    "surface-container-low": "#f1f3fc",
+                    "on-secondary-fixed-variant": "#2e476f",
+                    "surface-dim": "#d7dae2",
+                    "secondary-fixed-dim": "#aec7f6",
+                    "on-surface-variant": "#424752",
+                    "secondary-container": "#b6d0ff",
+                    "primary": "#004389",
+                    "inverse-on-surface": "#eef1f9",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "outline": "#727783",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-primary-fixed-variant": "#00458d",
+                    "tertiary-fixed": "#ffdbc9",
+                    "surface-container": "#ebeef6",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#e5e8f1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "2rem",
+                    "touch-target-min": "40px",
+                    "element-gap": "0.75rem",
+                    "container-margin": "1rem"
+            },
+            "fontFamily": {
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "label-sm": [
+                            "Inter"
+                    ],
+                    "label-xs": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "headline-md": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "label-xs": [
+                            "10px",
+                            {
+                                    "lineHeight": "12px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-lg": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.025em",
+                                    "fontWeight": "800"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background-alt text-on-surface font-body-md min-h-screen flex flex-col pb-[env(safe-area-inset-bottom)]">
+<!-- Top App Bar -->
+<header class="w-full top-0 sticky bg-background bg-opacity-90 backdrop-blur-md z-40 transition-shadow">
+<div class="flex justify-between items-center px-container-margin h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center">
+<img alt="AD Glasses Logo" class="h-8 w-8 mr-3 object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ"/>
+<h1 class="font-headline-md text-headline-md text-on-surface">Assistant</h1>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-on-surface hover:opacity-80 transition-opacity active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-container-margin py-section-gap w-full max-w-md mx-auto relative z-10 pb-32 md:pb-section-gap">
+<!-- Stage Halo Effect -->
+<div class="absolute inset-0 z-[-1] pointer-events-none flex items-center justify-center">
+<div class="w-96 h-96 rounded-full bg-[radial-gradient(circle,var(--tw-gradient-stops))] from-stage-halo-start via-transparent to-transparent opacity-60"></div>
+</div>
+<!-- Central Recovery Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl shadow-sm p-8 flex flex-col items-center text-center border border-surface-container-high">
+<h2 class="font-headline-md text-headline-md mb-2">Cloud Search Unavailable</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8 px-4">
+                Your glasses are currently using on-device processing. Cloud-powered search requires an active AI provider in Settings.
+            </p>
+<!-- Privacy Boundary Visualization -->
+<div class="flex items-center justify-center gap-6 mb-10 w-full px-4">
+<!-- On-Device AI -->
+<div class="flex flex-col items-center gap-3">
+<div class="relative">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">memory</span>
+</div>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-surface-container-lowest flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-status-connected"></div>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Local AI</span>
+<span class="font-label-xs text-label-xs text-status-connected">Active</span>
+</div>
+</div>
+<!-- Connection Link -->
+<div class="flex-1 max-w-[60px] flex items-center justify-center">
+<div class="w-full border-t-2 border-dashed border-outline-variant opacity-50 relative">
+<span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant text-[16px]">cloud_off</span>
+</div>
+</div>
+<!-- Cloud Services -->
+<div class="flex flex-col items-center gap-3 opacity-60">
+<div class="relative">
+<div class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant border-dashed">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">cloud</span>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface-variant">Cloud</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Setup Required</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="w-full flex flex-col gap-3">
+<button class="w-full h-12 bg-on-background text-on-primary rounded-full font-body-sm text-body-sm font-semibold flex items-center justify-center hover:bg-inverse-surface transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined mr-2 text-[18px]">settings</span>
+                    Configure Cloud
+                </button>
+<button class="w-full h-12 bg-transparent text-primary rounded-full font-body-sm text-body-sm font-semibold flex items-center justify-center border border-outline-variant hover:bg-surface-container-low transition-colors active:scale-[0.98]">
+                    Continue with Local AI
+                </button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant z-50 pb-[env(safe-area-inset-bottom)]">
+<div class="flex justify-around items-center px-container-margin py-2 h-16">
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">visibility</span>
+<span class="font-label-xs text-label-xs">Vision</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary-container dark:text-secondary-container hover:text-primary transition-colors active:scale-98">
+<div class="px-4 py-1 rounded-xl bg-secondary-container flex items-center justify-center mb-1">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</div>
+<span class="font-label-xs text-label-xs text-on-secondary-container font-semibold">Chat</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">history</span>
+<span class="font-label-xs text-label-xs">History</span>
+</button>
+<button class="flex flex-col items-center justify-center text-cool-gray hover:text-primary transition-colors active:scale-98">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">qr_code_2</span>
+<span class="font-label-xs text-label-xs">Glasses</span>
+</button>
+</div>
+</nav>
+</body></html>

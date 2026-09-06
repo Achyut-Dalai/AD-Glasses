@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Immersive Insight - Assistant Live Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#f9f9ff",
+                      "on-secondary-fixed-variant": "#2e476f",
+                      "on-tertiary-fixed": "#321200",
+                      "surface-container": "#ebedf7",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#964400",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "primary-container": "#0a73e0",
+                      "primary-fixed-dim": "#aac7ff",
+                      "surface-container-low": "#f1f3fc",
+                      "secondary": "#465f88",
+                      "surface-container-high": "#e6e8f1",
+                      "on-primary-fixed": "#001b3e",
+                      "surface-container-highest": "#e0e2eb",
+                      "inverse-surface": "#2d3037",
+                      "primary-fixed": "#d6e3ff",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-container": "#3f5881",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed": "#d6e3ff",
+                      "surface-tint": "#095db7",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#c0d5ff",
+                      "secondary-container": "#b6d0ff",
+                      "secondary-fixed-dim": "#aec7f6",
+                      "on-background": "#181c22",
+                      "outline-variant": "#c2c6d4",
+                      "surface-dim": "#d7dae3",
+                      "tertiary-fixed": "#ffdbc9",
+                      "primary": "#004389",
+                      "on-surface-variant": "#414753",
+                      "surface-variant": "#e0e2eb",
+                      "background": "#f9f9ff",
+                      "on-tertiary-fixed-variant": "#753400",
+                      "tertiary": "#723200",
+                      "on-primary-fixed-variant": "#00458d",
+                      "on-surface": "#181c22",
+                      "error-container": "#ffdad6",
+                      "surface": "#f9f9ff",
+                      "outline": "#727783",
+                      "inverse-on-surface": "#eef0fa",
+                      "on-secondary-fixed": "#001b3d",
+                      "on-tertiary-container": "#ffc9ac",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#aac7ff",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "element-gap": "0.75rem",
+                      "section-gap": "1.5rem",
+                      "container-padding": "1rem",
+                      "grid-gutter": "1rem"
+              },
+              "fontFamily": {
+                      "display-sm": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-sm": [
+                              "1.125rem",
+                              {
+                                      "lineHeight": "1.5rem",
+                                      "letterSpacing": "0.15em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-lg": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-sm": [
+                              "0.75rem",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "11px",
+                              {
+                                      "lineHeight": "1rem",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "0.875rem",
+                              {
+                                      "lineHeight": "1.25rem",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .pulse-ring {
+            animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+        .scroll-mask {
+            mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface h-screen w-full flex flex-col font-body-md overflow-hidden antialiased">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between px-4 py-4 w-full z-50 bg-surface">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+<div class="text-center flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-on-surface">Live Session</span>
+<span class="font-label-sm text-label-sm text-primary flex items-center gap-1 mt-0.5"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span> Active</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant">photo_camera</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative px-4 pb-24">
+<!-- Voice Visualization -->
+<div class="flex-1 flex items-center justify-center relative min-h-[250px]">
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<!-- Outer Pulse -->
+<div class="w-48 h-48 rounded-full bg-primary-container/30 absolute pulse-ring" style="animation-duration: 3s;"></div>
+<!-- Middle Pulse -->
+<div class="w-32 h-32 rounded-full bg-primary-container/50 absolute pulse-ring" style="animation-delay: 0.5s; animation-duration: 2.5s;"></div>
+<!-- Inner Core -->
+<div class="w-20 h-20 rounded-full bg-primary flex items-center justify-center relative z-10 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-on-primary text-3xl">mic</span>
+</div>
+</div>
+</div>
+<!-- Scrolling Transcript -->
+<div class="h-32 w-full max-w-md mx-auto mb-6 relative overflow-hidden scroll-mask flex flex-col justify-end">
+<div class="space-y-3 font-body-sm text-body-sm text-on-surface-variant text-center transition-transform duration-500 transform translate-y-2 opacity-90">
+<p class="opacity-40">So, if we look at the Q3 projections...</p>
+<p class="opacity-70">I think we need to adjust the timeline for the marketing rollout.</p>
+<p class="text-on-surface font-medium opacity-100">Yes, specifically aligning it with the new product features dropping in November.</p>
+</div>
+</div>
+<!-- Live Insight Card -->
+<div class="w-full max-w-md mx-auto bg-surface-container-low border border-outline-variant/30 rounded-xl p-4 shadow-sm backdrop-blur-sm mb-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-sm">lightbulb</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Live Insight</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Discussing project timelines and aligning marketing strategy with November feature releases.</p>
+</div>
+</main>
+<!-- Bottom Controls -->
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-center items-center gap-6 px-4 pb-8 pt-4 bg-gradient-to-t from-surface via-surface/95 to-transparent">
+<!-- Mute Button -->
+<button class="w-14 h-14 flex items-center justify-center rounded-full bg-surface-container border border-outline-variant/20 hover:bg-surface-container-high transition-colors active:scale-90 text-on-surface-variant">
+<span class="material-symbols-outlined text-2xl">mic_off</span>
+</button>
+<!-- End Call Button -->
+<button class="w-20 h-20 flex items-center justify-center rounded-full bg-error hover:bg-error/90 transition-all active:scale-90 shadow-lg shadow-error/20 text-on-error">
+<span class="material-symbols-outlined text-4xl">call_end</span>
+</button>
+<!-- Camera Toggle Button -->
+<button class="w-14 h-14 flex items-center justify-center rounded-full bg-primary-container border border-primary-container hover:bg-primary-container/80 transition-colors active:scale-90 text-on-primary-container">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">videocam</span>
+</button>
+</div>
+</body></html>

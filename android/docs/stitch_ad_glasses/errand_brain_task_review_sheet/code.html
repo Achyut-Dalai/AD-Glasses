@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Task Review - Errand Brain</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "stage-halo-start": "rgba(10, 115, 224, 0.15)",
+                        "surface": "#f8f9ff",
+                        "on-secondary-container": "#3f5881",
+                        "primary-container": "#005ab4",
+                        "on-tertiary-container": "#ffc9ac",
+                        "on-primary-container": "#c0d5ff",
+                        "status-connected": "#1275e2",
+                        "surface-dim": "#d7dae2",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c2c6d4",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#dfe2eb",
+                        "inverse-on-surface": "#eef1f9",
+                        "primary": "#004389",
+                        "surface-glass": "rgba(249, 249, 255, 0.8)",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "background": "#f8f9ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "background-alt": "#F6F7F9",
+                        "on-primary-fixed-variant": "#00458d",
+                        "secondary": "#465f88",
+                        "on-surface": "#181c22",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-variant": "#dfe2eb",
+                        "on-primary-fixed": "#001b3e",
+                        "secondary-container": "#b6d0ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#964400",
+                        "on-tertiary-fixed": "#321200",
+                        "outline": "#727783",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e5e8f1",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container": "#ebeef6",
+                        "surface-bright": "#f8f9ff",
+                        "tertiary": "#723200",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-surface-variant": "#424752",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#095db7",
+                        "inverse-primary": "#aac7ff",
+                        "on-background": "#181c22",
+                        "inverse-surface": "#2d3137",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f1f3fc",
+                        "primary-fixed": "#d6e3ff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "element-gap": "0.75rem",
+                        "section-gap": "2rem",
+                        "container-margin": "1rem",
+                        "touch-target-min": "40px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-xs": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "label-xs": ["10px", { lineHeight: "12px", fontWeight: "600" }],
+                        "headline-md": ["18px", { lineHeight: "24px", fontWeight: "700" }],
+                        "display-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.025em", fontWeight: "800" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .bottom-sheet-enter {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .bottom-sheet-enter-active {
+            transform: translateY(0);
+            opacity: 1;
+            transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-alt font-body-md text-on-surface h-screen w-full flex flex-col justify-end overflow-hidden antialiased">
+<!-- Scrim / Backdrop -->
+<div class="fixed inset-0 bg-on-surface/40 backdrop-blur-[2px] z-40 transition-opacity duration-300"></div>
+<!-- Bottom Sheet Container -->
+<div class="bg-surface-container-lowest rounded-t-[24px] w-full max-h-[795px] shadow-2xl z-50 flex flex-col bottom-sheet-enter bottom-sheet-enter-active relative">
+<!-- Drag Handle -->
+<div class="w-full pt-4 pb-2 flex justify-center shrink-0">
+<div class="w-12 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="px-container-margin pb-4 border-b border-surface-variant flex justify-between items-start shrink-0">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Extracted Task</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Review details before saving</p>
+</div>
+<button class="w-touch-target-min h-touch-target-min rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<!-- Scrollable Content Area -->
+<div class="px-container-margin py-section-gap overflow-y-auto flex-1 flex flex-col gap-section-gap">
+<!-- Original Input Reference -->
+<div class="bg-surface-container-low rounded-xl p-4 flex gap-3 items-start border border-surface-variant/50">
+<span class="material-symbols-outlined text-outline mt-0.5" style="font-variation-settings: 'FILL' 0;">mic</span>
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block mb-1">Original Input</span>
+<p class="font-body-md text-body-md text-on-surface italic">"Pick up milk and bread on the way home today"</p>
+</div>
+</div>
+<!-- Main Task Details Form -->
+<div class="flex flex-col gap-element-gap">
+<!-- Title -->
+<div class="group">
+<label class="font-label-sm text-label-sm text-on-surface-variant block mb-1.5">Task Title</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-0 rounded-lg py-3 px-4 font-headline-md text-headline-md text-on-surface focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" type="text" value="Buy milk and bread"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid for Attributes -->
+<div class="grid grid-cols-2 gap-element-gap">
+<!-- Due Date -->
+<div class="bg-surface-container rounded-lg p-3 border border-outline-variant/30 flex flex-col gap-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-1.5 text-status-connected">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wide">Due</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface mt-1">Today, 5:30 PM</span>
+</div>
+<!-- Priority -->
+<div class="bg-surface-container rounded-lg p-3 border border-outline-variant/30 flex flex-col gap-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-1.5 text-tertiary-container">
+<span class="material-symbols-outlined text-[16px]">flag</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wide">Priority</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface mt-1">Medium</span>
+</div>
+<!-- Category -->
+<div class="bg-surface-container rounded-lg p-3 border border-outline-variant/30 flex flex-col gap-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px]">shopping_cart</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wide">Category</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface mt-1">Shopping</span>
+</div>
+<!-- Destination (Unresolved/Ambiguous styling example if needed, but here it's defined) -->
+<div class="bg-surface-container rounded-lg p-3 border border-outline-variant/30 flex flex-col gap-1 cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">notifications</span>
+<span class="font-label-xs text-label-xs uppercase tracking-wide">Save To</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface mt-1">Phone Notifs</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Area (Sticky Bottom) -->
+<div class="px-container-margin py-4 border-t border-surface-variant bg-surface-container-lowest shrink-0 pb-safe">
+<div class="flex gap-element-gap">
+<button class="flex-1 bg-surface-container-high text-on-surface font-body-sm text-body-sm h-[48px] rounded-full hover:bg-surface-variant transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+                    Discard
+                </button>
+<button class="flex-[2] bg-on-surface text-on-primary font-body-md text-body-md font-semibold h-[48px] rounded-full shadow-lg shadow-on-surface/20 hover:bg-inverse-surface transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    Save Task
+                </button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automations - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#000000",
+                        "surface-container-highest": "#dde2f2",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#1b1b1b",
+                        "on-secondary-container": "#002958",
+                        "graphite-black": "#000000",
+                        "primary": "#000000",
+                        "success-teal": "#008080",
+                        "error": "#ba1a1a",
+                        "warning-amber": "#FFBF00",
+                        "on-tertiary-container": "#828486",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-primary-container": "#848484",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "surface": "#f9f9ff",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary": "#005db8",
+                        "tertiary-container": "#191c1e",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-control": "#FFFFFF",
+                        "surface-variant": "#dde2f2",
+                        "on-secondary-fixed": "#001b3e",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#161c27",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed": "#1b1b1b",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#5e5e5e",
+                        "cool-gray": "#717785",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#4c4546",
+                        "inverse-primary": "#c6c6c6",
+                        "electric-blue": "#1978E5",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "surface-dim": "#d4daea",
+                        "on-background": "#161c27",
+                        "outline-variant": "#cfc4c5",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "tertiary-fixed": "#e1e2e4",
+                        "surface-container": "#e8eefe",
+                        "background": "#f9f9ff",
+                        "canvas": "#F6F7F9",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gap-sm": "8px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "hero-stage": "220px",
+                        "gap-xs": "4px",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.canvas'); color: theme('colors.on-background'); }
+        /* Toggles */
+        .toggle-checkbox:checked { right: 0; border-color: theme('colors.primary'); }
+        .toggle-checkbox:checked + .toggle-label { background-color: theme('colors.primary'); }
+        .toggle-checkbox:checked + .toggle-label:after { transform: translateX(100%); border-color: white; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased font-body-md selection:bg-primary selection:text-on-primary flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-background dark:bg-background flat no shadows z-40">
+<div class="flex justify-between items-center px-margin-page h-touch-target">
+<button class="text-primary dark:text-on-primary-fixed hover:opacity-80 scale-98 transition-transform duration-200 p-2 -ml-2 rounded-full active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="lens_blur">lens_blur</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-on-primary-fixed">Automations</h1>
+<button class="text-primary dark:text-on-primary-fixed hover:opacity-80 scale-98 transition-transform duration-200 p-2 -mr-2 rounded-full active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<div class="w-full h-px bg-outline-variant opacity-50"></div>
+</header>
+<main class="flex-1 px-margin-page py-6 pb-32">
+<!-- Active Now Section (Empty State) -->
+<section class="mb-10">
+<h2 class="font-headline-sm text-lg font-semibold text-primary mb-4 tracking-tight">Active Now</h2>
+<div class="bg-surface-container-lowest rounded-xl p-8 flex flex-col items-center justify-center text-center border border-outline-variant/30 shadow-sm">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-3 text-cool-gray">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">bolt</span>
+</div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">No Active Automations</h3>
+<p class="font-body-sm text-sm text-on-surface-variant max-w-[250px]">Your glasses are currently running in standard observation mode.</p>
+</div>
+</section>
+<!-- Available Automations Grid -->
+<section class="mb-10">
+<h2 class="font-headline-sm text-lg font-semibold text-primary mb-4 tracking-tight">Available Automations</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 shadow-sm flex flex-col relative overflow-hidden group hover:border-electric-blue/50 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined" data-icon="summarize">summarize</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300 border-outline-variant" id="toggle1" name="toggle1" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer transition-colors duration-300" for="toggle1"></label>
+</div>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Meeting Spark Notes</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm line-clamp-2">Automatically generates concise summaries and action items from ambient conversations.</p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="cloud">cloud</span> Cloud
+                        </span>
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="mic">mic</span> Audio
+                        </span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 shadow-sm flex flex-col relative overflow-hidden group hover:border-electric-blue/50 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined" data-icon="closed_caption">closed_caption</span>
+</div>
+<button class="font-label-md text-label-md bg-graphite-black text-white px-4 py-1.5 rounded-full scale-98 transition-transform duration-200 hover:opacity-90">
+                            Setup
+                        </button>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Live Caption Relay</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm line-clamp-2">Projects real-time transcriptions of spoken words directly into your field of view.</p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="memory">memory</span> On device
+                        </span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 shadow-sm flex flex-col relative overflow-hidden group hover:border-electric-blue/50 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined" data-icon="translate">translate</span>
+</div>
+<button class="font-label-md text-label-md bg-graphite-black text-white px-4 py-1.5 rounded-full scale-98 transition-transform duration-200 hover:opacity-90">
+                            Setup
+                        </button>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1">Hands-Free Translator</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm line-clamp-2">Detects foreign languages and provides instant visual or auditory translations.</p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="cloud">cloud</span> Cloud
+                        </span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/30 shadow-sm flex flex-col relative overflow-hidden group hover:border-electric-blue/50 transition-colors">
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined" data-icon="book_4">book_4</span>
+</div>
+<!-- Toggle -->
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300 border-outline-variant" id="toggle4" name="toggle4" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer transition-colors duration-300" for="toggle4"></label>
+</div>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface-variant text-sm line-clamp-2">Periodically captures visual waypoints to construct a timeline of your day.</p>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="memory">memory</span> On device
+                        </span>
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high font-label-sm text-label-sm text-cool-gray">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="photo_camera">photo_camera</span> Vision
+                        </span>
+</div>
+</div>
+</div>
+</section>
+<!-- Community Catalog -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-sm text-lg font-semibold text-primary tracking-tight">Community Catalog</h2>
+<a class="font-label-md text-label-md text-electric-blue hover:underline" href="#">Explore all</a>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/30 shadow-sm flex items-center gap-4 cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-cool-gray">
+<span class="material-symbols-outlined" data-icon="public">public</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface">Discover More</h3>
+<p class="font-body-sm text-sm text-on-surface-variant">Browse automations built by the AD Glasses community.</p>
+</div>
+<span class="material-symbols-outlined text-cool-gray" data-icon="chevron_right">chevron_right</span>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 border-t border-outline-variant bg-surface-container-lowest md:hidden pb-safe">
+<div class="flex justify-around items-center h-16 w-full px-4">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low scale-95 transition-all duration-200 w-16 h-14 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low scale-95 transition-all duration-200 w-16 h-14 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-sm text-label-sm">Assistant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low scale-95 transition-all duration-200 w-16 h-14 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-electric-blue bg-surface-container-high rounded-xl px-3 py-1 scale-95 transition-all duration-200 w-20 h-14" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="settings_suggest" style="font-variation-settings: 'FILL' 1;">settings_suggest</span>
+<span class="font-label-sm text-label-sm">Automations</span>
+</a>
+</div>
+</nav>
+<!-- Desktop SideNav (Hidden on Mobile) -->
+<aside class="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-outline-variant z-30 pt-touch-target">
+<nav class="flex flex-col gap-2 p-4 mt-8">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-lg text-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-lg text-label-lg">Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-lg text-label-lg">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container-high text-secondary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest" style="font-variation-settings: 'FILL' 1;">settings_suggest</span>
+<span class="font-label-lg text-label-lg font-semibold">Automations</span>
+</a>
+</nav>
+</aside>
+<!-- Adjust main content margin for desktop -->
+<style>
+        @media (min-width: 768px) {
+            main { margin-left: 16rem; } /* 64 * 0.25rem = 16rem */
+            header { padding-left: 17rem; } /* offset for nav */
+        }
+    </style>
+</body></html>

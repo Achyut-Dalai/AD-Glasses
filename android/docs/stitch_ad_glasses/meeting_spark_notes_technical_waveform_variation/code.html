@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Active Meeting Spark Notes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-lowest": "#ffffff",
+                "on-surface-variant": "#4c4546",
+                "cool-gray": "#717785",
+                "on-primary": "#ffffff",
+                "secondary-fixed-dim": "#aac7ff",
+                "error": "#ba1a1a",
+                "on-tertiary-container": "#828486",
+                "outline-variant": "#cfc4c5",
+                "surface-container-low": "#f0f3ff",
+                "on-secondary-container": "#002958",
+                "outline": "#7e7576",
+                "surface-dim": "#d4daea",
+                "surface-container": "#e8eefe",
+                "on-error-container": "#93000a",
+                "primary-fixed-dim": "#c6c6c6",
+                "primary-fixed": "#e2e2e2",
+                "on-primary-fixed": "#1b1b1b",
+                "secondary": "#005db8",
+                "surface-container-highest": "#dde2f2",
+                "tertiary-fixed-dim": "#c5c7c8",
+                "on-error": "#ffffff",
+                "surface-tint": "#5e5e5e",
+                "on-tertiary-fixed-variant": "#444749",
+                "electric-blue": "#1978E5",
+                "warning-amber": "#FFBF00",
+                "on-surface": "#161c27",
+                "primary-container": "#1b1b1b",
+                "on-primary-container": "#848484",
+                "surface-variant": "#dde2f2",
+                "on-tertiary-fixed": "#191c1e",
+                "surface": "#f9f9ff",
+                "surface-control": "#FFFFFF",
+                "canvas": "#F6F7F9",
+                "tertiary-fixed": "#e1e2e4",
+                "on-background": "#161c27",
+                "error-container": "#ffdad6",
+                "secondary-container": "#4090fe",
+                "secondary-fixed": "#d6e3ff",
+                "on-secondary-fixed": "#001b3e",
+                "on-secondary": "#ffffff",
+                "tertiary": "#000000",
+                "primary": "#000000",
+                "inverse-surface": "#2a313d",
+                "tertiary-container": "#191c1e",
+                "on-tertiary": "#ffffff",
+                "success-teal": "#008080",
+                "graphite-black": "#000000",
+                "surface-container-high": "#e2e8f8",
+                "background": "#f9f9ff",
+                "on-secondary-fixed-variant": "#00458d",
+                "inverse-primary": "#c6c6c6",
+                "on-primary-fixed-variant": "#474747",
+                "inverse-on-surface": "#ecf0ff",
+                "surface-bright": "#f9f9ff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "hero-stage": "220px",
+                "gap-xs": "4px",
+                "touch-target": "48px",
+                "gap-sm": "8px",
+                "margin-page": "16px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Hanken Grotesk"
+                ],
+                "label-lg": [
+                        "Hanken Grotesk"
+                ],
+                "label-md": [
+                        "Hanken Grotesk"
+                ],
+                "label-sm": [
+                        "Hanken Grotesk"
+                ],
+                "body-lg": [
+                        "Hanken Grotesk"
+                ],
+                "body-md": [
+                        "Hanken Grotesk"
+                ],
+                "headline-md": [
+                        "Hanken Grotesk"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "label-sm": [
+                        "11px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body {
+            font-family: 'Hanken Grotesk', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Subtle floating for typing indicator */
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .dot-bounce {
+            animation: bounce-subtle 1.4s infinite ease-in-out both;
+        }
+
+        /* Waveform Animation */
+        @keyframes wave {
+            0% { transform: scaleY(0.2); }
+            50% { transform: scaleY(1); }
+            100% { transform: scaleY(0.2); }
+        }
+        .bar {
+            animation: wave 1.2s ease-in-out infinite;
+            transform-origin: bottom;
+        }
+        
+        /* Cinematic Transcript Fade */
+        .transcript-mask {
+            mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas h-screen w-full flex flex-col overflow-hidden text-on-background">
+<!-- Minimal Header -->
+<header class="flex items-center justify-between p-4 w-full z-10 shrink-0 border-b border-outline-variant/30 bg-surface-container-lowest">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-on-background" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="font-headline-md text-headline-md text-on-background tracking-tight">Active Spark Note</h1>
+</div>
+<div class="w-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-electric-blue" data-icon="graphic_eq" data-weight="fill">graphic_eq</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow flex flex-col pt-6 pb-4 relative w-full z-0 overflow-y-auto">
+<!-- Compact Timer & Metadata -->
+<div class="px-6 flex flex-col items-center justify-center mb-8 shrink-0">
+<div class="flex items-center justify-center bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-6 py-4 shadow-sm mb-6 w-full max-w-sm">
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-2 mb-1">
+<span class="w-2.5 h-2.5 rounded-full bg-electric-blue animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Live Recording</span>
+</div>
+<span class="font-headline-lg text-4xl font-semibold tracking-tighter text-on-background tabular-nums">01:15:30</span>
+</div>
+</div>
+<!-- Technical Metrics -->
+<div class="w-full max-w-sm grid grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-3 flex flex-col">
+<span class="font-label-xs text-[10px] uppercase tracking-wider text-cool-gray mb-1">Processing Boundary</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-success-teal" data-icon="memory">memory</span>
+<span class="font-label-sm text-label-sm text-on-background">On-device AI</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-3 flex flex-col">
+<span class="font-label-xs text-[10px] uppercase tracking-wider text-cool-gray mb-1">Confidence Score</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-electric-blue" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm text-on-background">High (94%)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Waveform Visualization -->
+<div class="w-full flex items-center justify-center h-24 mb-6 shrink-0 px-6">
+<div class="flex items-end gap-1 h-16 w-full max-w-md justify-center">
+<!-- Simulated audio bars with CSS animation -->
+<div class="w-1.5 bg-electric-blue/40 rounded-t-sm h-full bar" style="animation-delay: 0.1s"></div>
+<div class="w-1.5 bg-electric-blue/60 rounded-t-sm h-full bar" style="animation-delay: 0.3s"></div>
+<div class="w-1.5 bg-electric-blue/80 rounded-t-sm h-full bar" style="animation-delay: 0.5s"></div>
+<div class="w-1.5 bg-electric-blue rounded-t-sm h-full bar" style="animation-delay: 0.2s"></div>
+<div class="w-1.5 bg-electric-blue/90 rounded-t-sm h-full bar" style="animation-delay: 0.7s"></div>
+<div class="w-1.5 bg-electric-blue/70 rounded-t-sm h-full bar" style="animation-delay: 0.4s"></div>
+<div class="w-1.5 bg-electric-blue/50 rounded-t-sm h-full bar" style="animation-delay: 0.6s"></div>
+<div class="w-1.5 bg-electric-blue/30 rounded-t-sm h-full bar" style="animation-delay: 0.8s"></div>
+<div class="w-1.5 bg-electric-blue rounded-t-sm h-full bar" style="animation-delay: 0.1s"></div>
+<div class="w-1.5 bg-electric-blue/80 rounded-t-sm h-full bar" style="animation-delay: 0.9s"></div>
+<div class="w-1.5 bg-electric-blue/60 rounded-t-sm h-full bar" style="animation-delay: 0.2s"></div>
+<div class="w-1.5 bg-electric-blue/40 rounded-t-sm h-full bar" style="animation-delay: 0.5s"></div>
+<div class="w-1.5 bg-electric-blue/90 rounded-t-sm h-full bar" style="animation-delay: 0.3s"></div>
+<div class="w-1.5 bg-electric-blue/70 rounded-t-sm h-full bar" style="animation-delay: 0.7s"></div>
+<div class="w-1.5 bg-electric-blue/50 rounded-t-sm h-full bar" style="animation-delay: 0.4s"></div>
+<div class="w-1.5 bg-electric-blue rounded-t-sm h-full bar" style="animation-delay: 0.6s"></div>
+<div class="w-1.5 bg-electric-blue/80 rounded-t-sm h-full bar" style="animation-delay: 0.2s"></div>
+<div class="w-1.5 bg-electric-blue/60 rounded-t-sm h-full bar" style="animation-delay: 0.8s"></div>
+<div class="w-1.5 bg-electric-blue/40 rounded-t-sm h-full bar" style="animation-delay: 0.1s"></div>
+</div>
+</div>
+<!-- High-Contrast Live Transcript -->
+<div class="w-full flex-grow relative overflow-hidden flex flex-col justify-end transcript-mask pb-2 px-4">
+<div class="w-full flex flex-col gap-3">
+<!-- Older context (faded block) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 opacity-50 shadow-sm max-w-xl mx-auto w-full">
+<p class="font-body-md text-body-md text-on-surface-variant mb-1 font-semibold">Alex</p>
+<p class="font-body-md text-body-md text-on-background">So, to summarize our approach for Q3... we really need to nail down the core workflow.</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 opacity-70 shadow-sm max-w-xl mx-auto w-full">
+<p class="font-body-md text-body-md text-on-surface-variant mb-1 font-semibold">Sarah</p>
+<p class="font-body-md text-body-md text-on-background">Yes, we need to focus on user retention. The analytics clearly show a drop-off after day three of the onboarding.</p>
+</div>
+<!-- Current context (highlighted block) -->
+<div class="bg-graphite-black border border-outline-variant/20 rounded-xl p-4 shadow-md max-w-xl mx-auto w-full relative overflow-hidden">
+<!-- Subtle gradient accent -->
+<div class="absolute top-0 left-0 w-1 h-full bg-electric-blue"></div>
+<p class="font-body-md text-body-md text-cool-gray mb-1 font-semibold">Alex</p>
+<p class="font-body-md text-body-md text-surface-container-lowest leading-relaxed">
+                    Agreed. If we streamline that initial onboarding flow, we might see a significant 15% bump there. Let's make sure we add that to the actionable Spark Notes.
+                </p>
+<!-- Active Listening Indicator -->
+<div class="flex items-center gap-1.5 mt-3 h-4">
+<div class="w-1.5 h-1.5 bg-electric-blue rounded-full dot-bounce" style="animation-delay: -0.32s;"></div>
+<div class="w-1.5 h-1.5 bg-electric-blue rounded-full dot-bounce" style="animation-delay: -0.16s;"></div>
+<div class="w-1.5 h-1.5 bg-electric-blue rounded-full dot-bounce" style="animation-delay: 0s;"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Prominent Bottom Actions -->
+<footer class="w-full pb-8 pt-4 px-6 flex items-center justify-center gap-6 bg-surface-container-lowest border-t border-outline-variant/30 z-20 shrink-0">
+<button class="w-[64px] h-[64px] rounded-full bg-surface-container border border-outline-variant/50 text-on-surface flex items-center justify-center hover:bg-surface-variant transition-all duration-200 active:scale-95 shadow-sm">
+<span class="material-symbols-outlined text-2xl" data-icon="pause">pause</span>
+</button>
+<button class="w-[80px] h-[80px] rounded-full bg-graphite-black text-on-primary flex items-center justify-center hover:bg-inverse-surface transition-all duration-200 active:scale-95 shadow-md">
+<span class="material-symbols-outlined text-[32px]" data-icon="stop" data-weight="fill">stop</span>
+</button>
+</footer>
+</body></html>

@@ -1,0 +1,94 @@
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Gradle
+.gradle/
+build/
+*/build/
+local.properties
+
+# Developer-local secrets. Runtime Cloud AI keys live in Android Keystore-backed storage instead.
+.env
+.env.*
+!.env.example
+**/secrets.properties
+**/keystore.properties
+**/cloud-ai-secrets.properties
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.dex
+*.class
+
+# Binaries and SDKs
+# Keep the SDK needed for the build
+# !glasses_sdk_*.aar 
+
+# Large firmware and metadata files
+*.swu
+*.json
+!package.json
+!ios/ADGlasses/Resources/WakeWords/manifest.json
+firmware_dump/
+
+# iOS
+*.xcworkspace
+*.xcodeproj
+# Keep the shared KMP host scheme available to Xcode and hosted CI.
+!ios/QCSDKDemo.xcodeproj/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/
+!ios/QCSDKDemo.xcodeproj/xcshareddata/xcschemes/AD-GlassesKMPHost.xcscheme
+DerivedData/
+Pods/
+QCSDK.framework/
+# Core AI exports are generated locally and can be hundreds of MB.
+ios/.coreai/
+*.aimodel
+*.aimodelc/
+
+# Device data dumps
+com.glasssutdio.wear/
+
+# Reference docs and decompiled apps (Keeping repo clean)
+HeyCyanOfficialApp/
+eyevue-jadx/
+android/eyevue-jadx/
+Android_SDK_Development_Guide_CN.pdf
+
+# Node.js
+node_modules/
+
+# Keep sibling website repos out of the SDK worktree if copied here by mistake
+AD Glasses_website/
+Carelens_website/
+
+# Local side projects and analysis notes
+android/EvenRealitiesApp/
+android/XGIMIGlassesApp/
+BINARY_ANALYSIS*.md
+android/P2P_SYNC_ANALYSIS*.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tooling (very large / machine-specific)
+tools/
+
+# Generated analysis and language caches
+**/.kotlin/
+**/__pycache__/
+graphify-out/
+**/graphify-out/
+
+# Local recovery/export snapshots
+backups/
+android/AD-Glasses/_local_termux_server_phone_current/

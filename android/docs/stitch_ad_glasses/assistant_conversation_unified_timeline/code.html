@@ -1,0 +1,243 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AD Glasses - Conversation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed": "#001b3d",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "outline-variant": "#c1c6d5",
+                        "on-surface": "#181c22",
+                        "surface-container-high": "#e6e8f1",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e2eb",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#964400",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "inverse-surface": "#2d3037",
+                        "surface": "#f9f9ff",
+                        "surface-tint": "#005db8",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-dim": "#d7dae3",
+                        "on-primary-container": "#fefcff",
+                        "primary-fixed": "#d6e3ff",
+                        "secondary-container": "#b6d0ff",
+                        "primary": "#005ab4",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container": "#ebedf7",
+                        "on-background": "#181c22",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "primary-container": "#0a73e0",
+                        "tertiary-container": "#bd5700",
+                        "on-error-container": "#93000a",
+                        "background": "#f9f9ff",
+                        "surface-container-low": "#f1f3fc",
+                        "outline": "#717785",
+                        "secondary": "#465f88",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001b3e",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-fixed-dim": "#aec7f7",
+                        "on-surface-variant": "#414753"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Inter", "sans-serif"],
+                        display: ["Inter", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for chat area */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #c1c6d5; /* outline-variant */
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface-bright text-on-surface font-body h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+<header class="bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 py-3 w-full sticky top-0 z-20 border-b border-outline-variant/20 shadow-sm flex-shrink-0">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<img alt="AD Glasses Logo" class="w-7 h-7 object-contain opacity-90 mix-blend-multiply" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ">
+<div class="flex flex-col">
+<h1 class="font-headline text-on-surface font-bold text-base leading-tight tracking-tight">AD Glasses</h1>
+
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 rounded-full px-3 py-1.5 text-sm font-label font-medium flex items-center gap-1.5 transition-all active:scale-95">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                Live Session
+            </button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto chat-scroll p-4 md:p-6 lg:px-8 max-w-3xl mx-auto w-full flex flex-col pt-6">
+<div class="flex justify-center mb-8">
+<span class="text-on-surface-variant text-xs font-label px-3 py-1 rounded-full border border-outline-variant/20 bg-surface-container-lowest shadow-sm">Today, 10:42 AM</span>
+</div>
+<!-- Unified Timeline Item: User -->
+<div class="flex gap-4 w-full">
+<div class="flex flex-col items-center">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/30 text-on-surface-variant z-10 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+<div class="w-px h-full bg-outline-variant/30 my-2 min-h-[24px]"></div>
+</div>
+<div class="flex-1 pb-8 pt-1">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-sm font-semibold text-on-surface">You</span>
+<span class="text-xs text-on-surface-variant font-label">10:42 AM</span>
+</div>
+<p class="text-sm text-on-surface leading-relaxed">I'm looking at this architectural diagram. Can you explain the data flow between the ingestion service and the primary database? It seems like there might be a bottleneck.</p>
+<!-- Captured Image -->
+<div class="mt-4 relative rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-variant h-48 w-full shadow-sm group">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A highly detailed technical architectural diagram of a cloud software system, displayed on a glowing augmented reality interface. The diagram features complex nodes, arrows, and technical text in a bright, modern light-mode aesthetic, viewed from a first-person perspective as if looking through smart glasses. The lighting is crisp and the background is slightly blurred." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZTzVD5OWt5Mz8CTAfOUdTtRySH-2iKlXBGMtHMheUzIHibrq4v9n5CS9eyOb_drEvdwOwVwnCDWcqLStPxvdKBzdyGsgXOFznY_o9D_Z_qj0Hd13ZLqktI8oWU_EGLQqyT2WGk5KMjTTKlSz5-K4XpadW8p96eXy7FCNIul5mFMMCyBLBJqh95WPKYQsyFexbqfUnMw3e8IuKb0THPLZT2dWKgFdY1JhZI6IGNkNssXd7qg-QwrcD">
+<div class="absolute bottom-3 left-3 bg-surface/90 backdrop-blur-md text-on-surface text-xs font-label px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+                        Captured via Glasses
+                    </div>
+</div>
+</div>
+</div>
+<!-- Unified Timeline Item: AI -->
+<div class="flex gap-4 w-full">
+<div class="flex flex-col items-center">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 z-10 shadow-sm">
+<img alt="AI Avatar" class="w-5 h-5 object-contain opacity-90 mix-blend-multiply" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ">
+</div>
+<div class="w-px h-full bg-outline-variant/30 my-2 min-h-[24px]"></div>
+</div>
+<div class="flex-1 pb-8 pt-1">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-sm font-semibold text-primary">AD Glasses</span>
+<span class="text-xs text-on-surface-variant font-label">10:43 AM</span>
+</div>
+<div class="text-sm text-on-surface leading-relaxed space-y-4">
+<p class="">Based on the visual data you shared, the ingestion service (Node A) streams raw logs directly to the primary database (Node C) using a synchronous REST API call.</p>
+<p class="">You are correct to identify a potential bottleneck. The lack of an asynchronous message queue (like Kafka or RabbitMQ) between them means that if the database experiences high load, the ingestion service will block, potentially causing data loss or latency spikes upstream.</p>
+</div>
+<!-- Integrated Sources Area -->
+<div class="mt-5 p-3.5 bg-surface-container-low rounded-xl border border-outline-variant/20 flex flex-col gap-3">
+<div class="flex flex-wrap gap-2 items-center">
+<span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Referenced Context</span>
+<div class="w-px h-3 bg-outline-variant/40 mx-1"></div>
+<button class="bg-surface hover:bg-surface-container-highest transition-colors text-on-surface text-xs font-label px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-outline-variant/20 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary">description</span>
+                                System_Architecture_v2.pdf
+                            </button>
+<button class="bg-surface hover:bg-surface-container-highest transition-colors text-on-surface text-xs font-label px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-outline-variant/20 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary">public</span>
+                                Best Practices: Data Ingestion
+                            </button>
+</div>
+<div class="flex items-center gap-1.5 text-secondary text-[11px] font-label">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+                            Processed locally on device for privacy.
+                        </div>
+</div>
+</div>
+</div>
+<!-- Unified Timeline Item: User -->
+<div class="flex gap-4 w-full">
+<div class="flex flex-col items-center">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/30 text-on-surface-variant z-10 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+<div class="w-px h-full bg-outline-variant/30 my-2 min-h-[24px]"></div>
+</div>
+<div class="flex-1 pb-8 pt-1">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-sm font-semibold text-on-surface">You</span>
+<span class="text-xs text-on-surface-variant font-label">10:45 AM</span>
+</div>
+<p class="text-sm text-on-surface leading-relaxed">What would you recommend we insert to fix it?</p>
+</div>
+</div>
+<!-- Unified Timeline Item: AI Generating -->
+<div class="flex gap-4 w-full">
+<div class="flex flex-col items-center">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 z-10 shadow-sm relative overflow-hidden">
+<div class="absolute inset-0 bg-primary/10 animate-pulse"></div>
+<img alt="AI Avatar" class="w-5 h-5 object-contain opacity-90 mix-blend-multiply relative z-10" src="https://lh3.googleusercontent.com/aida/AP1WRLvf9P6GqbyZ-mEkmoK8rz1k4WZ_EVB3-QXNxJuPNPBXhE-AMcGFIXlzvBQWNlt3ht9vPSoOFxSjqiRT8kFzphsTfDkWvcbiDljU1yXVJeoxk4TUnAs9kZEatcm-OfBZ0TNpNBzRaov9gcSoBbsvDbZ_YrX-lSgtxdTWEHkV-9HezubKmLzI_tbME-U8jAy8KRpVzCORgiZhMWnXEEtDgcGJX8_oVjbr3pJ3HFdSS7WBtkk3Npy4i4nqUQ">
+</div>
+<div class="w-px h-full bg-transparent my-2 min-h-[24px]"></div>
+</div>
+<div class="flex-1 pt-1">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-sm font-semibold text-primary">AD Glasses</span>
+<span class="text-xs text-on-surface-variant font-label">Analyzing...</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1.4s_infinite_0s]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1.4s_infinite_0.2s]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-[bounce_1.4s_infinite_0.4s]"></div>
+</div>
+</div>
+</div>
+<div class="h-8"></div>
+</main>
+<div class="bg-surface/90 backdrop-blur-md px-4 py-3 border-t border-outline-variant/20 shadow-[0_-4px_12px_rgba(0,0,0,0.02)] z-20 flex-shrink-0 w-full pb-safe">
+<div class="max-w-3xl mx-auto flex items-end gap-2">
+<div class="flex items-center pb-1.5 gap-1">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">add_circle</span>
+</button>
+</div>
+<div class="flex-1 bg-surface-container-highest/50 rounded-2xl border border-outline-variant/30 focus-within:border-primary focus-within:bg-surface focus-within:shadow-sm transition-all duration-200 min-h-[48px] flex items-end py-1.5 px-2">
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none text-sm text-on-surface placeholder:text-outline py-1.5 px-2 max-h-32 overflow-y-auto" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" placeholder="Ask AD Glasses..." rows="1"></textarea>
+<button class="p-1.5 mb-0.5 rounded-full text-outline hover:text-primary hover:bg-surface-container-high transition-colors flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+<button class="bg-primary text-on-primary rounded-xl h-[48px] w-[48px] flex items-center justify-center shadow-sm hover:bg-primary/90 hover:shadow transition-all active:scale-95 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+
+
+</body></html>

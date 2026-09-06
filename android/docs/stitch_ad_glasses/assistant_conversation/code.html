@@ -1,0 +1,226 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>AD Glasses - Conversation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed": "#001b3d",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "outline-variant": "#c1c6d5",
+                        "on-surface": "#181c22",
+                        "surface-container-high": "#e6e8f1",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e0e2eb",
+                        "inverse-primary": "#aac7ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#964400",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary-fixed-variant": "#00458d",
+                        "inverse-surface": "#2d3037",
+                        "surface": "#f9f9ff",
+                        "surface-tint": "#005db8",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-dim": "#d7dae3",
+                        "on-primary-container": "#fefcff",
+                        "primary-fixed": "#d6e3ff",
+                        "secondary-container": "#b6d0ff",
+                        "primary": "#005ab4",
+                        "primary-fixed-dim": "#aac7ff",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container": "#ebedf7",
+                        "on-background": "#181c22",
+                        "on-tertiary-fixed-variant": "#763400",
+                        "error": "#ba1a1a",
+                        "primary-container": "#0a73e0",
+                        "tertiary-container": "#bd5700",
+                        "on-error-container": "#93000a",
+                        "background": "#f9f9ff",
+                        "surface-container-low": "#f1f3fc",
+                        "outline": "#717785",
+                        "secondary": "#465f88",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001b3e",
+                        "inverse-on-surface": "#eef0fa",
+                        "on-secondary-fixed-variant": "#2d476f",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#3f5881",
+                        "secondary-fixed-dim": "#aec7f7",
+                        "on-surface-variant": "#414753"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Inter", "sans-serif"],
+                        display: ["Inter", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for chat area */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #c1c6d5; /* outline-variant */
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-low text-on-surface font-body h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Top Navigation Bar (Adapted from TopAppBar JSON for a Detail Screen) -->
+<!-- Navigation shell suppressed per Destination Rule (Task-Focused Detail View) -->
+<header class="bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 py-3 w-full sticky top-0 z-20 border-b border-outline-variant/20 shadow-sm flex-shrink-0">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">eyeglasses</span>
+<h1 class="font-headline text-on-surface font-bold text-base leading-tight tracking-tight">AD Glasses</h1>
+</div>
+
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-primary text-on-primary rounded-lg px-3 py-1.5 text-sm font-label font-medium flex items-center gap-1.5 shadow-sm hover:bg-primary/90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">videocam</span>
+                Live
+            </button>
+</div>
+</header>
+<!-- Chat Canvas Area -->
+<main class="flex-1 overflow-y-auto chat-scroll p-4 md:p-6 lg:px-8 max-w-4xl mx-auto w-full flex flex-col gap-6">
+<!-- Timestamp cluster -->
+<div class="flex justify-center mt-2">
+<span class="bg-surface text-on-surface-variant text-xs font-label px-3 py-1 rounded-full shadow-sm border border-outline-variant/10">Today, 10:42 AM</span>
+</div>
+<!-- User Message (Text + Image Attachment context) -->
+<div class="flex flex-col items-end gap-1.5 self-end w-full max-w-[85%] md:max-w-[70%]">
+<div class="bg-primary-container text-on-primary-container rounded-2xl rounded-tr-sm p-4 shadow-sm w-full">
+<p class="text-sm leading-relaxed">I'm looking at this architectural diagram. Can you explain the data flow between the ingestion service and the primary database? It seems like there might be a bottleneck.</p>
+<!-- Attached contextual image from glasses -->
+<div class="mt-3 relative rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-variant h-32 w-full">
+<img class="w-full h-full object-cover" data-alt="A highly detailed technical architectural diagram of a cloud software system, displayed on a glowing augmented reality interface. The diagram features complex nodes, arrows, and technical text in a bright, modern light-mode aesthetic, viewed from a first-person perspective as if looking through smart glasses. The lighting is crisp and the background is slightly blurred." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZTzVD5OWt5Mz8CTAfOUdTtRySH-2iKlXBGMtHMheUzIHibrq4v9n5CS9eyOb_drEvdwOwVwnCDWcqLStPxvdKBzdyGsgXOFznY_o9D_Z_qj0Hd13ZLqktI8oWU_EGLQqyT2WGk5KMjTTKlSz5-K4XpadW8p96eXy7FCNIul5mFMMCyBLBJqh95WPKYQsyFexbqfUnMw3e8IuKb0THPLZT2dWKgFdY1JhZI6IGNkNssXd7qg-QwrcD">
+<div class="absolute bottom-2 left-2 bg-surface/90 backdrop-blur-sm text-on-surface text-xs font-label px-2 py-1 rounded flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span>
+                        Captured via Glasses
+                    </div>
+</div>
+</div>
+<span class="text-[11px] text-on-surface-variant font-label mr-1">10:42 AM</span>
+</div>
+<!-- AI Assistant Message -->
+<div class="flex gap-3 self-start w-full max-w-[90%] md:max-w-[75%]">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-surface shadow-sm border border-outline-variant/20 flex items-center justify-center mt-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 w-full">
+<div class="bg-surface text-on-surface rounded-2xl rounded-tl-sm p-4 shadow-sm border border-outline-variant/30 flex flex-col gap-3">
+<p class="text-sm leading-relaxed">Based on the visual data you shared, the ingestion service (Node A) streams raw logs directly to the primary database (Node C) using a synchronous REST API call. </p>
+<p class="text-sm leading-relaxed">You are correct to identify a potential bottleneck. The lack of an asynchronous message queue (like Kafka or RabbitMQ) between them means that if the database experiences high load, the ingestion service will block, potentially causing data loss or latency spikes upstream.</p>
+<!-- Provenance and Sources Area -->
+<div class="mt-2 pt-3 border-t border-surface-variant flex flex-col gap-2.5">
+<div class="flex flex-wrap gap-2 items-center">
+<span class="text-xs font-label text-on-surface-variant">Sources:</span>
+<button class="bg-surface-container-high hover:bg-surface-dim transition-colors text-on-surface text-xs font-label px-2.5 py-1 rounded-full flex items-center gap-1 border border-outline-variant/20">
+<span class="material-symbols-outlined text-[14px]">description</span>
+                                System_Architecture_v2.pdf
+                            </button>
+<button class="bg-surface-container-high hover:bg-surface-dim transition-colors text-on-surface text-xs font-label px-2.5 py-1 rounded-full flex items-center gap-1 border border-outline-variant/20">
+<span class="material-symbols-outlined text-[14px]">public</span>
+                                Best Practices: Data Ingestion
+                            </button>
+</div>
+<div class="flex items-center gap-1.5 text-secondary text-[11px] font-label">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+                            Processed locally on device for privacy.
+                        </div>
+</div>
+</div>
+<span class="text-[11px] text-on-surface-variant font-label ml-1">10:43 AM</span>
+</div>
+</div>
+<!-- User Message (Short text) -->
+<div class="flex flex-col items-end gap-1.5 self-end w-full max-w-[85%] md:max-w-[70%] mt-4">
+<div class="bg-primary-container text-on-primary-container rounded-2xl rounded-tr-sm p-3 px-4 shadow-sm">
+<p class="text-sm leading-relaxed">What would you recommend we insert to fix it?</p>
+</div>
+<span class="text-[11px] text-on-surface-variant font-label mr-1">10:45 AM</span>
+</div>
+<!-- AI Assistant Message (Generating state simulation) -->
+<div class="flex gap-3 self-start w-full max-w-[90%] md:max-w-[75%]">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-surface shadow-sm border border-outline-variant/20 flex items-center justify-center mt-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 w-full">
+<div class="bg-surface text-on-surface rounded-2xl rounded-tl-sm p-4 shadow-sm border border-outline-variant/30 w-fit">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style="animation-delay: 0.2s"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style="animation-delay: 0.4s"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Spacer to ensure bottom content isn't hidden behind fixed composer -->
+<div class="h-4"></div>
+</main>
+<!-- Bottom Composer Area -->
+<div class="bg-surface px-4 py-3 border-t border-outline-variant/20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 flex-shrink-0 w-full pb-safe">
+<div class="max-w-4xl mx-auto flex items-end gap-2">
+<!-- Attachment Actions -->
+<div class="flex items-center pb-1 gap-1">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest hover:text-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest hover:text-primary transition-colors flex items-center justify-center hidden sm:flex">
+<span class="material-symbols-outlined">photo_camera</span>
+</button>
+</div>
+<!-- Input Field -->
+<div class="flex-1 bg-surface-container-low rounded-xl border border-outline-variant/30 focus-within:border-primary focus-within:bg-surface focus-within:shadow-sm transition-all duration-200 min-h-[44px] flex items-end py-1 px-1">
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none text-sm text-on-surface placeholder:text-outline py-2 px-3 max-h-32 overflow-y-auto" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" placeholder="Message AD Glasses..." rows="1"></textarea>
+<!-- Inner contextual action (e.g. mic) -->
+<button class="p-2 mb-0.5 rounded-full text-outline hover:text-primary transition-colors flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+<!-- Send Action -->
+<button class="bg-primary text-on-primary rounded-xl h-[44px] w-[44px] flex items-center justify-center shadow-sm hover:bg-primary/90 hover:shadow transition-all active:scale-95 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+
+
+</body></html>

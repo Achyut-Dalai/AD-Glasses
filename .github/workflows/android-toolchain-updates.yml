@@ -1,0 +1,77 @@
+name: Android toolchain updates
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monday 08:30 Asia/Kolkata. Scheduled workflows run from the default branch.
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  propose-stable-toolchain-update:
+    name: Propose stable Android toolchain update
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: platform-tools
+
+      - name: Resolve and apply latest stable Android toolchain pins
+        run: python3 scripts/check-android-toolchain.py --apply
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat
+          fi
+
+      - name: Open or refresh toolchain update PR
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="deps/android-stable-toolchain"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$branch"
+          git add .github/workflows/android-app.yml android/AD-Glasses heycyan-core
+          git commit -m "deps(android): update stable Android toolchain"
+          git push --force origin "$branch"
+
+          if gh pr view "$branch" --json url >/dev/null 2>&1; then
+            gh pr edit "$branch" \
+              --title "Update stable Android toolchain" \
+              --body "Automated stable-channel Android SDK/Build Tools/NDK/CMake/Command-Line Tools update. Merge only after the full Android unit-test and branded APK workflow is green."
+          else
+            gh pr create \
+              --base main \
+              --head "$branch" \
+              --title "Update stable Android toolchain" \
+              --body "Automated stable-channel Android SDK/Build Tools/NDK/CMake/Command-Line Tools update. Merge only after the full Android unit-test and branded APK workflow is green."
+          fi

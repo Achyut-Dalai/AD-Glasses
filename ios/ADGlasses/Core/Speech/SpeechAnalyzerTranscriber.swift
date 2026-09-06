@@ -1,0 +1,814 @@
+@preconcurrency import AVFoundation
+import Foundation
+import Speech
+import os
+
+private let speechLogger = Logger(subsystem: "com.achyutdalai.ADGlasses", category: "SpeechTranscriber")
+
+@MainActor
+final class SpeechAnalyzerTranscriber: ExternalAudioSpeechTranscribing {
+    var engineName: String {
+        groqCredentialProvider != nil
+            ? "SpeechAnalyzer + Groq Whisper Large v3 Turbo"
+            : "SpeechAnalyzer (on-device)"
+    }
+    var onUpdate: ((SpeechTranscriptionSnapshot) -> Void)?
+    var onError: ((Error) -> Void)?
+
+    private(set) var snapshot: SpeechTranscriptionSnapshot {
+        didSet { onUpdate?(snapshot) }
+    }
+
+    private let requestedLocale: Locale
+    private let groqCredentialProvider: (@MainActor @Sendable () -> String?)?
+    private let audioEngine = AVAudioEngine()
+    private let bufferConverter = SpeechBufferConverter()
+    private var analyzer: SpeechAnalyzer?
+    private var transcriber: DictationTranscriber?
+    private var analyzerInputContinuation: AsyncStream<AnalyzerInput>.Continuation?
+    private var audioContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
+    private var audioTask: Task<Void, Never>?
+    private var resultTask: Task<Void, Never>?
+    private var phoneEndpointTask: Task<Void, Never>?
+    private var externalEndpointTask: Task<Void, Never>?
+    private var finalizedTranscript = ""
+    private var lastPhoneEndpointTranscript = ""
+    private var inputSource: InputSource?
+    private var preparedLocale: Locale?
+    private var turnAudioBuffers = [AVAudioPCMBuffer]()
+
+    // Phone dictation keeps a generous pause because the user may still be composing a sentence.
+    // Glasses Assistant is a short Ask turn and already has a verified hardware end notification as
+    // a fallback, so once SpeechAnalyzer has recognized speech we can commit after a much shorter
+    // acoustic tail instead of waiting several seconds for firmware to close the stream.
+    private let phoneTranscriptSilenceDelay: Duration = .milliseconds(2_200)
+    private let externalAcousticSilenceDelay: Duration = .milliseconds(2_000)
+    private let initialNoSpeechDelay: Duration = .seconds(6)
+    private let postDownloadStatusChecks = 60
+
+    // RMS energy is intentionally used instead of peak energy. Conversational voice at the glasses
+    // temple microphone typically arrives around -40 to -48 dBFS, while quiet room noise is below
+    // -55 dBFS. -49 dBFS accurately detects voice activity even for quiet or natural speech without
+    // falsely treating pauses between words as immediate silence or skipping Groq Whisper.
+    private let externalSilenceRMSThresholdDBFS: Float = -49
+
+    private enum InputSource {
+        case phoneMicrophone
+        case externalPCM
+    }
+
+    private static let assistantContextualStrings: [String] = []
+
+    init(
+        locale: Locale,
+        groqCredentialProvider: (@MainActor @Sendable () -> String?)? = nil
+    ) {
+        requestedLocale = locale
+        self.groqCredentialProvider = groqCredentialProvider
+        snapshot = SpeechTranscriptionSnapshot(
+            transcript: "",
+            isRunning: false,
+            engineName: groqCredentialProvider != nil ? "SpeechAnalyzer + Groq Whisper Large v3 Turbo" : "SpeechAnalyzer (on-device)"
+        )
+    }
+
+    static func supportedSpeechLocales() async -> [Locale] {
+        await DictationTranscriber.supportedLocales
+    }
+
+    static func installedSpeechLocales() async -> [Locale] {
+        await DictationTranscriber.installedLocales
+    }
+
+    /// Ensures the requested SpeechAnalyzer language asset is ready once per transcriber lifetime.
+    /// A successful preparation is cached so later Assistant turns do not repeatedly re-enter the
+    /// installation/status path for the same requested English model.
+    func prepareAssets(statusUpdate: ((String) -> Void)? = nil) async throws -> Locale {
+        if let preparedLocale {
+            statusUpdate?("\(languageDisplayName(preparedLocale)) speech model ready")
+            return preparedLocale
+        }
+
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
+            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageDisplayName(requestedLocale))
+        }
+
+        let module = makeTranscriber(locale: locale)
+        let languageName = languageDisplayName(locale)
+
+        statusUpdate?("Preparing \(languageName) speech model…")
+        do {
+            try await reserve(locale)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            await Self.logAssetDiagnostic(
+                locale: locale,
+                status: await AssetInventory.status(forModules: [module]),
+                error: error,
+                stage: "reservation"
+            )
+            throw SpeechAnalyzerAssetError.reservationFailed(languageName)
+        }
+
+        let status = await AssetInventory.status(forModules: [module])
+        switch status {
+        case .installed:
+            preparedLocale = locale
+            statusUpdate?("\(languageName) speech model ready")
+            return locale
+        case .unsupported:
+            throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
+        case .supported, .downloading:
+            statusUpdate?("Downloading \(languageName) speech model…")
+        @unknown default:
+            throw SpeechAnalyzerAssetError.installationFailed(
+                languageName,
+                "SpeechAnalyzer returned an unknown asset state."
+            )
+        }
+
+        var installationError: Error?
+        do {
+            if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+                let progressTask = Task { @MainActor in
+                    var lastPercent = -1
+                    while !Task.isCancelled {
+                        let percent = max(
+                            0,
+                            min(100, Int((request.progress.fractionCompleted * 100).rounded()))
+                        )
+                        if percent != lastPercent {
+                            lastPercent = percent
+                            statusUpdate?("Downloading \(languageName) speech model… \(percent)%")
+                        }
+                        do {
+                            try await Task.sleep(for: .milliseconds(250))
+                        } catch {
+                            return
+                        }
+                    }
+                }
+                defer { progressTask.cancel() }
+                try await request.downloadAndInstall()
+                progressTask.cancel()
+                await progressTask.value
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            installationError = error
+            let state = await AssetInventory.status(forModules: [module])
+            await Self.logAssetDiagnostic(
+                locale: locale,
+                status: state,
+                error: error,
+                stage: "downloadAndInstall"
+            )
+            guard state == .downloading else {
+                throw SpeechAnalyzerAssetError.installationFailed(
+                    languageName,
+                    error.localizedDescription
+                )
+            }
+        }
+
+        let installedLocale = try await waitForInstalledModel(
+            module,
+            locale: locale,
+            languageName: languageName,
+            statusUpdate: statusUpdate,
+            initialError: installationError
+        )
+        preparedLocale = installedLocale
+        return installedLocale
+    }
+
+    func start() async throws {
+        try await startWithPreparedLocale(nil)
+    }
+
+    func start(preparedLocale: Locale) async throws {
+        try await startWithPreparedLocale(preparedLocale)
+    }
+
+    private func startWithPreparedLocale(_ explicitPreparedLocale: Locale?) async throws {
+        if snapshot.isRunning { return }
+        try await SpeechPermissions.requestAll()
+        await stop()
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+
+        let locale: Locale
+        if let explicitPreparedLocale {
+            locale = explicitPreparedLocale
+        } else {
+            locale = try await prepareAssets()
+        }
+        _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
+
+        do {
+            try await SpeechInputAudioSession.activate()
+        } catch {
+            await cancelPreparedPipeline()
+            throw error
+        }
+
+        let inputNode = audioEngine.inputNode
+        let format = inputNode.outputFormat(forBus: 0)
+        guard format.sampleRate > 0 else {
+            await cancelPreparedPipeline()
+            await SpeechInputAudioSession.deactivate()
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
+
+        guard let audioContinuation else {
+            await cancelPreparedPipeline()
+            await SpeechInputAudioSession.deactivate()
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
+
+        do {
+            try inputNode.installAudioTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, _ in
+                // iOS 27's tap callback is Sendable and supplies a read-only buffer. The existing
+                // SpeechAnalyzer conversion pipeline owns mutable PCM buffers, so copy once at this
+                // boundary. Glasses PCM bypasses this phone-microphone tap and remains unchanged.
+                audioContinuation.yield(AVAudioPCMBuffer(copying: buffer))
+            }
+        } catch {
+            audioContinuation.finish()
+            await cancelPreparedPipeline()
+            await SpeechInputAudioSession.deactivate()
+            throw error
+        }
+
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+            inputSource = .phoneMicrophone
+            snapshot.isRunning = true
+            armInitialPhoneEndpoint()
+        } catch {
+            inputNode.removeTap(onBus: 0)
+            audioContinuation.finish()
+            await cancelPreparedPipeline()
+            await SpeechInputAudioSession.deactivate()
+            throw error
+        }
+    }
+
+    func stop() async {
+        cancelEndpointTasks()
+        lastPhoneEndpointTranscript = ""
+
+        let source = inputSource
+        let wasUsingPhoneMicrophone = source == .phoneMicrophone
+
+        if wasUsingPhoneMicrophone {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+            }
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.reset()
+        }
+
+        audioContinuation?.finish()
+        await audioTask?.value
+        audioTask = nil
+        audioContinuation = nil
+
+        if let analyzer {
+            // Even an acoustically detected endpoint gets normal SpeechAnalyzer end-of-input
+            // finalization. The previous fast-cancel path saved roughly a second but could preserve
+            // a volatile, not-yet-corrected hypothesis. Accuracy matters more than that shortcut.
+            do {
+                try await analyzer.finalizeAndFinishThroughEndOfInput()
+            } catch {
+                onError?(error)
+            }
+        }
+
+        await resultTask?.value
+        resultTask = nil
+        analyzerInputContinuation = nil
+        transcriber = nil
+        analyzer = nil
+        bufferConverter.reset()
+        inputSource = nil
+
+        await performGroqWhisperFinalizationIfNeeded()
+
+        snapshot.isRunning = false
+        if wasUsingPhoneMicrophone {
+            await SpeechInputAudioSession.deactivate()
+        }
+    }
+
+    func startExternalAudio() async throws {
+        if snapshot.isRunning { await stop() }
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+        try await SpeechPermissions.requestRecognition()
+        let locale = try await prepareAssets()
+        _ = try await prepareAnalyzerPipeline(preparedLocale: locale)
+        inputSource = .externalPCM
+        snapshot.isRunning = true
+    }
+
+    func appendExternalAudio(_ buffer: AVAudioPCMBuffer) {
+        guard inputSource == .externalPCM else { return }
+        audioContinuation?.yield(buffer)
+        noteExternalAudioActivity(buffer)
+    }
+
+    func finishExternalAudio() async {
+        guard inputSource == .externalPCM else { return }
+        await stop()
+    }
+
+    func resetTranscript() {
+        finalizedTranscript = ""
+        lastPhoneEndpointTranscript = ""
+        externalEndpointTask?.cancel()
+        externalEndpointTask = nil
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+        snapshot.transcript = ""
+    }
+
+    private func startResultTask(for module: DictationTranscriber) {
+        finalizedTranscript = ""
+        resultTask = Task { [weak self] in
+            guard let self else { return }
+            var volatileTranscript = ""
+
+            do {
+                for try await result in module.results {
+                    let text = String(result.text.characters)
+                    if result.isFinal {
+                        finalizedTranscript = Self.join(finalizedTranscript, text)
+                        volatileTranscript = ""
+                    } else {
+                        volatileTranscript = text
+                    }
+                    let combined = Self.join(finalizedTranscript, volatileTranscript)
+                    snapshot.transcript = combined
+                    noteTranscriptActivity(combined)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                onError?(error)
+            }
+        }
+    }
+
+    private func armInitialPhoneEndpoint() {
+        phoneEndpointTask?.cancel()
+        phoneEndpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.initialNoSpeechDelay ?? .seconds(6))
+            } catch {
+                return
+            }
+            guard let self,
+                  inputSource == .phoneMicrophone,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            phoneEndpointTask = nil
+            await stop()
+        }
+    }
+
+    private func noteTranscriptActivity(_ text: String) {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+
+        switch inputSource {
+        case .phoneMicrophone:
+            guard clean != lastPhoneEndpointTranscript else { return }
+            lastPhoneEndpointTranscript = clean
+            phoneEndpointTask?.cancel()
+            phoneEndpointTask = Task { @MainActor [weak self] in
+                do {
+                    try await Task.sleep(for: self?.phoneTranscriptSilenceDelay ?? .milliseconds(1_500))
+                } catch {
+                    return
+                }
+                guard let self,
+                      inputSource == .phoneMicrophone,
+                      snapshot.isRunning,
+                      snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == clean else {
+                    return
+                }
+                phoneEndpointTask = nil
+                await stop()
+            }
+
+        case .externalPCM:
+            // A new recognition result means the utterance is still evolving. Never use text
+            // stability alone as an endpoint: SpeechAnalyzer can pause result delivery while the
+            // person is still speaking, especially with faint/distant input.
+            externalEndpointTask?.cancel()
+            externalEndpointTask = nil
+
+        case nil:
+            break
+        }
+    }
+
+    private func noteExternalAudioActivity(_ buffer: AVAudioPCMBuffer) {
+        guard inputSource == .externalPCM,
+              snapshot.isRunning,
+              !snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let rmsDBFS = Self.rmsDBFS(buffer) else {
+            return
+        }
+
+        if rmsDBFS > externalSilenceRMSThresholdDBFS {
+            externalEndpointTask?.cancel()
+            externalEndpointTask = nil
+            return
+        }
+
+        guard externalEndpointTask == nil else { return }
+        let endpointTranscript = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        externalEndpointTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: self?.externalAcousticSilenceDelay ?? .milliseconds(2_000))
+            } catch {
+                return
+            }
+            guard let self,
+                  inputSource == .externalPCM,
+                  snapshot.isRunning,
+                  snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines) == endpointTranscript else {
+                return
+            }
+            externalEndpointTask = nil
+            await stop()
+        }
+    }
+
+    private static func rmsDBFS(_ buffer: AVAudioPCMBuffer) -> Float? {
+        let frameCount = Int(buffer.frameLength)
+        let channelCount = Int(buffer.format.channelCount)
+        guard frameCount > 0, channelCount > 0 else { return nil }
+
+        var squareSum = 0.0
+        var sampleCount = 0
+
+        switch buffer.format.commonFormat {
+        case .pcmFormatFloat32:
+            guard let channels = buffer.floatChannelData else { return nil }
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    let value = Double(samples[frame])
+                    squareSum += value * value
+                    sampleCount += 1
+                }
+            }
+
+        case .pcmFormatInt16:
+            guard let channels = buffer.int16ChannelData else { return nil }
+            let scale = Double(Int16.max)
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
+                }
+            }
+
+        case .pcmFormatInt32:
+            guard let channels = buffer.int32ChannelData else { return nil }
+            let scale = Double(Int32.max)
+            for channel in 0..<channelCount {
+                let samples = channels[channel]
+                for frame in 0..<frameCount {
+                    let value = Double(samples[frame]) / scale
+                    squareSum += value * value
+                    sampleCount += 1
+                }
+            }
+
+        default:
+            return nil
+        }
+
+        guard sampleCount > 0, squareSum > 0 else { return -120 }
+        let rms = sqrt(squareSum / Double(sampleCount))
+        return Float(20.0 * log10(rms))
+    }
+
+    private static func join(_ prefix: String, _ suffix: String) -> String {
+        guard !prefix.isEmpty else { return suffix }
+        guard !suffix.isEmpty else { return prefix }
+        if prefix.last?.isWhitespace == true || suffix.first?.isWhitespace == true {
+            return prefix + suffix
+        }
+        return prefix + " " + suffix
+    }
+
+    private func waitForInstalledModel(
+        _ module: DictationTranscriber,
+        locale: Locale,
+        languageName: String,
+        statusUpdate: ((String) -> Void)?,
+        initialError: Error?
+    ) async throws -> Locale {
+        for check in 0..<postDownloadStatusChecks {
+            try Task.checkCancellation()
+            let status = await AssetInventory.status(forModules: [module])
+            switch status {
+            case .installed:
+                statusUpdate?("\(languageName) speech model ready")
+                return locale
+            case .unsupported:
+                throw SpeechAnalyzerAssetError.unsupportedLanguage(languageName)
+            case .downloading:
+                statusUpdate?("Finishing \(languageName) speech model download…")
+            case .supported:
+                statusUpdate?("Waiting for SpeechAnalyzer to finish \(languageName) model setup…")
+            @unknown default:
+                await Self.logAssetDiagnostic(
+                    locale: locale,
+                    status: status,
+                    error: initialError,
+                    stage: "status-monitor"
+                )
+                throw SpeechAnalyzerAssetError.installationFailed(
+                    languageName,
+                    "SpeechAnalyzer returned an unknown asset state."
+                )
+            }
+
+            if check + 1 < postDownloadStatusChecks {
+                try await Task.sleep(for: .milliseconds(500))
+            }
+        }
+
+        let finalStatus = await AssetInventory.status(forModules: [module])
+        await Self.logAssetDiagnostic(
+            locale: locale,
+            status: finalStatus,
+            error: initialError,
+            stage: "status-monitor-timeout"
+        )
+        throw SpeechAnalyzerAssetError.installationPending(languageName)
+    }
+
+    private func prepareAnalyzerPipeline(preparedLocale: Locale) async throws -> AVAudioFormat {
+        let module = makeTranscriber(locale: preparedLocale)
+
+        // The same pipeline is used by phone Ask/dictation and provider PCM. No flow bypasses
+        // SpeechAnalyzer preheat or model retention.
+        guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
+            throw SpeechTranscriptionError.failedToCreateAudioInput
+        }
+
+        let options = SpeechAnalyzer.Options(
+            priority: .userInitiated,
+            modelRetention: .processLifetime
+        )
+        let analyzer = SpeechAnalyzer(modules: [module], options: options)
+        let context = AnalysisContext()
+        context.contextualStrings[.general] = Self.assistantContextualStrings
+        try await analyzer.setContext(context)
+
+        let (analyzerInputs, analyzerInputContinuation) = AsyncStream.makeStream(of: AnalyzerInput.self)
+        let (audioStream, audioContinuation) = AsyncStream.makeStream(of: AVAudioPCMBuffer.self)
+        self.analyzer = analyzer
+        transcriber = module
+        self.analyzerInputContinuation = analyzerInputContinuation
+        self.audioContinuation = audioContinuation
+
+        try await analyzer.prepareToAnalyze(in: analyzerFormat)
+        try await analyzer.start(inputSequence: analyzerInputs)
+        startResultTask(for: module)
+        audioTask = Task { [weak self] in
+            guard let self else { return }
+            for await buffer in audioStream {
+                do {
+                    let converted = try bufferConverter.convertBuffer(buffer, to: analyzerFormat)
+                    await self.appendTurnAudio(converted)
+                    analyzerInputContinuation.yield(AnalyzerInput(buffer: converted))
+                } catch {
+                    onError?(error)
+                }
+            }
+            analyzerInputContinuation.finish()
+        }
+        return analyzerFormat
+    }
+
+    private func makeTranscriber(locale: Locale) -> DictationTranscriber {
+        // Start from the accurate short-dictation configuration, then request volatile results for
+        // live UI without enabling `frequentFinalization` (the DictationTranscriber equivalent of
+        // trading accuracy for speed). `farField` asks Apple's model to better accommodate quiet or
+        // distant delivery without changing the PCM samples with guessed gain/EQ.
+        let preset = DictationTranscriber.Preset.shortDictation
+        return DictationTranscriber(
+            locale: locale,
+            contentHints: preset.contentHints.union([.farField]),
+            transcriptionOptions: preset.transcriptionOptions,
+            reportingOptions: [.volatileResults],
+            attributeOptions: preset.attributeOptions
+        )
+    }
+
+    private func reserve(_ locale: Locale) async throws {
+        let normalizedRequested = Self.normalizedIdentifier(locale)
+        var reservations = await AssetInventory.reservedLocales
+
+        if reservations.contains(where: { Self.normalizedIdentifier($0) == normalizedRequested }) {
+            return
+        }
+
+        if reservations.count >= AssetInventory.maximumReservedLocales {
+            for reservedLocale in reservations
+            where Self.normalizedIdentifier(reservedLocale) != normalizedRequested {
+                _ = await AssetInventory.release(reservedLocale: reservedLocale)
+            }
+            reservations = await AssetInventory.reservedLocales
+            if reservations.contains(where: { Self.normalizedIdentifier($0) == normalizedRequested }) {
+                return
+            }
+        }
+
+        _ = try await AssetInventory.reserve(locale: locale)
+    }
+
+    private static func normalizedIdentifier(_ locale: Locale) -> String {
+        locale.identifier
+            .replacingOccurrences(of: "_", with: "-")
+            .lowercased()
+    }
+
+    private func languageDisplayName(_ locale: Locale) -> String {
+        Locale.current.localizedString(forIdentifier: locale.identifier)
+            ?? locale.localizedString(forIdentifier: locale.identifier)
+            ?? locale.identifier
+    }
+
+    private static func logAssetDiagnostic(
+        locale: Locale,
+        status: AssetInventory.Status,
+        error: Error?,
+        stage: String
+    ) async {
+        let nsError = error.map { $0 as NSError }
+        let installed = await DictationTranscriber.installedLocales
+            .map(\.identifier)
+            .sorted()
+            .joined(separator: ", ")
+        let reserved = await AssetInventory.reservedLocales
+            .map(\.identifier)
+            .sorted()
+            .joined(separator: ", ")
+        var message = "[AD SpeechAnalyzer] stage=\(stage) locale=\(locale.identifier) status=\(status) installed=[\(installed)] reserved=[\(reserved)]"
+        if let nsError {
+            message += " NSError(domain=\(nsError.domain), code=\(nsError.code), description=\(nsError.localizedDescription), userInfo=\(nsError.userInfo))"
+        }
+        NSLog("%@", message)
+    }
+
+    private func appendTurnAudio(_ buffer: AVAudioPCMBuffer) {
+        turnAudioBuffers.append(buffer)
+    }
+
+    private func performGroqWhisperFinalizationIfNeeded() async {
+        guard let provider = groqCredentialProvider,
+              let key = provider(),
+              !key.isEmpty else {
+            speechLogger.info("[SpeechTranscriber] No Groq credential available; keeping SpeechAnalyzer transcript: \"\(self.snapshot.transcript, privacy: .public)\"")
+            turnAudioBuffers.removeAll(keepingCapacity: true)
+            return
+        }
+
+        let buffers = turnAudioBuffers
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+
+        guard !buffers.isEmpty,
+              let wavData = AudioWAVEncoder.encode(buffers: buffers) else {
+            speechLogger.info("[SpeechTranscriber] No audio buffers captured for Groq Whisper; keeping SpeechAnalyzer transcript: \"\(self.snapshot.transcript, privacy: .public)\"")
+            return
+        }
+
+        let sampleRate = buffers.first?.format.sampleRate ?? 16_000
+        let totalFrames = buffers.reduce(0) { $0 + Int($1.frameLength) }
+        let durationSec = Double(totalFrames) / (sampleRate > 0 ? sampleRate : 16_000)
+
+        let preliminaryDraft = snapshot.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let peakRMS = buffers.compactMap { Self.rmsDBFS($0) }.max() ?? -100
+        let hasSpokenAudio = peakRMS > externalSilenceRMSThresholdDBFS
+
+        // Guard against sub-threshold audio energy: when peak acoustic energy is below the speech
+        // threshold (e.g. -42 dBFS), Whisper models hallucinate random subtitle phrases like
+        // "Very sad part of the story." or "Thank you." while Apple on-device ASR handles faint speech.
+        if !hasSpokenAudio {
+            speechLogger.info("[GroqWhisper] Audio energy is below speech threshold (peak RMS: \(peakRMS, format: .fixed(precision: 1)) dBFS); keeping SpeechAnalyzer fallback: \"\(self.snapshot.transcript, privacy: .public)\"")
+            return
+        }
+
+        speechLogger.notice("[GroqWhisper] Transcribing \(buffers.count) buffers (\(wavData.count) bytes, \(String(format: "%.2f", durationSec))s, peak: \(peakRMS, format: .fixed(precision: 1)) dBFS) via whisper-large-v3...")
+
+        let languageCode = (preparedLocale ?? requestedLocale).language.languageCode?.identifier ?? "en"
+
+        // Execute transcription in a detached task immune to any caller task cancellation.
+        // We do NOT pass preliminaryDraft as prompt: when Apple SpeechAnalyzer misrecognizes words
+        // (e.g. "smart" instead of "Meta"), passing it as a prompt primes Whisper to repeat the mistake!
+        let groqResult: String? = await withCheckedContinuation { continuation in
+            Task.detached(priority: .userInitiated) {
+                do {
+                    let text = try await GroqWhisperClient.shared.transcribe(
+                        wavData: wavData,
+                        credential: key,
+                        model: .largeV3,
+                        language: languageCode,
+                        prompt: "AI assistant on smart glasses, conversations and questions."
+                    )
+                    continuation.resume(returning: text)
+                } catch {
+                    speechLogger.error("[GroqWhisper] Transcription failed: \(error.localizedDescription, privacy: .public); keeping SpeechAnalyzer fallback")
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+
+        if let groqResult {
+            let trimmed = groqResult.trimmingCharacters(in: .whitespacesAndNewlines)
+            let lower = trimmed.lowercased()
+
+            // Filter known Whisper silence hallucinations when Apple SpeechAnalyzer heard nothing
+            let knownHallucinations: Set<String> = [
+                "thank you.", "thank you", "thanks for watching.", "thanks for watching!",
+                "thank you for watching.", "thank you for watching!", "subtitles by", "you",
+                "bye.", "bye!", "peace.", "peace!", "silence", "i don't know.", "i don't know"
+            ]
+
+            if knownHallucinations.contains(lower) && (!hasSpokenAudio || preliminaryDraft.isEmpty) {
+                speechLogger.warning("[GroqWhisper] Discarded silence hallucination: \"\(trimmed, privacy: .public)\"")
+                return
+            }
+
+            if !trimmed.isEmpty {
+                speechLogger.notice("[GroqWhisper] Overriding transcript with Groq result: \"\(trimmed, privacy: .public)\" (was SpeechAnalyzer: \"\(self.snapshot.transcript, privacy: .public)\")")
+                finalizedTranscript = trimmed
+                snapshot.transcript = trimmed
+                onUpdate?(snapshot)
+            } else {
+                speechLogger.warning("[GroqWhisper] Groq returned empty transcript; keeping SpeechAnalyzer transcript")
+            }
+        }
+    }
+
+    private func cancelEndpointTasks() {
+        phoneEndpointTask?.cancel()
+        phoneEndpointTask = nil
+        externalEndpointTask?.cancel()
+        externalEndpointTask = nil
+    }
+
+    private func cancelPreparedPipeline() async {
+        cancelEndpointTasks()
+        audioContinuation?.finish()
+        await audioTask?.value
+        audioTask = nil
+        audioContinuation = nil
+        analyzerInputContinuation?.finish()
+        if let analyzer {
+            await analyzer.cancelAndFinishNow()
+        }
+        resultTask?.cancel()
+        await resultTask?.value
+        resultTask = nil
+        analyzerInputContinuation = nil
+        transcriber = nil
+        self.analyzer = nil
+        bufferConverter.reset()
+        inputSource = nil
+        turnAudioBuffers.removeAll(keepingCapacity: true)
+    }
+}
+
+private enum SpeechAnalyzerAssetError: LocalizedError {
+    case unsupportedLanguage(String)
+    case reservationFailed(String)
+    case installationFailed(String, String)
+    case installationPending(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedLanguage(let language):
+            return "SpeechAnalyzer does not support \(language) on this iPhone."
+        case .reservationFailed(let language):
+            return "SpeechAnalyzer could not prepare the \(language) model. Try again after freeing storage or restarting the iPhone."
+        case .installationFailed(let language, let reason):
+            return "The \(language) SpeechAnalyzer model could not be installed. \(reason)"
+        case .installationPending(let language):
+            return "SpeechAnalyzer is still downloading the \(language) model. Keep this iPhone online and try voice input again shortly."
+        }
+    }
+}

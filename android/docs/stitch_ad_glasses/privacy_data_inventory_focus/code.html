@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Privacy &amp; Data - AD Glasses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#aac7ff",
+                        "secondary": "#005db8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "cool-gray": "#717785",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary": "#000000",
+                        "primary-fixed": "#e2e2e2",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "warning-amber": "#FFBF00",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d4daea",
+                        "tertiary-fixed": "#e1e2e4",
+                        "on-tertiary-container": "#828486",
+                        "surface-tint": "#5e5e5e",
+                        "inverse-surface": "#2a313d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-highest": "#dde2f2",
+                        "on-primary-fixed": "#1b1b1b",
+                        "inverse-primary": "#c6c6c6",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#dde2f2",
+                        "secondary-container": "#4090fe",
+                        "on-primary-fixed-variant": "#474747",
+                        "electric-blue": "#1978E5",
+                        "surface-container-high": "#e2e8f8",
+                        "outline": "#7e7576",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "canvas": "#F6F7F9",
+                        "on-secondary-container": "#002958",
+                        "surface-container": "#e8eefe",
+                        "surface-bright": "#f9f9ff",
+                        "graphite-black": "#000000",
+                        "primary-container": "#1b1b1b",
+                        "on-surface": "#161c27",
+                        "surface-control": "#FFFFFF",
+                        "on-background": "#161c27",
+                        "success-teal": "#008080",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#848484",
+                        "tertiary-container": "#191c1e",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#ecf0ff",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#4c4546",
+                        "tertiary-fixed-dim": "#c5c7c8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gap-xs": "4px",
+                        "hero-stage": "220px",
+                        "base": "4px",
+                        "margin-page": "16px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.canvas');
+            color: theme('colors.on-surface');
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: theme('colors.electric-blue');
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: theme('colors.electric-blue');
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        .toggle-label {
+            width: 44px;
+            height: 24px;
+            background-color: theme('colors.surface-variant');
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-surface text-primary font-headline-md font-bold docked full-width top-0 bg-surface/80 backdrop-blur-md flat no shadows flex justify-between items-center px-6 py-4 w-full sticky z-40 border-b border-surface-variant md:border-none">
+<button aria-label="Back" class="w-touch-target h-touch-target flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full -ml-4">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<div class="text-xl font-display font-black tracking-tighter text-on-surface">Privacy &amp; Data</div>
+<button aria-label="Settings" class="w-touch-target h-touch-target flex items-center justify-center hover:bg-surface-container-low transition-colors rounded-full -mr-4">
+<span class="material-symbols-outlined text-on-surface">settings</span>
+</button>
+</header>
+<main class="flex-1 max-w-2xl mx-auto w-full px-margin-page py-6 space-y-8">
+<!-- Trust Banner -->
+<div class="bg-surface rounded-xl p-4 border border-surface-variant shadow-sm flex items-start gap-4">
+<span class="material-symbols-outlined icon-fill text-success-teal mt-1">shield</span>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Your Data is Local</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">AD Glasses process interactions on-device by default. Cloud syncing is fully optional and end-to-end encrypted.</p>
+</div>
+</div>
+<!-- Data Inventory -->
+<section>
+<h3 class="font-label-lg text-label-lg text-cool-gray uppercase tracking-wider mb-4 px-1">Data Inventory</h3>
+<div class="grid grid-cols-3 gap-3">
+<!-- Media -->
+<div class="bg-surface p-4 rounded-xl border border-surface-variant flex flex-col items-center justify-center gap-2 text-center hover:bg-surface-container-low transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-on-surface">perm_media</span>
+<div class="font-label-md text-label-md text-on-surface">Media</div>
+<div class="font-body-md text-body-md text-cool-gray text-xs">1.2 GB</div>
+</div>
+<!-- Transcripts -->
+<div class="bg-surface p-4 rounded-xl border border-surface-variant flex flex-col items-center justify-center gap-2 text-center hover:bg-surface-container-low transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-on-surface">description</span>
+<div class="font-label-md text-label-md text-on-surface">Transcripts</div>
+<div class="font-body-md text-body-md text-cool-gray text-xs">45 MB</div>
+</div>
+<!-- Memory -->
+<div class="bg-surface p-4 rounded-xl border border-surface-variant flex flex-col items-center justify-center gap-2 text-center hover:bg-surface-container-low transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-on-surface">memory</span>
+<div class="font-label-md text-label-md text-on-surface">Memory</div>
+<div class="font-body-md text-body-md text-cool-gray text-xs">280 MB</div>
+</div>
+</div>
+</section>
+<!-- Privacy Controls -->
+<section>
+<h3 class="font-label-lg text-label-lg text-cool-gray uppercase tracking-wider mb-4 px-1">Privacy Controls</h3>
+<div class="bg-surface rounded-xl border border-surface-variant divide-y divide-surface-variant overflow-hidden">
+<!-- Memory Mode -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors min-h-touch-target">
+<div class="flex items-center gap-4">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">drive_file_rename</span>
+</div>
+<div>
+<div class="font-headline-md text-body-lg text-on-surface font-medium">Memory Mode</div>
+<div class="font-body-md text-label-md text-cool-gray mt-0.5">Retain context across sessions</div>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle-memory" name="toggle-memory" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer" for="toggle-memory"></label>
+</div>
+</div>
+<!-- Auto-Redaction -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors min-h-touch-target">
+<div class="flex items-center gap-4">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">visibility_off</span>
+</div>
+<div>
+<div class="font-headline-md text-body-lg text-on-surface font-medium">Auto-Redaction</div>
+<div class="font-body-md text-label-md text-cool-gray mt-0.5">Blur faces and screens in media</div>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle-redaction" name="toggle-redaction" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer" for="toggle-redaction"></label>
+</div>
+</div>
+<!-- Vault Lock -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-lowest transition-colors min-h-touch-target">
+<div class="flex items-center gap-4">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<div>
+<div class="font-headline-md text-body-lg text-on-surface font-medium">Vault Lock</div>
+<div class="font-body-md text-label-md text-cool-gray mt-0.5">Require biometrics for saved data</div>
+</div>
+</div>
+<div class="relative inline-block w-11 mr-2 align-middle select-none">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="toggle-vault" name="toggle-vault" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer" for="toggle-vault"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Destructive Action -->
+<section class="pt-6">
+<button class="w-full bg-surface border border-error/30 text-error rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-error-container/50 active:scale-[0.98] transition-all min-h-touch-target font-label-lg font-medium">
+<span class="material-symbols-outlined text-error">delete_forever</span>
+                Clear all local data
+            </button>
+<p class="text-center font-body-md text-label-md text-cool-gray mt-3 px-4">
+                This action is permanent and will reset your device's memory context.
+            </p>
+</section>
+</main>
+<!-- BottomNavBar (Hidden on Web) -->
+<nav class="bg-surface text-primary-fixed-dim font-label text-xs uppercase tracking-widest fixed bottom-0 w-full z-50 rounded-t-xl border-t border-outline-variant shadow-sm fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-2 bg-surface/95 backdrop-blur-lg md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16">
+<span class="material-symbols-outlined mb-1">smart_toy</span>
+<span class="font-label-sm text-label-sm">Assistant</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:text-primary transition-all scale-95 active:scale-90 w-16">
+<span class="material-symbols-outlined mb-1">auto_stories</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</button>
+<!-- Settings is implicitly active as Privacy is under Settings -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 hover:text-primary transition-all scale-95 active:scale-90 w-16">
+<span class="material-symbols-outlined icon-fill mb-1 text-on-primary-fixed">settings_input_component</span>
+<span class="font-label-sm text-label-sm text-on-primary-fixed">Automations</span>
+</button>
+</nav>
+</body></html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Automation Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#00458d",
+                        "surface-container": "#ebedf7",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-container": "#005ab4",
+                        "on-background": "#181c22",
+                        "secondary-container": "#b6d0ff",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-container-highest": "#e0e2eb",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c1c6d5",
+                        "surface-bright": "#f9f9ff",
+                        "inverse-on-surface": "#eef0fa",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#c0d5ff",
+                        "on-surface-variant": "#424752",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container-low": "#f1f3fc",
+                        "on-surface": "#181c22",
+                        "primary": "#004389",
+                        "background": "#f9f9ff",
+                        "surface-container-high": "#e6e8f1",
+                        "on-primary-fixed": "#001b3e",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface-variant": "#e0e2eb",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-error-container": "#93000a",
+                        "outline": "#727783",
+                        "tertiary": "#723200",
+                        "tertiary-container": "#964400",
+                        "on-tertiary-container": "#ffc9ac",
+                        "secondary": "#465f88",
+                        "secondary-fixed-dim": "#aec7f6",
+                        "surface-tint": "#095db7",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2e476f",
+                        "surface-dim": "#d7dae3",
+                        "on-secondary-fixed": "#001b3d",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-secondary-container": "#3f5881",
+                        "inverse-surface": "#2d3037",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#aac7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "element-gap": "0.75rem",
+                        "grid-gutter": "1rem",
+                        "container-padding": "1rem",
+                        "section-gap": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "600"}],
+                        "label-md": ["11px", {"lineHeight": "1rem", "fontWeight": "500"}],
+                        "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "500"}],
+                        "display-sm": ["1.125rem", {"lineHeight": "1.5rem", "letterSpacing": "0.15em", "fontWeight": "700"}],
+                        "body-md": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "400"}],
+                        "headline-sm": ["0.875rem", {"lineHeight": "1.25rem", "fontWeight": "600"}],
+                        "body-sm": ["0.75rem", {"lineHeight": "1rem", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: transparent;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: theme('colors.primary');
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: theme('colors.on-primary');
+            background-color: theme('colors.on-primary');
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased min-h-screen pb-safe">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim transition-colors">
+<div class="flex items-center justify-between px-container-padding h-16 w-full max-w-5xl mx-auto">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full p-2 active:scale-95 duration-100 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-primary dark:text-primary-fixed-dim">Automation Detail</h1>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-full p-2 active:scale-95 duration-100 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="w-full max-w-5xl mx-auto px-container-padding pt-6 pb-24 space-y-section-gap">
+<!-- Header & Status -->
+<section class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-1">'Errand Brain'</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Extract reminders from speech and manage your tasks effortlessly.</p>
+</div>
+<div class="flex items-center gap-3 bg-surface-container-highest rounded-full px-4 py-2 border border-outline-variant/30">
+<div class="w-3 h-3 rounded-full bg-outline"></div>
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-wider">Status: Off</span>
+</div>
+</section>
+<!-- Compatibility & Manifest Bento -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Compatibility -->
+<section class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm flex flex-col justify-center items-center text-center space-y-3 min-h-[160px]">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container mb-2">
+<span class="material-symbols-outlined" data-icon="mic" data-weight="fill" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Voice Input Required</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[200px]">This automation relies on microphone access to function correctly.</p>
+</section>
+<!-- Manifest -->
+<section class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm flex flex-col justify-center min-h-[160px]">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wider mb-4 border-b border-outline-variant/20 pb-2">Manifest Access</h3>
+<ul class="space-y-3">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="mic">mic</span>
+<span class="font-body-md text-body-md text-on-surface">Microphone</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="notifications">notifications</span>
+<span class="font-body-md text-body-md text-on-surface">Notifications</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="memory">memory</span>
+<span class="font-body-md text-body-md text-on-surface">Memory</span>
+</li>
+</ul>
+</section>
+</div>
+<!-- Configuration -->
+<section class="bg-surface-container rounded-xl p-6 border border-outline-variant/20 shadow-sm space-y-6">
+<h3 class="font-headline-sm text-headline-sm text-on-surface border-b border-outline-variant/20 pb-3">Configuration</h3>
+<div class="space-y-5">
+<!-- Select Language -->
+<div class="flex flex-col gap-2">
+<label class="font-label-lg text-label-lg text-on-surface-variant">Voice Input Language</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-highest border border-outline-variant/30 rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<option>English (US)</option>
+<option>Spanish (ES)</option>
+<option>French (FR)</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Select Destination -->
+<div class="flex flex-col gap-2">
+<label class="font-label-lg text-label-lg text-on-surface-variant">Reminder Destination</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-highest border border-outline-variant/30 rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<option>System Tasks</option>
+<option>Calendar</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-lg" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Toggle -->
+<div class="flex items-center justify-between pt-2">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Confirm Before Create</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Require manual approval for each extracted task.</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-4 border-outline-variant appearance-none cursor-pointer z-10 top-0 left-0 transition-transform duration-200 ease-in-out" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer border border-outline-variant/30 transition-colors duration-200 ease-in-out" for="toggle"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="flex-1 bg-surface-container border border-outline-variant/30 text-primary font-label-lg text-label-lg uppercase tracking-wider py-4 rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="play_circle">play_circle</span>
+                Test Phrase (Preview)
+            </button>
+<button class="flex-1 bg-primary text-on-primary font-label-lg text-label-lg uppercase tracking-wider py-4 rounded-xl hover:bg-primary/90 transition-colors shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+                Review &amp; Enable
+            </button>
+</section>
+</main>
+</body></html>

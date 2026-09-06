@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Local Agent - Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e2e2e2",
+                        "on-secondary-fixed": "#001b3e",
+                        "on-secondary-fixed-variant": "#00458d",
+                        "tertiary-fixed": "#e1e2e4",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "surface-container": "#e8eefe",
+                        "surface": "#f9f9ff",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "warning-amber": "#FFBF00",
+                        "electric-blue": "#1978E5",
+                        "secondary-fixed-dim": "#aac7ff",
+                        "outline-variant": "#cfc4c5",
+                        "primary-container": "#1b1b1b",
+                        "cool-gray": "#717785",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#d4daea",
+                        "on-primary-fixed-variant": "#474747",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "success-teal": "#008080",
+                        "inverse-on-surface": "#ecf0ff",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-highest": "#dde2f2",
+                        "tertiary-container": "#191c1e",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-secondary-container": "#002958",
+                        "secondary": "#005db8",
+                        "graphite-black": "#000000",
+                        "surface-variant": "#dde2f2",
+                        "on-surface": "#161c27",
+                        "canvas": "#F6F7F9",
+                        "tertiary": "#000000",
+                        "secondary-container": "#4090fe",
+                        "surface-control": "#FFFFFF",
+                        "on-primary-container": "#848484",
+                        "on-tertiary-container": "#828486",
+                        "on-surface-variant": "#4c4546",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#d6e3ff",
+                        "surface-container-high": "#e2e8f8",
+                        "surface-container-low": "#f0f3ff",
+                        "outline": "#7e7576",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#191c1e",
+                        "inverse-surface": "#2a313d",
+                        "on-primary-fixed": "#1b1b1b",
+                        "on-error-container": "#93000a",
+                        "on-background": "#161c27",
+                        "tertiary-fixed-dim": "#c5c7c8",
+                        "inverse-primary": "#c6c6c6",
+                        "surface-tint": "#5e5e5e",
+                        "background": "#f9f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "hero-stage": "220px",
+                        "touch-target": "48px",
+                        "gap-sm": "8px",
+                        "margin-page": "16px",
+                        "base": "4px",
+                        "gap-xs": "4px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; background-color: #F6F7F9; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas text-on-background min-h-screen flex flex-col pb-[80px]">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin-page h-touch-target bg-surface dark:bg-surface font-headline-lg-mobile text-headline-lg-mobile md:hidden">
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary active:scale-98 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-graphite-black">Local Agent</h1>
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary active:scale-98 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow px-margin-page py-6 max-w-4xl mx-auto w-full space-y-8">
+<!-- Header Info -->
+<section class="mb-8">
+<div class="flex items-center space-x-3 mb-2">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-electric-blue">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Screen Processor</h2>
+<p class="font-body-md text-body-md text-cool-gray">Analyzes active screen content</p>
+</div>
+</div>
+<div class="inline-flex items-center px-3 py-1 bg-surface-container rounded-full mt-2">
+<span class="w-2 h-2 rounded-full bg-success-teal mr-2"></span>
+<span class="font-label-sm text-label-sm text-on-surface">Active</span>
+</div>
+</section>
+<!-- Privacy Badge -->
+<div class="w-full bg-surface rounded-lg p-4 border border-outline-variant flex items-center justify-center space-x-3 shadow-sm">
+<span class="material-symbols-outlined text-electric-blue" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="font-label-lg text-label-lg text-on-surface font-semibold tracking-wide">100% On-Device Processing</span>
+</div>
+<!-- Manifest & Boundaries -->
+<section>
+<h3 class="font-label-lg text-label-lg text-cool-gray mb-4 uppercase tracking-wider">Manifest &amp; Boundaries</h3>
+<div class="bg-surface rounded-xl p-5 border border-outline-variant shadow-sm space-y-6">
+<!-- Read Access -->
+<div>
+<div class="flex items-center space-x-2 mb-3">
+<span class="material-symbols-outlined text-cool-gray text-sm" data-icon="visibility">visibility</span>
+<h4 class="font-label-md text-label-md text-on-surface font-semibold">READ ACCESS</h4>
+</div>
+<ul class="space-y-3 pl-6 border-l-2 border-surface-container-high">
+<li class="flex items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-cool-gray mt-2 mr-3 flex-shrink-0"></span>
+<div>
+<span class="font-body-md text-body-md text-on-surface block">Phone Screen</span>
+<span class="font-label-sm text-label-sm text-cool-gray">Active window only, 500ms intervals</span>
+</div>
+</li>
+<li class="flex items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-cool-gray mt-2 mr-3 flex-shrink-0"></span>
+<div>
+<span class="font-body-md text-body-md text-on-surface block">Notifications</span>
+<span class="font-label-sm text-label-sm text-cool-gray">High priority channels</span>
+</div>
+</li>
+</ul>
+</div>
+<!-- Write Access -->
+<div>
+<div class="flex items-center space-x-2 mb-3">
+<span class="material-symbols-outlined text-cool-gray text-sm" data-icon="edit">edit</span>
+<h4 class="font-label-md text-label-md text-on-surface font-semibold">WRITE ACCESS</h4>
+</div>
+<ul class="space-y-3 pl-6 border-l-2 border-surface-container-high">
+<li class="flex items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-cool-gray mt-2 mr-3 flex-shrink-0"></span>
+<div>
+<span class="font-body-md text-body-md text-on-surface block">Local Files</span>
+<span class="font-label-sm text-label-sm text-cool-gray">~/Documents/Agent_Logs/</span>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Approval Policy -->
+<section>
+<div class="bg-surface rounded-xl p-5 border border-electric-blue/30 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl text-electric-blue" data-icon="shield" style="font-variation-settings: 'FILL' 1;">shield</span>
+</div>
+<div class="flex items-center space-x-3 mb-4 relative z-10">
+<span class="material-symbols-outlined text-electric-blue" data-icon="shield" style="font-variation-settings: 'FILL' 1;">shield</span>
+<h3 class="font-label-lg text-label-lg text-on-surface font-semibold">Approval Policy</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-6 relative z-10 max-w-[80%]">Require manual confirmation for any action modifying data or initiating network requests.</p>
+<button class="px-4 py-2 bg-graphite-black text-on-primary font-label-md text-label-md rounded-md hover:opacity-90 transition-opacity flex items-center space-x-2 active:scale-98 relative z-10">
+<span>Change Policy</span>
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Quick Access Tiles -->
+<section class="grid grid-cols-2 gap-4">
+<button class="bg-surface rounded-xl p-4 border border-outline-variant hover:bg-surface-container-low transition-colors text-left flex flex-col justify-between h-28 shadow-sm">
+<div class="flex justify-between items-start w-full">
+<span class="material-symbols-outlined text-on-surface" data-icon="pending_actions">pending_actions</span>
+<span class="bg-surface-container-high text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded-full">2</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface mt-2">Pending Actions</span>
+</button>
+<button class="bg-surface rounded-xl p-4 border border-outline-variant hover:bg-surface-container-low transition-colors text-left flex flex-col justify-between h-28 shadow-sm">
+<span class="material-symbols-outlined text-on-surface" data-icon="history">history</span>
+<span class="font-label-md text-label-md text-on-surface mt-2">Task History</span>
+</button>
+</section>
+</main>
+</body></html>
